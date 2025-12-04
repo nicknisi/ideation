@@ -1,0 +1,109 @@
+# Ideation Plugin
+
+Transform brain dumps into structured implementation artifacts: contracts, phased PRDs, and implementation specs.
+
+## Skills
+
+### ideation
+
+Transforms raw, unstructured brain dumps (dictated freestyle) into actionable implementation artifacts through a confidence-gated workflow.
+
+Use this when you have messy ideas, scattered thoughts, or dictated stream-of-consciousness about something you want to build.
+
+**How to invoke:**
+
+```
+Use the ideation skill
+
+[provide your brain dump - messy dictation, scattered thoughts, half-formed ideas]
+```
+
+Or simply start with your brain dump and mention you want to turn it into specs:
+
+```
+I want to build something. Here's what I'm thinking...
+
+[your raw, unstructured thoughts]
+
+...can you help me turn this into a spec?
+```
+
+**The workflow:**
+
+1. **Intake** - Accept your messy, unstructured input without judgment
+2. **Confidence scoring** - Assess understanding across 5 dimensions (0-100)
+3. **Clarifying questions** - If confidence <95%, ask targeted questions via `AskUserQuestion`
+4. **Contract** - When ≥95% confident, write `contract.md` to `./docs/ideation/{project}/`
+5. **PRDs** - After contract approval, generate phased `prd-phase-N.md` files
+6. **Specs** - After PRD approval, generate `spec-phase-N.md` implementation specs
+
+**Output artifacts:**
+
+All artifacts are written to `./docs/ideation/{project-name}/`:
+
+```
+contract.md          # Problem, goals, success criteria, scope
+prd-phase-1.md       # Phase 1 requirements
+prd-phase-2.md       # Phase 2 requirements (if applicable)
+spec-phase-1.md      # Phase 1 implementation spec
+spec-phase-2.md      # Phase 2 implementation spec
+```
+
+**Bundled references:**
+
+- `contract-template.md` - Lean contract structure
+- `prd-template.md` - Phased PRD template
+- `spec-template.md` - Implementation spec template
+- `confidence-rubric.md` - Scoring criteria for confidence assessment
+
+## Confidence Scoring
+
+The skill scores your brain dump across 5 dimensions (20 points each):
+
+| Dimension | Question |
+|-----------|----------|
+| Problem Clarity | Do I understand what problem we're solving? |
+| Goal Definition | Are the goals specific and measurable? |
+| Success Criteria | Can I write tests for "done"? |
+| Scope Boundaries | Do I know what's in and out of scope? |
+| Consistency | Are there contradictions to resolve? |
+
+**Thresholds:**
+
+- < 70: Major gaps - 5+ clarifying questions
+- 70-84: Moderate gaps - 3-5 questions
+- 85-94: Minor gaps - 1-2 questions
+- ≥ 95: Ready to generate contract
+
+## Example
+
+**Input (messy dictation):**
+
+```
+okay so i'm thinking about this feature where users can like save their
+favorite items you know like bookmarking but also they should be able to
+organize them into folders or something maybe tags actually tags might be
+better because folders are too rigid and oh we should probably have a
+search too...
+```
+
+**Process:**
+
+1. Skill accepts input, calculates ~55/100 confidence
+2. Asks clarifying questions: "What type of items?", "Tags user-created or predefined?", etc.
+3. User responds, confidence rises to 96/100
+4. Generates `contract.md` for approval
+5. After approval, generates PRDs for each phase
+6. After PRD approval, generates implementation specs
+
+**Result:** Clean, structured artifacts ready for implementation.
+
+## Installation
+
+```bash
+/plugin install ideation
+```
+
+## Version
+
+0.1.0
