@@ -101,7 +101,8 @@ search too...
 ## Installation
 
 ```bash
-/plugin install ideation
+/plugin marketplace add nicknisi/claude-plugins
+/plugin install ideation@nicknisi
 ```
 
 ## Version
