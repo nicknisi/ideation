@@ -21,13 +21,13 @@ Use `AskUserQuestion` for:
 ## Workflow Pipeline
 
 ```
-INTAKE → CONTRACT FORMATION → PRD GENERATION → SPEC GENERATION
-              ↓
-         confidence < 95%?
-              ↓
-         ASK QUESTIONS
-              ↓
-         (loop until ≥95%)
+INTAKE → CONTRACT FORMATION → PRD GENERATION → SPEC GENERATION → EXECUTION HANDOFF
+              ↓                                                        ↓
+         confidence < 95%?                                     [Fresh Session]
+              ↓                                                        ↓
+         ASK QUESTIONS                                         /execute-spec
+              ↓                                                        ↓
+         (loop until ≥95%)                                    Review → Test → Commit
 ```
 
 ## Phase 1: Intake
@@ -205,7 +205,30 @@ Include:
 
 ### 4.2 Final Review
 
-Present specs to user. These are now ready for implementation.
+Present specs to user. Proceed to execution handoff.
+
+## Phase 5: Execution Handoff
+
+After specs are generated, summarize and hand off for implementation.
+
+### 5.1 Present Handoff Summary
+
+```
+Ideation complete. Artifacts written to `./docs/ideation/{project-name}/`.
+
+**To implement:**
+1. Start a fresh Claude session (clears context)
+2. Run: /execute-spec docs/ideation/{project-name}/spec-phase-1.md
+3. Review changes, run tests, commit
+4. Repeat for each phase
+```
+
+### 5.2 Why Fresh Sessions?
+
+- Ideation consumes significant context (contract, PRDs, specs)
+- Execution benefits from clean context focused on the spec
+- Human review between phases catches issues early
+- Each phase is independently committable
 
 ## Output Artifacts
 
@@ -273,7 +296,13 @@ be on planes or whatever and sync when they come back online
 
 7. **PRDs approved** → Generate specs for each phase
 
-8. **Done**: Artifacts ready for implementation
+8. **Execution handoff**: Summarize artifacts and next steps for fresh-session execution
+
+9. **Implementation** (fresh sessions): For each phase:
+   - Start fresh Claude session
+   - Run `/execute-spec spec-phase-{n}.md`
+   - Review, test, commit
+   - Repeat for next phase
 
 ## Important Notes
 
