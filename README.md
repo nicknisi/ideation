@@ -62,13 +62,13 @@ tasks-manifest.md    # Task list ID for cross-session coordination
 
 The skill scores your brain dump across 5 dimensions (20 points each):
 
-| Dimension | Question |
-|-----------|----------|
-| Problem Clarity | Do I understand what problem we're solving? |
-| Goal Definition | Are the goals specific and measurable? |
-| Success Criteria | Can I write tests for "done"? |
-| Scope Boundaries | Do I know what's in and out of scope? |
-| Consistency | Are there contradictions to resolve? |
+| Dimension        | Question                                    |
+| ---------------- | ------------------------------------------- |
+| Problem Clarity  | Do I understand what problem we're solving? |
+| Goal Definition  | Are the goals specific and measurable?      |
+| Success Criteria | Can I write tests for "done"?               |
+| Scope Boundaries | Do I know what's in and out of scope?       |
+| Consistency      | Are there contradictions to resolve?        |
 
 **Thresholds:**
 

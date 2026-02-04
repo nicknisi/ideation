@@ -12,6 +12,7 @@ Use this template when generating `spec-phase-{n}.md` for each approved PRD.
 ## Technical Approach
 
 {High-level description of the implementation strategy. 2-3 paragraphs covering:
+
 - Overall architecture approach
 - Key technical decisions and rationale
 - Patterns or frameworks to use
@@ -21,23 +22,23 @@ Use this template when generating `spec-phase-{n}.md` for each approved PRD.
 
 ### New Files
 
-| File Path | Purpose |
-|-----------|---------|
+| File Path               | Purpose                                    |
+| ----------------------- | ------------------------------------------ |
 | `{path/to/new/file.ts}` | {Brief description of what this file does} |
 | `{path/to/new/file.ts}` | {Brief description of what this file does} |
 | `{path/to/new/file.ts}` | {Brief description of what this file does} |
 
 ### Modified Files
 
-| File Path | Changes |
-|-----------|---------|
+| File Path                    | Changes                      |
+| ---------------------------- | ---------------------------- |
 | `{path/to/existing/file.ts}` | {What to add/change and why} |
 | `{path/to/existing/file.ts}` | {What to add/change and why} |
 
 ### Deleted Files
 
-| File Path | Reason |
-|-----------|--------|
+| File Path               | Reason                           |
+| ----------------------- | -------------------------------- |
 | `{path/to/old/file.ts}` | {Why this file is being removed} |
 
 ## Implementation Details
@@ -62,10 +63,12 @@ function {functionName}({params}): {returnType} {
 ```
 
 **Key decisions**:
+
 - {Decision 1 and rationale}
 - {Decision 2 and rationale}
 
 **Implementation steps**:
+
 1. {Step 1}
 2. {Step 2}
 3. {Step 3}
@@ -81,9 +84,11 @@ function {functionName}({params}): {returnType} {
 ```
 
 **Key decisions**:
+
 - {Decision and rationale}
 
 **Implementation steps**:
+
 1. {Step 1}
 2. {Step 2}
 
@@ -123,11 +128,11 @@ interface {StateName} {
 
 ### New Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/{resource}` | {What it does} |
-| `GET` | `/api/{resource}/:id` | {What it does} |
-| `PUT` | `/api/{resource}/:id` | {What it does} |
+| Method   | Path                  | Description    |
+| -------- | --------------------- | -------------- |
+| `POST`   | `/api/{resource}`     | {What it does} |
+| `GET`    | `/api/{resource}/:id` | {What it does} |
+| `PUT`    | `/api/{resource}/:id` | {What it does} |
 | `DELETE` | `/api/{resource}/:id` | {What it does} |
 
 ### Request/Response Examples
@@ -150,12 +155,13 @@ interface {StateName} {
 
 ### Unit Tests
 
-| Test File | Coverage |
-|-----------|----------|
+| Test File                | Coverage        |
+| ------------------------ | --------------- |
 | `{path/to/test.spec.ts}` | {What it tests} |
 | `{path/to/test.spec.ts}` | {What it tests} |
 
 **Key test cases**:
+
 - {Test case 1}
 - {Test case 2}
 - {Edge case 1}
@@ -163,11 +169,12 @@ interface {StateName} {
 
 ### Integration Tests
 
-| Test File | Coverage |
-|-----------|----------|
+| Test File                       | Coverage        |
+| ------------------------------- | --------------- |
 | `{path/to/integration.spec.ts}` | {What it tests} |
 
 **Key scenarios**:
+
 - {Happy path scenario}
 - {Error handling scenario}
 - {Edge case scenario}
@@ -180,11 +187,11 @@ interface {StateName} {
 
 ## Error Handling
 
-| Error Scenario | Handling Strategy |
-|----------------|-------------------|
-| {Scenario 1} | {How to handle - e.g., "Return 400 with validation errors"} |
-| {Scenario 2} | {How to handle - e.g., "Retry 3x with exponential backoff"} |
-| {Scenario 3} | {How to handle - e.g., "Log error, return 500, alert on-call"} |
+| Error Scenario | Handling Strategy                                              |
+| -------------- | -------------------------------------------------------------- |
+| {Scenario 1}   | {How to handle - e.g., "Return 400 with validation errors"}    |
+| {Scenario 2}   | {How to handle - e.g., "Retry 3x with exponential backoff"}    |
+| {Scenario 3}   | {How to handle - e.g., "Log error, return 500, alert on-call"} |
 
 ## Validation Commands
 
@@ -223,7 +230,7 @@ interface {StateName} {
 
 ---
 
-*This spec is ready for implementation. Follow the patterns and validate at each step.*
+_This spec is ready for implementation. Follow the patterns and validate at each step._
 
 ---
 

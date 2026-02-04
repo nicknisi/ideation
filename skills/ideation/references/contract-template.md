@@ -13,6 +13,7 @@ Use this template when generating `contract.md` after reaching ≥95% confidence
 ## Problem Statement
 
 {1-3 paragraphs describing:
+
 - What pain point exists
 - Who experiences it
 - Why it matters
@@ -61,7 +62,7 @@ Use this template when generating `contract.md` after reaching ≥95% confidence
 
 ---
 
-*This contract was generated from brain dump input. Review and approve before proceeding to PRD generation.*
+_This contract was generated from brain dump input. Review and approve before proceeding to PRD generation._
 
 ---
 

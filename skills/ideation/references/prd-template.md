@@ -13,6 +13,7 @@ Use this template when generating `prd-phase-{n}.md` for each implementation pha
 ## Phase Overview
 
 {2-3 paragraphs describing:
+
 - What this phase accomplishes
 - Why it's sequenced at this position
 - What value users get after this phase completes
@@ -88,7 +89,7 @@ Use this template when generating `prd-phase-{n}.md` for each implementation pha
 
 ---
 
-*Review this PRD and provide feedback before spec generation.*
+_Review this PRD and provide feedback before spec generation._
 
 ---
 

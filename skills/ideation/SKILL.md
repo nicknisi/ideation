@@ -12,6 +12,7 @@ Transform unstructured brain dumps into structured, actionable implementation ar
 **ALWAYS use the `AskUserQuestion` tool when asking clarifying questions.** Do not ask questions in plain text. The tool provides structured options and ensures the user can respond clearly.
 
 Use `AskUserQuestion` for:
+
 - Clarifying questions during confidence scoring (Phase 2)
 - Project name confirmation before writing artifacts
 - Contract approval before PRD generation
@@ -63,30 +64,31 @@ Load `references/confidence-rubric.md` for detailed scoring criteria.
 
 Score each dimension (0-20 points):
 
-| Dimension | Question |
-|-----------|----------|
-| Problem Clarity | Do I understand what problem we're solving and why it matters? |
-| Goal Definition | Are the goals specific and measurable? |
-| Success Criteria | Can I write tests or validation steps for "done"? |
-| Scope Boundaries | Do I know what's in and out of scope? |
-| Consistency | Are there contradictions I need resolved? |
+| Dimension        | Question                                                       |
+| ---------------- | -------------------------------------------------------------- |
+| Problem Clarity  | Do I understand what problem we're solving and why it matters? |
+| Goal Definition  | Are the goals specific and measurable?                         |
+| Success Criteria | Can I write tests or validation steps for "done"?              |
+| Scope Boundaries | Do I know what's in and out of scope?                          |
+| Consistency      | Are there contradictions I need resolved?                      |
 
 **Total: /100 points**
 
 ### 2.3 Confidence Thresholds
 
-| Score | Action |
-|-------|--------|
-| < 70 | Major gaps. Ask 5+ questions targeting lowest dimensions. |
-| 70-84 | Moderate gaps. Ask 3-5 targeted questions. |
-| 85-94 | Minor gaps. Ask 1-2 specific questions. |
-| ≥ 95 | Ready to generate contract. |
+| Score | Action                                                    |
+| ----- | --------------------------------------------------------- |
+| < 70  | Major gaps. Ask 5+ questions targeting lowest dimensions. |
+| 70-84 | Moderate gaps. Ask 3-5 targeted questions.                |
+| 85-94 | Minor gaps. Ask 1-2 specific questions.                   |
+| ≥ 95  | Ready to generate contract.                               |
 
 ### 2.4 Ask Clarifying Questions
 
 When confidence < 95%, **MUST use `AskUserQuestion` tool** to ask clarifying questions. Structure questions with clear options when possible.
 
 **Using AskUserQuestion effectively**:
+
 - Provide 2-4 options per question when choices are clear
 - Use `multiSelect: true` when multiple answers apply
 - Keep question headers short (max 12 chars)
@@ -104,26 +106,31 @@ When confidence < 95%, **MUST use `AskUserQuestion` tool** to ask clarifying que
 **Question templates by dimension**:
 
 **Problem Clarity**:
+
 - "What specific problem are you trying to solve?"
 - "Who experiences this problem and how often?"
 - "What's the cost of NOT solving this?"
 
 **Goal Definition**:
+
 - "What does success look like for this project?"
 - "How will you measure whether this worked?"
 - "What specific metrics should improve?"
 
 **Success Criteria**:
+
 - "How will you know when you're done?"
 - "What tests would prove this feature works?"
 - "What would a QA person check?"
 
 **Scope Boundaries**:
+
 - "What is explicitly NOT part of this project?"
 - "Are there related features we should defer?"
 - "What's the MVP vs. nice-to-have?"
 
 **Consistency**:
+
 - "You mentioned [X] but also [Y]. Which takes priority?"
 - "These requirements seem to conflict. Can you clarify?"
 - "How should we handle [edge case]?"
@@ -149,12 +156,14 @@ After contract is approved:
 Analyze the contract and break scope into logical implementation phases.
 
 **Phasing criteria**:
+
 - Dependencies (what must be built first?)
 - Risk (tackle high-risk items early)
 - Value delivery (can users benefit after each phase?)
 - Complexity (balance phases for consistent effort)
 
 Typical phasing:
+
 - Phase 1: Core functionality / MVP
 - Phase 2: Enhanced features
 - Phase 3: Polish and optimization
@@ -165,6 +174,7 @@ Typical phasing:
 For each phase, generate `prd-phase-{n}.md` using `references/prd-template.md`.
 
 Include:
+
 - Phase overview and rationale
 - User stories for this phase
 - Functional requirements (grouped)
@@ -196,6 +206,7 @@ After PRDs are approved:
 For each approved phase, generate `spec-phase-{n}.md` using `references/spec-template.md`.
 
 Include:
+
 - Technical approach
 - File changes (new and modified)
 - Implementation details with code patterns
@@ -221,23 +232,23 @@ const taskListId = `{project-name}-${Date.now()}`;
 
 // Create phase tasks with dependencies
 TaskCreate({
-  subject: "Phase 1: {phase title from PRD}",
-  description: "Execute spec-phase-1.md",
-  activeForm: "Implementing Phase 1",
-  metadata: { phase: 1, specFile: "spec-phase-1.md" }
+  subject: 'Phase 1: {phase title from PRD}',
+  description: 'Execute spec-phase-1.md',
+  activeForm: 'Implementing Phase 1',
+  metadata: { phase: 1, specFile: 'spec-phase-1.md' },
 });
 
 // Phase 2 blocked by Phase 1
 TaskCreate({
-  subject: "Phase 2: {phase title}",
-  description: "Execute spec-phase-2.md",
-  activeForm: "Implementing Phase 2",
-  metadata: { phase: 2, specFile: "spec-phase-2.md" }
+  subject: 'Phase 2: {phase title}',
+  description: 'Execute spec-phase-2.md',
+  activeForm: 'Implementing Phase 2',
+  metadata: { phase: 2, specFile: 'spec-phase-2.md' },
 });
 
 TaskUpdate({
-  taskId: "{phase2-id}",
-  addBlockedBy: ["{phase1-id}"]
+  taskId: '{phase2-id}',
+  addBlockedBy: ['{phase1-id}'],
 });
 ```
 
@@ -245,7 +256,7 @@ TaskUpdate({
 
 Create `./docs/ideation/{project-name}/tasks-manifest.md`:
 
-```markdown
+````markdown
 # Tasks Manifest
 
 **Task List ID:** `{task-list-id}`
@@ -258,16 +269,17 @@ Create `./docs/ideation/{project-name}/tasks-manifest.md`:
 # Start fresh session with task tracking
 CLAUDE_CODE_TASK_LIST_ID={task-list-id} claude
 ```
+````
 
 Then run: `/execute-spec docs/ideation/{project-name}/spec-phase-1.md`
 
 ## Phases
 
-| Phase | Status | Spec File |
-|-------|--------|-----------|
-| 1 | pending | spec-phase-1.md |
-| 2 | blocked | spec-phase-2.md |
-| ... | ... | ... |
+| Phase | Status  | Spec File       |
+| ----- | ------- | --------------- |
+| 1     | pending | spec-phase-1.md |
+| 2     | blocked | spec-phase-2.md |
+| ...   | ...     | ...             |
 
 ## Cross-Session Coordination
 
@@ -284,11 +296,13 @@ CLAUDE_CODE_TASK_LIST_ID={task-list-id} claude
 ```
 
 Check progress anytime with `TaskList`.
+
 ```
 
 ### 5.3 Present Handoff Summary
 
 ```
+
 Ideation complete. Artifacts written to `./docs/ideation/{project-name}/`.
 
 ## Execution Ready
@@ -296,6 +310,7 @@ Ideation complete. Artifacts written to `./docs/ideation/{project-name}/`.
 Task list created: `{task-list-id}`
 
 **To implement with shared task tracking:**
+
 ```bash
 CLAUDE_CODE_TASK_LIST_ID={task-list-id} claude
 ```
@@ -303,6 +318,7 @@ CLAUDE_CODE_TASK_LIST_ID={task-list-id} claude
 Then run: `/execute-spec docs/ideation/{project-name}/spec-phase-1.md`
 
 **For parallel execution (multiple terminals):**
+
 ```bash
 # Terminal 1
 CLAUDE_CODE_TASK_LIST_ID={task-list-id} claude
@@ -314,6 +330,7 @@ CLAUDE_CODE_TASK_LIST_ID={task-list-id} claude
 ```
 
 Tasks sync automatically across sessions.
+
 ```
 
 ### 5.4 Why Fresh Sessions?
@@ -329,14 +346,16 @@ Tasks sync automatically across sessions.
 All artifacts written to `./docs/ideation/{project-name}/`:
 
 ```
-contract.md              # Lean contract (problem, goals, success, scope)
-prd-phase-1.md           # Phase 1 requirements
-prd-phase-2.md           # Phase 2 requirements (if applicable)
+
+contract.md # Lean contract (problem, goals, success, scope)
+prd-phase-1.md # Phase 1 requirements
+prd-phase-2.md # Phase 2 requirements (if applicable)
 ...
-spec-phase-1.md          # Phase 1 implementation spec
-spec-phase-2.md          # Phase 2 implementation spec
+spec-phase-1.md # Phase 1 implementation spec
+spec-phase-2.md # Phase 2 implementation spec
 ...
-tasks-manifest.md        # Task list ID and cross-session coordination info
+tasks-manifest.md # Task list ID and cross-session coordination info
+
 ```
 
 ## Bundled Resources
@@ -353,6 +372,7 @@ tasks-manifest.md        # Task list ID and cross-session coordination info
 **User provides brain dump** (via dictation):
 
 ```
+
 okay so i'm thinking about this feature where users can like save their
 favorite items you know like bookmarking but also they should be able to
 organize them into folders or something maybe tags actually tags might be
@@ -361,6 +381,7 @@ search too because if they have a lot of bookmarks it'll be hard to find
 anything and maybe some kind of sharing eventually but that's probably
 phase 2 or something and it should work offline too because people might
 be on planes or whatever and sync when they come back online
+
 ```
 
 **Process**:
@@ -407,3 +428,4 @@ be on planes or whatever and sync when they come back online
 - Each phase should be independently valuable.
 - Specs should be detailed enough to implement without re-reading PRDs.
 - Keep contracts lean. Heavy docs slow iteration.
+```
