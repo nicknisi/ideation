@@ -139,7 +139,7 @@ Use this rubric to score brain dump clarity before generating a contract.
 | < 70        | Major gaps in understanding | Ask 5+ questions targeting lowest-scoring dimensions. May need multiple rounds. |
 | 70-84       | Moderate gaps               | Ask 3-5 targeted questions. One more round likely sufficient.                   |
 | 85-94       | Minor gaps                  | Ask 1-2 specific questions. Almost ready.                                       |
-| ≥ 95        | Ready                       | Generate contract. Proceed to PRD generation.                                   |
+| ≥ 95        | Ready                       | Generate contract. Proceed to phasing and specification.                        |
 
 ---
 
@@ -179,7 +179,7 @@ Use this to track your assessment:
 | Consistency      | /20      |       |
 | **TOTAL**        | **/100** |       |
 
-**Lowest dimension**: **\*\*\*\***\_**\*\*\*\*** (target questions here first)
+**Lowest dimension**: _________________ (target questions here first)
 
 **Questions to ask**:
 
@@ -205,8 +205,4 @@ After each round of questions:
 - Round 2: 70-80 → 85-92
 - Round 3: 85-92 → 95+
 
-If not progressing after 3 rounds, consider:
-
-- User may not have clear requirements yet (suggest they think more)
-- Scope may be too large (suggest breaking into smaller projects)
-- Problem may be poorly defined at org level (suggest stakeholder alignment first)
+**Keep going until ≥ 95.** Score conservatively — when uncertain between two levels, always choose the lower one. Do not inflate scores to move forward faster. The goal is a good contract, not a fast one.

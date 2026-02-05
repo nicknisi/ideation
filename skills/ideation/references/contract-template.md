@@ -62,7 +62,7 @@ Use this template when generating `contract.md` after reaching ≥95% confidence
 
 ---
 
-_This contract was generated from brain dump input. Review and approve before proceeding to PRD generation._
+_This contract was generated from brain dump input. Review and approve before proceeding to specification._
 
 ---
 

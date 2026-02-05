@@ -1,12 +1,13 @@
 # Spec Template
 
-Use this template when generating `spec-phase-{n}.md` for each approved PRD.
+Use this template when generating `spec-phase-{n}.md` for each approved phase.
 
 ---
 
 # Implementation Spec: {Project Name} - Phase {N}
 
-**PRD**: ./prd-phase-{N}.md
+**Contract**: ./contract.md
+**PRD**: ./prd-phase-{N}.md *(omit if no PRDs were generated)*
 **Estimated Effort**: {T-shirt size: S/M/L/XL}
 
 ## Technical Approach

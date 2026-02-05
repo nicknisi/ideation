@@ -1,6 +1,6 @@
 ---
 name: ideation
-description: Transform raw brain dumps (dictated freestyle) into structured implementation artifacts. Use when user has messy ideas, scattered thoughts, or dictated stream-of-consciousness about something they want to build. Produces contracts, phased PRDs, and implementation specs written to ./docs/ideation/{project-name}/.
+description: Transform raw brain dumps (dictated freestyle) into structured implementation artifacts. Use when user has messy ideas, scattered thoughts, or dictated stream-of-consciousness about something they want to build. Produces contracts and implementation specs written to ./docs/ideation/{project-name}/.
 ---
 
 # Ideation
@@ -15,20 +15,21 @@ Use `AskUserQuestion` for:
 
 - Clarifying questions during confidence scoring (Phase 2)
 - Project name confirmation before writing artifacts
-- Contract approval before PRD generation
-- PRD review feedback before spec generation
+- Contract approval
+- Workflow choice (PRDs vs straight to specs)
+- Phase review feedback before spec generation
 - Any decision point requiring user input
 
 ## Workflow Pipeline
 
 ```
-INTAKE → CONTRACT FORMATION → PRD GENERATION → SPEC GENERATION → EXECUTION HANDOFF
-              ↓                                                        ↓
-         confidence < 95%?                                     [Fresh Session]
-              ↓                                                        ↓
-         ASK QUESTIONS                                         /execute-spec
-              ↓                                                        ↓
-         (loop until ≥95%)                                    Review → Test → Commit
+INTAKE → CODEBASE EXPLORATION → CONTRACT FORMATION → PHASING → SPEC GENERATION → HANDOFF
+              ↓                        ↓                  ↓            ↓               ↓
+         Understand              confidence < 95%?    PRDs or     Repeatable?    Analyze deps
+         existing code                ↓               straight      ↓               ↓
+                                 ASK QUESTIONS        to specs?   Template +    Sequential?
+                                      ↓                           per-phase     Parallel?
+                                 (loop until ≥95%)                deltas        Agent Team?
 ```
 
 ## Phase 1: Intake
@@ -46,21 +47,58 @@ Accept whatever the user provides:
 
 Acknowledge receipt and begin analysis. Do not ask for clarification yet.
 
-## Phase 2: Contract Formation
+## Phase 2: Codebase Exploration
 
-### 2.1 Analyze the Brain Dump
+**Before scoring confidence or generating any artifacts, understand the existing codebase.** This is critical — specs written without understanding existing patterns, architecture, and conventions will be generic and wrong.
 
-Extract from the raw input:
+### 2.1 Determine if Exploration is Needed
+
+Exploration is needed when:
+
+- The brain dump references existing code, features, or systems
+- The project directory contains source code (not a greenfield project)
+- The user mentions extending, modifying, or integrating with existing functionality
+
+Skip exploration for greenfield projects with no existing code.
+
+### 2.2 Explore the Codebase
+
+Use the `Task` tool with `subagent_type: "Explore"` or direct `Glob`/`Grep`/`Read` to understand:
+
+1. **Project structure** — What frameworks, languages, and patterns are in use?
+2. **Relevant existing code** — What modules/files relate to the brain dump's scope?
+3. **Conventions and patterns** — How are similar features implemented? What abstractions exist?
+4. **Testing patterns** — How is the codebase tested? What infrastructure exists?
+5. **Configuration and build** — What tools, package managers, and CI/CD are in use?
+
+### 2.3 Record Findings
+
+Retain exploration context for use in later phases. These inform:
+
+- **Confidence scoring** — better understanding of the problem space
+- **Contract** — realistic scope boundaries based on actual architecture
+- **Specs** — "Pattern to follow" references, accurate file paths, correct abstractions
+
+**Do not write exploration findings to files.** They're context for the ideation process, not an artifact.
+
+## Phase 3: Contract Formation
+
+### 3.1 Analyze the Brain Dump
+
+Extract from the raw input + codebase exploration:
 
 1. **Problem signals**: What pain point or need is being described?
 2. **Goal signals**: What does the user want to achieve?
 3. **Success signals**: How will they know it worked?
 4. **Scope signals**: What's included? What's explicitly excluded?
 5. **Contradictions**: Note any conflicting statements
+6. **Codebase constraints**: What does the existing architecture enable or limit?
 
-### 2.2 Calculate Confidence Score
+### 3.2 Calculate Confidence Score
 
-Load `references/confidence-rubric.md` for detailed scoring criteria.
+Read `references/confidence-rubric.md` for detailed scoring criteria.
+
+**Score conservatively.** When uncertain between two levels, choose the lower one. One extra round of questions costs minutes; a bad contract costs hours. Do not inflate scores to move forward faster.
 
 Score each dimension (0-20 points):
 
@@ -74,7 +112,7 @@ Score each dimension (0-20 points):
 
 **Total: /100 points**
 
-### 2.3 Confidence Thresholds
+### 3.3 Confidence Thresholds
 
 | Score | Action                                                    |
 | ----- | --------------------------------------------------------- |
@@ -83,7 +121,7 @@ Score each dimension (0-20 points):
 | 85-94 | Minor gaps. Ask 1-2 specific questions.                   |
 | ≥ 95  | Ready to generate contract.                               |
 
-### 2.4 Ask Clarifying Questions
+### 3.4 Ask Clarifying Questions
 
 When confidence < 95%, **MUST use `AskUserQuestion` tool** to ask clarifying questions. Structure questions with clear options when possible.
 
@@ -135,7 +173,7 @@ When confidence < 95%, **MUST use `AskUserQuestion` tool** to ask clarifying que
 - "These requirements seem to conflict. Can you clarify?"
 - "How should we handle [edge case]?"
 
-### 2.5 Generate Contract
+### 3.5 Generate Contract
 
 When confidence ≥ 95%, generate the contract document.
 
@@ -143,19 +181,45 @@ When confidence ≥ 95%, generate the contract document.
 2. Convert to kebab-case for directory name
 3. Create output directory: `./docs/ideation/{project-name}/`
 4. Write `contract.md` using `references/contract-template.md`
-5. Use `AskUserQuestion` to get approval: "Does this contract accurately capture your intent?"
+5. Use `AskUserQuestion` to get approval:
 
-**Do not proceed to PRD generation until contract is explicitly approved.**
+```
+Question: "Does this contract accurately capture your intent?"
+Options:
+- "Approved" - Contract is accurate, proceed
+- "Needs changes" - Some parts need revision
+- "Missing scope" - Important items are not captured
+- "Start over" - Fundamentally off track, re-analyze
+```
 
-## Phase 3: PRD Generation
+**If not approved:** Revise the contract based on feedback. Do not re-score confidence unless the feedback reveals a fundamental misunderstanding — in that case, return to Phase 3.2 and re-score. Otherwise, edit `contract.md` directly and re-present for approval. Iterate until approved.
 
-After contract is approved:
+**Do not proceed until contract is explicitly approved.**
 
-### 3.1 Determine Phases
+## Phase 4: Phasing & Specification
 
-Analyze the contract and break scope into logical implementation phases.
+After contract is approved, determine phases and generate specs. PRDs are optional.
 
-**Phasing criteria**:
+### 4.1 Choose Workflow
+
+Use `AskUserQuestion` to ask:
+
+```
+Question: "How should we proceed from the contract?"
+Options:
+- "Straight to specs" — Recommended for technical projects.
+  Contract defines what, specs define how. Faster.
+- "PRDs then specs" — Recommended for large scope or cross-functional
+  teams. Adds a requirements layer for stakeholder alignment.
+```
+
+### 4.2 Determine Phases
+
+Regardless of PRD choice, analyze the contract and break scope into logical implementation phases.
+
+**Small-project shortcut:** If the scope is small enough to implement in a single phase (1-3 components, touches fewer than ~10 files), skip phasing entirely. Generate a single `spec.md` (no phase number needed) and proceed directly to handoff. Not every project needs multiple phases — don't force structure where simplicity suffices.
+
+**Phasing criteria** (for multi-phase projects):
 
 - Dependencies (what must be built first?)
 - Risk (tackle high-risk items early)
@@ -164,12 +228,13 @@ Analyze the contract and break scope into logical implementation phases.
 
 Typical phasing:
 
-- Phase 1: Core functionality / MVP
-- Phase 2: Enhanced features
-- Phase 3: Polish and optimization
+- Phase 1: Core functionality / infrastructure
+- Phase 2+: Features, enhancements, additional integrations
 - Phase N: Future considerations
 
-### 3.2 Generate PRDs
+**Detect repeatable patterns:** If 3+ phases follow the same structure with different inputs (e.g., "add SDK support for {language}"), note this — it affects how specs are generated (see 4.4).
+
+### 4.3 Generate PRDs (only if user chose "PRDs then specs")
 
 For each phase, generate `prd-phase-{n}.md` using `references/prd-template.md`.
 
@@ -182,9 +247,7 @@ Include:
 - Dependencies (prerequisites and outputs)
 - Acceptance criteria
 
-### 3.3 Present for Review
-
-Show all PRDs to user. Use `AskUserQuestion` to gather feedback:
+Present all PRDs for review. Use `AskUserQuestion`:
 
 ```
 Question: "Do these PRD phases look correct?"
@@ -197,15 +260,13 @@ Options:
 
 Iterate until user explicitly approves.
 
-## Phase 4: Spec Generation
+### 4.4 Generate Implementation Specs
 
-After PRDs are approved:
+Generate specs using `references/spec-template.md`. How specs are generated depends on whether phases are repeatable:
 
-### 4.1 Generate Implementation Specs
+#### Standard phases (each is unique)
 
-For each approved phase, generate `spec-phase-{n}.md` using `references/spec-template.md`.
-
-Include:
+For each phase, generate a full `spec-phase-{n}.md` with:
 
 - Technical approach
 - File changes (new and modified)
@@ -214,25 +275,98 @@ Include:
 - Error handling
 - Validation commands
 
-### 4.2 Final Review
+**Reference existing code:** When the codebase exploration (Phase 2) identified relevant patterns, include "Pattern to follow: `path/to/similar/file.ts`" in the spec's implementation details. This gives the executing agent concrete examples to follow.
 
-Present specs to user. Proceed to execution handoff.
+#### Repeatable phases (3+ phases follow the same pattern)
+
+When multiple phases share the same structure (e.g., "add support for {SDK}"), avoid generating N nearly-identical full specs. Instead:
+
+1. **Generate one full template spec** — `spec-template-{pattern-name}.md` — with detailed implementation steps, using placeholders for the variable parts.
+
+2. **Generate lightweight per-phase delta files** — `spec-phase-{n}.md` — containing only:
+   - Phase-specific inputs (e.g., language name, package manager, framework)
+   - Deviations from the template (what's different about this phase)
+   - Any phase-specific concerns or edge cases
+   - Reference to the template: "Follow `spec-template-{pattern-name}.md` with the inputs below"
+
+**Example for SDK integrations:**
+
+`spec-template-sdk-integration.md`:
+```markdown
+# SDK Integration Template
+
+## Pattern
+For each SDK, create:
+1. `src/{language}/{language}-installer-agent.ts` — FrameworkConfig following existing pattern
+2. `skills/workos-{sdk-name}/SKILL.md` — Agent skill fetching SDK README
+3. `tests/fixtures/{language}/{framework}-example/` — Minimal project fixture
+4. `tests/evals/graders/{language}.grader.ts` — Extending BaseGrader
+
+## Implementation Details
+{Detailed steps with {placeholders} for variable parts}
+
+## Validation
+{Common validation steps}
+```
+
+`spec-phase-5.md`:
+```markdown
+# Spec: Ruby SDK (workos-ruby)
+
+**Template**: ./spec-template-sdk-integration.md
+
+## Inputs
+- Language: Ruby
+- Framework: Rails
+- Package manager: Bundler (`bundle add`)
+- Manifest file: Gemfile
+- SDK package: workos
+- Detection: `rails` gem in Gemfile or `config/routes.rb` exists
+
+## Deviations from template
+- Rails has strong conventions — files go in specific locations
+- Initializer pattern: `config/initializers/workos.rb`
+- Env vars: `.env` with dotenv-rails, or Rails credentials
+
+## Phase-specific concerns
+- CI needs Ruby 3.x installed for eval fixtures
+```
+
+This approach:
+- Saves significant context window space
+- Makes the per-phase differences obvious
+- Avoids copy-paste errors across specs
+- Makes it easy to update the shared pattern in one place
+
+### 4.5 Present Phases for Review
+
+Whether using PRDs or straight-to-specs, present the phase breakdown and specs for user approval before proceeding to handoff.
+
+Use `AskUserQuestion`:
+
+```
+Question: "Do these specs look correct?"
+Options:
+- "Approved" - Specs look good, proceed to execution handoff
+- "Adjust approach" - Implementation strategy needs changes
+- "Missing components" - Some files or steps are missing
+- "Revisit phases" - Phase breakdown needs restructuring
+```
+
+If not approved, revise the relevant specs based on feedback and re-present. Iterate until approved.
 
 ## Phase 5: Execution Handoff
 
-After specs are generated, create task list and hand off for implementation.
+After specs are generated, create task list, analyze orchestration options, and hand off for implementation.
 
 ### 5.1 Create Task List
 
-Generate a unique task list ID and create initial phase tasks:
+Create phase-level tasks for visibility in the current session:
 
 ```javascript
-// Generate unique ID
-const taskListId = `{project-name}-${Date.now()}`;
-
 // Create phase tasks with dependencies
 TaskCreate({
-  subject: 'Phase 1: {phase title from PRD}',
+  subject: 'Phase 1: {phase title}',
   description: 'Execute spec-phase-1.md',
   activeForm: 'Implementing Phase 1',
   metadata: { phase: 1, specFile: 'spec-phase-1.md' },
@@ -252,110 +386,131 @@ TaskUpdate({
 });
 ```
 
-### 5.2 Write Tasks Manifest
+Note: These are planning-level tasks for the current session. Each `/execute-spec` session will create its own granular implementation tasks.
 
-Create `./docs/ideation/{project-name}/tasks-manifest.md`:
+### 5.2 Analyze Orchestration Strategy
 
-````markdown
-# Tasks Manifest
+Analyze the phase dependency graph to determine the best execution strategy.
 
-**Task List ID:** `{task-list-id}`
-**Created:** {timestamp}
-**Project:** {project-name}
+**Detect parallelizable phases:**
 
-## Quick Start
+- Examine which phases are blocked by what
+- If 3+ phases share the same single blocker (e.g., all blocked only by Phase 1), they are **parallelizable**
+- If phases form a linear chain (Phase 2 → Phase 3 → Phase 4), they are **sequential**
+- Mixed graphs have both parallel and sequential segments
 
-```bash
-# Start fresh session with task tracking
-CLAUDE_CODE_TASK_LIST_ID={task-list-id} claude
-```
-````
+**Determine recommended strategy:**
 
-Then run: `/execute-spec docs/ideation/{project-name}/spec-phase-1.md`
-
-## Phases
-
-| Phase | Status  | Spec File       |
-| ----- | ------- | --------------- |
-| 1     | pending | spec-phase-1.md |
-| 2     | blocked | spec-phase-2.md |
-| ...   | ...     | ...             |
-
-## Cross-Session Coordination
-
-Tasks sync automatically across Claude sessions. To work in parallel:
-
-```bash
-# Terminal 1
-CLAUDE_CODE_TASK_LIST_ID={task-list-id} claude
-# Work on independent Component A
-
-# Terminal 2
-CLAUDE_CODE_TASK_LIST_ID={task-list-id} claude
-# Work on independent Component B
-```
-
-Check progress anytime with `TaskList`.
-
-```
+| Pattern | Recommendation |
+|---------|----------------|
+| All phases sequential (chain) | **Sequential execution** — one session at a time |
+| 2 independent phases | **Manual parallel** — two terminal sessions |
+| 3+ independent phases | **Agent team** — lead orchestrates teammates |
+| Mixed dependencies | **Hybrid** — sequential for dependent chain, agent team for independent group |
 
 ### 5.3 Present Handoff Summary
 
-```
+Present the execution strategy directly to the user. No manifest file — the contract and specs are the artifacts. The handoff summary is conversational output.
 
+**Always include:**
+
+```
 Ideation complete. Artifacts written to `./docs/ideation/{project-name}/`.
 
-## Execution Ready
-
-Task list created: `{task-list-id}`
-
-**To implement with shared task tracking:**
+## To start implementation
 
 ```bash
-CLAUDE_CODE_TASK_LIST_ID={task-list-id} claude
+claude
+/execute-spec docs/ideation/{project-name}/spec-phase-1.md
 ```
 
-Then run: `/execute-spec docs/ideation/{project-name}/spec-phase-1.md`
+Each `/execute-spec` session creates its own implementation tasks.
+```
 
-**For parallel execution (multiple terminals):**
+**When 3+ phases are parallelizable, also present an agent team prompt:**
 
-```bash
+```
+## Parallel Execution with Agent Teams
+
+After {blocking phase} is complete, {N} phases can run in parallel.
+
+Enable agent teams in `.claude/settings.json` or `~/.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
+```
+
+Start a lead session, enter **delegate mode** (Shift+Tab), and paste:
+
+```
+{Blocking phase} is complete. I need an agent team to implement
+{N} remaining phases in parallel. Each phase is independent.
+
+Spawn teammates with plan approval required. Each teammate should:
+1. Read their assigned spec file (and the template spec if referenced)
+2. Plan their implementation approach
+3. Wait for plan approval before making changes
+4. Run validation commands from their spec after implementation
+
+Teammates:
+
+1. "{Phase title}" — docs/ideation/{project-name}/spec-phase-{n}.md
+   {One-line context}
+
+2. "{Phase title}" — docs/ideation/{project-name}/spec-phase-{n}.md
+   {One-line context}
+
+...
+```
+```
+
+**Shared file detection:** Scan the spec files' "Modified Files" sections. If multiple specs modify the same files, add a coordination note to the team prompt:
+
+```
+Coordinate on shared files ({list}) to avoid merge conflicts —
+only one teammate should modify a shared file at a time.
+```
+
+**Batching:** If more than 5 parallelizable phases, recommend starting with the highest-priority batch first, then spawning the rest after plans are approved.
+
+**When exactly 2 independent phases, suggest manual parallel:**
+
+```
+After {blocking phase}, run in two terminals:
+
 # Terminal 1
-CLAUDE_CODE_TASK_LIST_ID={task-list-id} claude
-# Work on Component A
+claude
+/execute-spec docs/ideation/{project-name}/spec-phase-{a}.md
 
 # Terminal 2
-CLAUDE_CODE_TASK_LIST_ID={task-list-id} claude
-# Work on Component B (if independent)
-```
-
-Tasks sync automatically across sessions.
-
+claude
+/execute-spec docs/ideation/{project-name}/spec-phase-{b}.md
 ```
 
 ### 5.4 Why Fresh Sessions?
 
-- Ideation consumes significant context (contract, PRDs, specs)
+- Ideation consumes significant context (contract, specs, exploration)
 - Execution benefits from clean context focused on the spec
 - Human review between phases catches issues early
 - Each phase is independently committable
-- **Task list persists** - progress isn't lost between sessions
+- Each session creates granular implementation tasks scoped to that phase
 
 ## Output Artifacts
 
 All artifacts written to `./docs/ideation/{project-name}/`:
 
 ```
-
-contract.md # Lean contract (problem, goals, success, scope)
-prd-phase-1.md # Phase 1 requirements
-prd-phase-2.md # Phase 2 requirements (if applicable)
+contract.md                        # Lean contract (problem, goals, success, scope)
+prd-phase-1.md                     # Phase 1 requirements (only if PRDs chosen)
 ...
-spec-phase-1.md # Phase 1 implementation spec
-spec-phase-2.md # Phase 2 implementation spec
+spec-phase-1.md                    # Phase 1 implementation spec (always full)
+spec-template-{pattern}.md         # Shared template for repeatable phases (if applicable)
+spec-phase-{n}.md                  # Per-phase delta referencing template (if repeatable)
 ...
-tasks-manifest.md # Task list ID and cross-session coordination info
-
 ```
 
 ## Bundled Resources
@@ -366,66 +521,27 @@ tasks-manifest.md # Task list ID and cross-session coordination info
 - `references/prd-template.md` - Template for phased PRD documents
 - `references/spec-template.md` - Template for implementation specs
 - `references/confidence-rubric.md` - Detailed scoring criteria for confidence assessment
+- `references/workflow-example.md` - End-to-end workflow walkthrough
 
-## Workflow Example
+### Examples
 
-**User provides brain dump** (via dictation):
+Completed artifact examples for reference when generating output:
 
-```
+- `examples/contract-example.md` - A filled-in contract for a bookmark feature
+- `examples/spec-example.md` - A filled-in spec for the same feature
 
-okay so i'm thinking about this feature where users can like save their
-favorite items you know like bookmarking but also they should be able to
-organize them into folders or something maybe tags actually tags might be
-better because folders are too rigid and oh we should probably have a
-search too because if they have a lot of bookmarks it'll be hard to find
-anything and maybe some kind of sharing eventually but that's probably
-phase 2 or something and it should work offline too because people might
-be on planes or whatever and sync when they come back online
-
-```
-
-**Process**:
-
-1. **Intake**: Accept without judgment
-
-2. **Analysis**:
-   - Problem: Users need to save and organize content
-   - Goals: Save items, organize with tags, search, offline support
-   - Unclear: What items? Why tags > folders? Sharing scope? Offline priority?
-   - Confidence: ~55/100 (low problem clarity, unclear scope)
-
-3. **Questions** (round 1):
-   - "What type of items are users bookmarking? Articles, products, posts?"
-   - "You mentioned tags over folders. Should tags be user-created or predefined?"
-   - "Is offline support MVP or can it wait for phase 2?"
-   - "When you say 'sharing eventually,' what does that look like?"
-
-4. **User responds** → Recalculate confidence → Repeat if needed
-
-5. **Confidence reaches 96%** → Generate contract
-
-6. **Contract approved** → Generate PRDs:
-   - Phase 1: Core bookmarking with tags
-   - Phase 2: Search and filtering
-   - Phase 3: Offline support
-   - Phase 4: Sharing (future)
-
-7. **PRDs approved** → Generate specs for each phase
-
-8. **Execution handoff**: Summarize artifacts and next steps for fresh-session execution
-
-9. **Implementation** (fresh sessions): For each phase:
-   - Start fresh Claude session
-   - Run `/execute-spec spec-phase-{n}.md`
-   - Review, test, commit
-   - Repeat for next phase
+When generating artifacts, reference these examples for tone, structure, and level of detail.
 
 ## Important Notes
 
 - **ALWAYS use `AskUserQuestion` tool for clarifications and approvals.** Never ask questions in plain text.
+- **Explore the codebase** before scoring confidence (unless greenfield).
+- **Score confidence conservatively.** When uncertain, score lower.
 - Never skip the confidence check. Don't assume understanding.
 - Always write artifacts to files. Don't just display them.
 - Each phase should be independently valuable.
-- Specs should be detailed enough to implement without re-reading PRDs.
+- Specs should be detailed enough to implement without re-reading PRDs or the contract.
 - Keep contracts lean. Heavy docs slow iteration.
-```
+- **Reference existing code patterns** in specs — "Pattern to follow" with real file paths.
+- **Use template + delta** for repeatable phases — don't generate N identical specs.
+- **Small projects don't need phases.** If scope is 1-3 components, generate a single spec.

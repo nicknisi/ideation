@@ -53,9 +53,35 @@ Example: `/execute-spec --parallel` or `/execute-spec docs/ideation/foo/spec-pha
 
 If multiple found, use `AskUserQuestion` to select one.
 
-### 2. Parse Spec Structure
+### 2. Codebase Exploration
 
-Extract from the spec file:
+**Before parsing the spec into tasks, build understanding of the existing codebase.** This prevents blind implementation and ensures new code follows established patterns.
+
+**Read referenced files first:**
+
+- If the spec references a **template** (e.g., "Template: ./spec-template-sdk-integration.md"), read the template file. The template contains the shared implementation pattern; the spec file contains the phase-specific inputs and deviations. Merge both to understand the full implementation plan.
+- If the spec references **"Pattern to follow"** with file paths, read those files to understand the existing code patterns.
+
+**Explore the surrounding codebase:**
+
+- Read the files listed in the spec's "Modified Files" section — understand what's there before changing it
+- If the spec creates new files alongside existing similar files (e.g., adding `src/ruby/` when `src/python/` already exists), read the existing analogous files to match their patterns
+- Check for a `CLAUDE.md` or project README that documents conventions
+- Run a quick `Glob` on the directories you'll be writing to, so you understand the neighborhood
+
+**What to look for:**
+
+1. **Naming conventions** — How are files, functions, and variables named?
+2. **Import patterns** — Relative vs absolute, barrel exports, etc.
+3. **Error handling** — How does existing code handle errors?
+4. **Test patterns** — How are similar features tested? What test utilities exist?
+5. **Type patterns** — What interfaces/types are used? How are they organized?
+
+**Keep exploration focused.** Don't read the entire codebase — just the files and patterns directly relevant to this spec. Aim for 5-15 file reads, not 50.
+
+### 3. Parse Spec Structure
+
+Extract from the spec file (and template if applicable):
 
 - **Technical Approach** - Overall implementation strategy
 - **File Changes** - New files, modified files, deleted files
@@ -63,7 +89,7 @@ Extract from the spec file:
 - **Testing Requirements** - Unit tests, integration tests, manual testing
 - **Validation Commands** - Commands to verify implementation
 
-### 3. Check or Create Implementation Tasks
+### 4. Check or Create Implementation Tasks
 
 **If tasks already exist** (detected in Step 1 from TaskList):
 
@@ -120,7 +146,7 @@ TaskCreate({
 });
 ```
 
-### 4. Establish Task Dependencies
+### 5. Establish Task Dependencies
 
 Parse the spec's Implementation Details for component order:
 
@@ -143,10 +169,11 @@ Before starting, use `TaskList` to see current state:
 
 1. **Claim the task**: `TaskUpdate({ taskId, status: "in_progress" })`
 2. **Read** the component's implementation details from task description
-3. **Follow** the pattern specified (if "Pattern to follow" is listed)
-4. **Create/Edit** files as specified in "File Changes"
-5. **Validate** after each component using the spec's validation commands
-6. **Complete**: `TaskUpdate({ taskId, status: "completed" })`
+3. **Read before writing** — If modifying existing files, read them first. If creating files alongside existing analogues, read the analogues to match patterns.
+4. **Follow** the pattern specified (if "Pattern to follow" is listed)
+5. **Create/Edit** files as specified in "File Changes"
+6. **Validate** after each component using the spec's validation commands
+7. **Complete**: `TaskUpdate({ taskId, status: "completed" })`
 
 ### Component Completion
 
@@ -169,51 +196,27 @@ If validation fails:
 
 ### Parallel Execution (with `--parallel` flag)
 
+**This flag parallelizes components *within* a single phase.** For parallelizing *across* phases, use agent teams — see the ideation handoff summary.
+
 **Default (no flag):** Sequential execution
 
 - Work through unblocked tasks one at a time
 - Tasks auto-unblock as dependencies complete
 - Simpler to follow, no merge conflict risk
 
-**With `--parallel` flag:** Spawn subagents for independent tasks
+**With `--parallel` flag:** Spawn subagents for independent components
 
-When `--parallel` is passed and multiple tasks are unblocked:
+When `--parallel` is passed and multiple component tasks are unblocked:
 
 1. Check `TaskList` for all tasks with empty `blockedBy`
 2. If more than one unblocked task exists:
    - Keep one task for this session
    - Spawn `Task` subagents for each additional unblocked task
-   - Each subagent runs with `subagent_type: "developer-experience:coder"`
    - Pass task ID and spec context to each subagent
 3. Subagents coordinate via shared `TaskList`:
    - Each claims its task with `TaskUpdate({ status: "in_progress" })`
    - Marks complete when done
    - Parent session monitors progress
-
-```javascript
-// For each additional unblocked task beyond the first:
-Task({
-  subagent_type: 'developer-experience:coder',
-  prompt: `Execute task ${taskId}: ${taskSubject}
-
-Read the task with TaskGet for full details.
-Implement following the spec patterns.
-Mark completed when done.`,
-  run_in_background: true,
-});
-```
-
-**Alternative: Manual multi-terminal**
-
-```bash
-# Terminal 1
-CLAUDE_CODE_TASK_LIST_ID={task-list-id} claude
-/execute-spec  # Claims first unblocked task
-
-# Terminal 2
-CLAUDE_CODE_TASK_LIST_ID={task-list-id} claude
-/execute-spec  # Claims second unblocked task
-```
 
 ## Post-Execution
 
@@ -298,11 +301,13 @@ Options:
 
 ## Key Principles
 
-1. **Follow spec literally** - Don't improvise beyond what's specified
-2. **Validate continuously** - Run checks after each component
-3. **Human in loop** - Pause when uncertain, don't guess
-4. **One phase at a time** - Complete this phase fully before moving on
-5. **Clear reporting** - Show what was done and what's next
+1. **Read before writing** - Understand existing code and patterns before creating or modifying files
+2. **Follow spec literally** - Don't improvise beyond what's specified
+3. **Match existing patterns** - New code should look like it belongs in the codebase
+4. **Validate continuously** - Run checks after each component
+5. **Human in loop** - Pause when uncertain, don't guess
+6. **One phase at a time** - Complete this phase fully before moving on
+7. **Clear reporting** - Show what was done and what's next
 
 ## Usage
 
@@ -332,23 +337,4 @@ Options:
 /execute-spec         # picks up next unblocked task
 ```
 
-**Manual multi-terminal (alternative to --parallel):**
-
-```bash
-# Terminal 1
-CLAUDE_CODE_TASK_LIST_ID=my-project-1706012345 claude
-/execute-spec
-
-# Terminal 2 (simultaneously)
-CLAUDE_CODE_TASK_LIST_ID=my-project-1706012345 claude
-/execute-spec
-```
-
-## Task Coordination
-
-Tasks persist in `~/.claude/tasks` and sync across sessions:
-
-- **Task list ID**: Set via `CLAUDE_CODE_TASK_LIST_ID` env var or manifest file
-- **Cross-session pickup**: New sessions see tasks created by previous sessions
-- **Blocking relationships**: Tasks with `blockedBy` wait for dependencies
-- **Progress tracking**: Use `TaskList` to see overall status
+**For parallel execution across phases, use agent teams** — see the ideation handoff summary for a ready-to-paste team prompt.
