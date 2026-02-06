@@ -359,36 +359,9 @@ If not approved, revise the relevant specs based on feedback and re-present. Ite
 
 After specs are generated, create task list, analyze orchestration options, and hand off for implementation.
 
-### 5.1 Create Task List
+### 5.1 Analyze Orchestration Strategy
 
-Create phase-level tasks for visibility in the current session:
-
-```javascript
-// Create phase tasks with dependencies
-TaskCreate({
-  subject: 'Phase 1: {phase title}',
-  description: 'Execute spec-phase-1.md',
-  activeForm: 'Implementing Phase 1',
-  metadata: { phase: 1, specFile: 'spec-phase-1.md' },
-});
-
-// Phase 2 blocked by Phase 1
-TaskCreate({
-  subject: 'Phase 2: {phase title}',
-  description: 'Execute spec-phase-2.md',
-  activeForm: 'Implementing Phase 2',
-  metadata: { phase: 2, specFile: 'spec-phase-2.md' },
-});
-
-TaskUpdate({
-  taskId: '{phase2-id}',
-  addBlockedBy: ['{phase1-id}'],
-});
-```
-
-Note: These are planning-level tasks for the current session. Each `/execute-spec` session will create its own granular implementation tasks.
-
-### 5.2 Analyze Orchestration Strategy
+Do not create tasks during ideation handoff — they are ephemeral and will be lost when the user starts a fresh session. Each `/execute-spec` session creates its own granular implementation tasks.
 
 Analyze the phase dependency graph to determine the best execution strategy.
 
@@ -408,7 +381,7 @@ Analyze the phase dependency graph to determine the best execution strategy.
 | 3+ independent phases | **Agent team** — lead orchestrates teammates |
 | Mixed dependencies | **Hybrid** — sequential for dependent chain, agent team for independent group |
 
-### 5.3 Present Handoff Summary
+### 5.2 Present Handoff Summary
 
 Present the execution strategy directly to the user. No manifest file — the contract and specs are the artifacts. The handoff summary is conversational output.
 
@@ -491,7 +464,7 @@ claude
 /execute-spec docs/ideation/{project-name}/spec-phase-{b}.md
 ```
 
-### 5.4 Why Fresh Sessions?
+### 5.3 Why Fresh Sessions?
 
 - Ideation consumes significant context (contract, specs, exploration)
 - Execution benefits from clean context focused on the spec
