@@ -368,7 +368,7 @@ Analyze the phase dependency graph to determine the best execution strategy.
 **Detect parallelizable phases:**
 
 - Examine which phases are blocked by what
-- If 3+ phases share the same single blocker (e.g., all blocked only by Phase 1), they are **parallelizable**
+- If 2+ phases share the same single blocker (e.g., all blocked only by Phase 1), they are **parallelizable**
 - If phases form a linear chain (Phase 2 → Phase 3 → Phase 4), they are **sequential**
 - Mixed graphs have both parallel and sequential segments
 
@@ -377,8 +377,7 @@ Analyze the phase dependency graph to determine the best execution strategy.
 | Pattern | Recommendation |
 |---------|----------------|
 | All phases sequential (chain) | **Sequential execution** — one session at a time |
-| 2 independent phases | **Manual parallel** — two terminal sessions |
-| 3+ independent phases | **Agent team** — lead orchestrates teammates |
+| 2+ independent phases | **Agent team** — lead orchestrates teammates in parallel |
 | Mixed dependencies | **Hybrid** — sequential for dependent chain, agent team for independent group |
 
 ### 5.2 Present Handoff Summary
@@ -389,7 +388,11 @@ Present the execution strategy directly to the user. No manifest file — the co
 
 ```
 Ideation complete. Artifacts written to `./docs/ideation/{project-name}/`.
+```
 
+**For sequential execution or when a blocking phase must complete first:**
+
+```
 ## To start implementation
 
 ```bash
@@ -400,14 +403,18 @@ claude
 Each `/execute-spec` session creates its own implementation tasks.
 ```
 
-**When 3+ phases are parallelizable, also present an agent team prompt:**
+**When ALL phases are independent (no blocking phase), skip the sequential start and go straight to the agent team prompt below.**
+
+**When 2+ phases are parallelizable (after a blocking phase or from the start), present an agent team prompt.**
+
+Agent teams let a single lead session automatically spawn and coordinate multiple teammates — the user starts **one** `claude` session, and the lead handles spawning, task assignment, plan approval, and synthesis. No manual terminal juggling.
 
 ```
 ## Parallel Execution with Agent Teams
 
 After {blocking phase} is complete, {N} phases can run in parallel.
 
-Enable agent teams in `.claude/settings.json` or `~/.claude/settings.json`:
+Ensure agent teams are enabled in `.claude/settings.json` or `~/.claude/settings.json`:
 
 ```json
 {
@@ -417,29 +424,37 @@ Enable agent teams in `.claude/settings.json` or `~/.claude/settings.json`:
 }
 ```
 
-Start a lead session, enter **delegate mode** (Shift+Tab), and paste:
+Start **one** new Claude Code session and enter **delegate mode** (Shift+Tab), then paste:
 
 ```
-{Blocking phase} is complete. I need an agent team to implement
+{Blocking phase} is complete. Create an agent team to implement
 {N} remaining phases in parallel. Each phase is independent.
 
-Spawn teammates with plan approval required. Each teammate should:
+Spawn {N} teammates with plan approval required. Each teammate should:
 1. Read their assigned spec file (and the template spec if referenced)
-2. Plan their implementation approach
-3. Wait for plan approval before making changes
-4. Run validation commands from their spec after implementation
+2. Explore the codebase for relevant patterns before planning
+3. Plan their implementation approach and wait for approval
+4. Implement following spec and codebase patterns
+5. Run validation commands from their spec after implementation
+
+Only approve plans that include test coverage and match existing
+codebase conventions.
 
 Teammates:
 
 1. "{Phase title}" — docs/ideation/{project-name}/spec-phase-{n}.md
-   {One-line context}
+   {One-line context about what this phase does}
 
 2. "{Phase title}" — docs/ideation/{project-name}/spec-phase-{n}.md
-   {One-line context}
+   {One-line context about what this phase does}
 
 ...
 ```
 ```
+
+**Why delegate mode?** Pressing Shift+Tab restricts the lead to coordination-only tools: spawning teammates, messaging, managing tasks, and approving plans. This prevents the lead from implementing tasks itself and ensures work is distributed to teammates.
+
+**Why one session?** The lead automatically spawns each teammate as a separate Claude Code instance. Each teammate gets its own context window, loads project context (CLAUDE.md, MCP servers, skills), and works independently. You interact with the lead and it coordinates everything — use Shift+Up/Down to message individual teammates if needed.
 
 **Shared file detection:** Scan the spec files' "Modified Files" sections. If multiple specs modify the same files, add a coordination note to the team prompt:
 
@@ -449,20 +464,6 @@ only one teammate should modify a shared file at a time.
 ```
 
 **Batching:** If more than 5 parallelizable phases, recommend starting with the highest-priority batch first, then spawning the rest after plans are approved.
-
-**When exactly 2 independent phases, suggest manual parallel:**
-
-```
-After {blocking phase}, run in two terminals:
-
-# Terminal 1
-claude
-/execute-spec docs/ideation/{project-name}/spec-phase-{a}.md
-
-# Terminal 2
-claude
-/execute-spec docs/ideation/{project-name}/spec-phase-{b}.md
-```
 
 ### 5.3 Why Fresh Sessions?
 
