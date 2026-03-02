@@ -363,39 +363,54 @@ Analyze the phase dependency graph to determine the best execution strategy.
 | 2+ independent phases | **Agent team** — lead orchestrates teammates in parallel |
 | Mixed dependencies | **Hybrid** — sequential for dependent chain, agent team for independent group |
 
-### 5.2 Present Handoff Summary
+### 5.2 Write Execution Plan to Contract
 
-Present the execution strategy directly to the user. No manifest file — the contract and specs are the artifacts. The handoff summary is conversational output.
+Append the `## Execution Plan` section to the contract file (`./docs/ideation/{project-name}/contract.md`). This makes the contract fully self-contained — someone can pick it up cold and know exactly how to execute.
+
+Use the Execution Plan section from the contract template. Fill in:
+
+1. **Dependency Graph** — ASCII art showing which phases block which. Keep it simple.
+2. **Execution Steps** — ordered list with the exact `/execute-spec` commands. Mark which are sequential vs parallel.
+3. **Agent Team Prompt** — only if 2+ phases are parallelizable. Ready-to-paste prompt for delegate mode. **Omit this subsection entirely** for fully sequential projects.
+
+**Shared file detection:** Before writing the agent team prompt, scan spec files' "Modified Files" sections. If multiple specs modify the same files, include a coordination note in the prompt:
+
+```
+Coordinate on shared files ({list}) to avoid merge conflicts —
+only one teammate should modify a shared file at a time.
+```
+
+**Batching:** If more than 5 parallelizable phases, note in the execution steps to start with the highest-priority batch first.
+
+### 5.3 Present Handoff Summary
+
+After writing the execution plan, present a brief conversational summary.
 
 **Always include:**
 
 ```
 Ideation complete. Artifacts written to `./docs/ideation/{project-name}/`.
+
+The contract includes the full execution plan — dependency graph,
+commands, and agent team prompt (if parallel). Open `contract.md`
+to pick up implementation from any session.
 ```
 
-**For sequential execution or when a blocking phase must complete first:**
+**Then show the first step** — either the first `/execute-spec` command for sequential execution, or a pointer to the agent team prompt in the contract for parallel execution.
+
+**Agent team context** (include when the execution plan has an agent team prompt):
 
 ```
-## To start implementation
-
-```bash
-claude
-/execute-spec docs/ideation/{project-name}/spec-phase-1.md
+The agent team prompt is in the contract's Execution Plan section.
+To use it: start a new Claude Code session, enter delegate mode
+(Shift+Tab), and paste the prompt from the contract.
 ```
-
-Each `/execute-spec` session creates its own implementation tasks.
-```
-
-**When ALL phases are independent (no blocking phase), skip the sequential start and go straight to the agent team prompt below.**
-
-**When 2+ phases are parallelizable (after a blocking phase or from the start), present an agent team prompt.**
 
 Agent teams let a single lead session automatically spawn and coordinate multiple teammates — the user starts **one** `claude` session, and the lead handles spawning, task assignment, plan approval, and synthesis. No manual terminal juggling.
 
-```
-## Parallel Execution with Agent Teams
+**Why delegate mode?** Pressing Shift+Tab restricts the lead to coordination-only tools: spawning teammates, messaging, managing tasks, and approving plans. This prevents the lead from implementing tasks itself and ensures work is distributed to teammates.
 
-After {blocking phase} is complete, {N} phases can run in parallel.
+**Why one session?** The lead automatically spawns each teammate as a separate Claude Code instance. Each teammate gets its own context window, loads project context (CLAUDE.md, MCP servers, skills), and works independently. You interact with the lead and it coordinates everything — use Shift+Up/Down to message individual teammates if needed.
 
 Ensure agent teams are enabled in `.claude/settings.json` or `~/.claude/settings.json`:
 
@@ -405,48 +420,6 @@ Ensure agent teams are enabled in `.claude/settings.json` or `~/.claude/settings
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   }
 }
-```
-
-Start **one** new Claude Code session and enter **delegate mode** (Shift+Tab), then paste:
-
-```
-{Blocking phase} is complete. Create an agent team to implement
-{N} remaining phases in parallel. Each phase is independent.
-
-Spawn {N} teammates with plan approval required. Each teammate should:
-1. Read their assigned spec file (and the template spec if referenced)
-2. Explore the codebase for relevant patterns before planning
-3. Plan their implementation approach and wait for approval
-4. Implement following spec and codebase patterns
-5. Run validation commands from their spec after implementation
-
-Only approve plans that include test coverage and match existing
-codebase conventions.
-
-Teammates:
-
-1. "{Phase title}" — docs/ideation/{project-name}/spec-phase-{n}.md
-   {One-line context about what this phase does}
-
-2. "{Phase title}" — docs/ideation/{project-name}/spec-phase-{n}.md
-   {One-line context about what this phase does}
-
-...
-```
-```
-
-**Why delegate mode?** Pressing Shift+Tab restricts the lead to coordination-only tools: spawning teammates, messaging, managing tasks, and approving plans. This prevents the lead from implementing tasks itself and ensures work is distributed to teammates.
-
-**Why one session?** The lead automatically spawns each teammate as a separate Claude Code instance. Each teammate gets its own context window, loads project context (CLAUDE.md, MCP servers, skills), and works independently. You interact with the lead and it coordinates everything — use Shift+Up/Down to message individual teammates if needed.
-
-**Shared file detection:** Scan the spec files' "Modified Files" sections. If multiple specs modify the same files, add a coordination note to the team prompt:
-
-```
-Coordinate on shared files ({list}) to avoid merge conflicts —
-only one teammate should modify a shared file at a time.
-```
-
-**Batching:** If more than 5 parallelizable phases, recommend starting with the highest-priority batch first, then spawning the rest after plans are approved.
 
 ### 5.3 Why Fresh Sessions?
 

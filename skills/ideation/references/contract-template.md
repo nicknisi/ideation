@@ -60,6 +60,52 @@ Use this template when generating `contract.md` after reaching ≥95% confidence
 - {Deferred item 1}
 - {Deferred item 2}
 
+## Execution Plan
+
+_Added during Phase 5 handoff. Pick up this contract cold and know exactly how to execute._
+
+### Dependency Graph
+
+{ASCII diagram showing phase dependencies. Use arrows for blocking relationships.}
+
+```
+Phase 1: {title}
+  ├── Phase 2: {title}  (blocked by Phase 1)
+  └── Phase 3: {title}  (blocked by Phase 1)
+        └── Phase 4: {title}  (blocked by Phase 3)
+```
+
+### Execution Steps
+
+{Ordered list of commands. Mark sequential vs parallel.}
+
+**Strategy**: {Sequential | Agent Team | Hybrid}
+
+1. **Phase 1** — {title} _(blocking)_
+   ```bash
+   /execute-spec docs/ideation/{project-name}/spec-phase-1.md
+   ```
+
+2. **Phases 2 & 3** — parallel after Phase 1
+   {See agent team prompt below, or run sequentially:}
+   ```bash
+   /execute-spec docs/ideation/{project-name}/spec-phase-2.md
+   /execute-spec docs/ideation/{project-name}/spec-phase-3.md
+   ```
+
+3. **Phase 4** — {title} _(blocked by Phase 3)_
+   ```bash
+   /execute-spec docs/ideation/{project-name}/spec-phase-4.md
+   ```
+
+### Agent Team Prompt
+
+{Only if 2+ phases are parallelizable. Ready-to-paste prompt for delegate mode (Shift+Tab). Omit this section entirely for fully sequential projects.}
+
+```
+{Paste-ready agent team prompt with teammate assignments, spec paths, and coordination notes}
+```
+
 ---
 
 _This contract was generated from brain dump input. Review and approve before proceeding to specification._
