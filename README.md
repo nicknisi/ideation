@@ -71,13 +71,13 @@ The skill challenges weak premises rather than accepting them. During intake and
 
 Specs now include a **Failure Modes** section that catalogs how each non-trivial component can fail:
 
-| Column | Purpose |
-| --- | --- |
-| Component | Which component |
+| Column       | Purpose                          |
+| ------------ | -------------------------------- |
+| Component    | Which component                  |
 | Failure Mode | Named failure (not just "error") |
-| Trigger | What causes it |
-| Impact | What happens to user/system |
-| Mitigation | How to handle or acknowledge |
+| Trigger      | What causes it                   |
+| Impact       | What happens to user/system      |
+| Mitigation   | How to handle or acknowledge     |
 
 Trivial components (config, types, constants) skip failure mode enumeration — same rule as feedback loops.
 
@@ -108,7 +108,7 @@ Scoring is deliberately conservative — when uncertain between two levels, scor
 
 ## Feedback Loops
 
-Specs now include per-component feedback loops so the executing agent validates its work *during* implementation, not just after.
+Specs now include per-component feedback loops so the executing agent validates its work _during_ implementation, not just after.
 
 Each spec defines a **Feedback Strategy** (top-level inner-loop command and playground type), and each iterative component gets:
 
@@ -118,12 +118,12 @@ Each spec defines a **Feedback Strategy** (top-level inner-loop command and play
 
 Component types map to feedback mechanisms:
 
-| Component Type | Feedback Mechanism |
-| --- | --- |
-| Data/logic layers | Test file |
-| UI components | Dev server or Storybook |
-| API endpoints | curl/httpie script |
-| CLI tools | The tool itself |
+| Component Type         | Feedback Mechanism         |
+| ---------------------- | -------------------------- |
+| Data/logic layers      | Test file                  |
+| UI components          | Dev server or Storybook    |
+| API endpoints          | curl/httpie script         |
+| CLI tools              | The tool itself            |
 | Config/types/constants | Skip (typecheck covers it) |
 
 Trivial components (config, types, constants) correctly skip feedback loops. The spec quality is self-reviewed (Strong/Adequate/Weak) before presentation.
@@ -251,6 +251,7 @@ flowchart TD
 **Ideation (left/top)** — brain dump → confidence-gated questioning → contract → specs → execution plan. Human approves at each gate.
 
 **Execute-Spec (right/bottom)** — three phases per spec:
+
 1. **Scout** explores codebase, produces context map (GO/HOLD gate)
 2. **Build** implements components with per-component feedback loops
 3. **Review** cycles verify → review → fix up to 3 times before commit
