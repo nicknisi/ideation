@@ -1,18 +1,18 @@
 # Feedback Loop Design Guide
 
-Use this guide when generating feedback loops for implementation specs. Each iterative component should define a playground, experiment, and check command so the executing agent can validate its work *during* implementation.
+Use this guide when generating feedback loops for implementation specs. Each iterative component should define a playground, experiment, and check command so the executing agent can validate its work _during_ implementation.
 
 ## Component-Type Mapping
 
 Match the feedback mechanism to the component type:
 
-| Component Type | Feedback Mechanism | Example |
-|---|---|---|
-| Data/logic layers | Test file — create a spec file with a describe block before writing the implementation | `pnpm test -- --filter bookmark-store` |
-| UI components | Dev server or storybook — start before building, check renders after each change | `pnpm dev`, `pnpm storybook` |
-| API endpoints | curl/httpie script or test harness — hit the endpoint after each route is added | `curl -s localhost:3000/api/bookmarks \| jq .` |
-| CLI tools | The tool itself — run with test inputs after each subcommand is added | `./my-cli --help`, `./my-cli generate --dry-run` |
-| Config/types/constants | Skip — no feedback loop needed, typecheck covers it | `pnpm typecheck` |
+| Component Type         | Feedback Mechanism                                                                     | Example                                          |
+| ---------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Data/logic layers      | Test file — create a spec file with a describe block before writing the implementation | `pnpm test -- --filter bookmark-store`           |
+| UI components          | Dev server or storybook — start before building, check renders after each change       | `pnpm dev`, `pnpm storybook`                     |
+| API endpoints          | curl/httpie script or test harness — hit the endpoint after each route is added        | `curl -s localhost:3000/api/bookmarks \| jq .`   |
+| CLI tools              | The tool itself — run with test inputs after each subcommand is added                  | `./my-cli --help`, `./my-cli generate --dry-run` |
+| Config/types/constants | Skip — no feedback loop needed, typecheck covers it                                    | `pnpm typecheck`                                 |
 
 ## Three Design Questions
 
@@ -20,7 +20,7 @@ For each component, answer:
 
 ### 1. What's the playground?
 
-What environment lets the agent interact with its changes? The playground should be set up *before* writing implementation code.
+What environment lets the agent interact with its changes? The playground should be set up _before_ writing implementation code.
 
 - **Test suite**: Create the test file with a describe block and one smoke test before writing the module
 - **Dev server**: Start it and navigate to the relevant page before building the component
@@ -30,7 +30,7 @@ What environment lets the agent interact with its changes? The playground should
 
 ### 2. What's the experiment?
 
-A parameterized, reproducible check. Not "does it work?" but "does it work with *these specific inputs*?" Good experiments:
+A parameterized, reproducible check. Not "does it work?" but "does it work with _these specific inputs_?" Good experiments:
 
 - Exercise edge cases: empty state, single item, many items
 - Test error paths: invalid input, missing data, network failure
@@ -63,12 +63,12 @@ Not every component needs a feedback loop. Skip it for:
 
 When codebase exploration (Phase 2.2) discovers existing feedback tools, prefer them over creating new ones:
 
-| Discovered Infrastructure | Use As Playground For |
-|---|---|
-| Test runner (jest, vitest, pytest, go test) | Data layers, logic modules, utilities |
-| Dev server (vite, next, webpack-dev-server) | UI components, pages, layouts |
-| Storybook | Isolated UI components, design system pieces |
-| API testing tools (httpie, postman collections, test scripts) | API endpoints, middleware |
-| Makefile / script harnesses | CLI tools, build tools, multi-step processes |
+| Discovered Infrastructure                                     | Use As Playground For                        |
+| ------------------------------------------------------------- | -------------------------------------------- |
+| Test runner (jest, vitest, pytest, go test)                   | Data layers, logic modules, utilities        |
+| Dev server (vite, next, webpack-dev-server)                   | UI components, pages, layouts                |
+| Storybook                                                     | Isolated UI components, design system pieces |
+| API testing tools (httpie, postman collections, test scripts) | API endpoints, middleware                    |
+| Makefile / script harnesses                                   | CLI tools, build tools, multi-step processes |
 
 If the project has Storybook, prefer it as the UI playground over the dev server — it provides isolated component rendering. If the project has a test runner with watch mode, note it in the inner-loop command (e.g., `pnpm test --watch --filter {module}`).

@@ -133,6 +133,7 @@ Extract from the spec file (and template if applicable):
 Use `TaskCreate` to create structured tasks from the spec's Implementation Details:
 
 **For each component**, create a task with:
+
 - **subject**: Component name from the spec
 - **description**: Implementation steps, file changes, and validation criteria from the spec's Implementation Details section
 - **activeForm**: "Implementing {component name}"
@@ -140,6 +141,7 @@ Use `TaskCreate` to create structured tasks from the spec's Implementation Detai
 **After creating all component tasks, add dependency relationships** using TaskUpdate with `addBlockedBy` — if Component B depends on Component A, mark B as blocked by A's task ID.
 
 **Create validation tasks** (blocked by all component tasks):
+
 - "Run validation commands" — execute all validation commands from spec
 - "Verify acceptance criteria" — review each acceptance criterion from spec
 
@@ -342,27 +344,33 @@ Only reached after PASS or user acceptance:
 ## Phase {N} Implementation Complete
 
 ### Implemented
+
 - {List of components implemented}
 
 ### Files Changed
+
 - {List of files created/modified}
 
 ### Review Summary
+
 - Cycles: {N} of 3 max
 - Findings addressed: {count} ({critical} critical, {high} high auto-fixed)
 - Remaining (non-blocking): {count} ({medium} medium, {low} low)
 - Acknowledged issues: {count, if user accepted with issues}
 
 ### Validation Results
+
 - Type check: PASS/FAIL
 - Lint: PASS/FAIL
 - Tests: PASS/FAIL
 
 ### Acceptance Criteria
+
 - [x] {Met criteria}
 - [ ] {Unmet criteria with notes}
 
 ### Next Steps
+
 - Review changes: `git log -1 --stat`
 - For next phase: `/ideation:execute-spec spec-phase-{N+1}.md`
 ```

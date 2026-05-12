@@ -3,7 +3,7 @@
 **Contract**: ./contract-example.md
 **Estimated Effort**: M
 
-*Note: This example omits template sections not applicable to a frontend-only phase: Data Model, API Design, Error Handling, Rollout Considerations, and Open Items. Include those sections when they apply to your spec — Error Handling in particular is almost always applicable for non-trivial features.*
+_Note: This example omits template sections not applicable to a frontend-only phase: Data Model, API Design, Error Handling, Rollout Considerations, and Open Items. Include those sections when they apply to your spec — Error Handling in particular is almost always applicable for non-trivial features._
 
 ## Technical Approach
 
@@ -23,22 +23,22 @@ Pattern to follow: the existing "reading history" feature in `src/features/histo
 
 ### New Files
 
-| File Path | Purpose |
-|-----------|---------|
-| `src/features/bookmarks/bookmark-store.ts` | Zustand store slice for bookmark state |
-| `src/features/bookmarks/bookmark-db.ts` | IndexedDB operations for bookmark persistence |
-| `src/features/bookmarks/BookmarkButton.tsx` | Toggle bookmark on/off for an article |
-| `src/features/bookmarks/BookmarkList.tsx` | List view of all bookmarks with tag filters |
-| `src/features/bookmarks/TagManager.tsx` | Create, rename, delete tags |
-| `src/features/bookmarks/bookmark-store.spec.ts` | Unit tests for store logic |
+| File Path                                       | Purpose                                       |
+| ----------------------------------------------- | --------------------------------------------- |
+| `src/features/bookmarks/bookmark-store.ts`      | Zustand store slice for bookmark state        |
+| `src/features/bookmarks/bookmark-db.ts`         | IndexedDB operations for bookmark persistence |
+| `src/features/bookmarks/BookmarkButton.tsx`     | Toggle bookmark on/off for an article         |
+| `src/features/bookmarks/BookmarkList.tsx`       | List view of all bookmarks with tag filters   |
+| `src/features/bookmarks/TagManager.tsx`         | Create, rename, delete tags                   |
+| `src/features/bookmarks/bookmark-store.spec.ts` | Unit tests for store logic                    |
 
 ### Modified Files
 
-| File Path | Changes |
-|-----------|---------|
+| File Path                              | Changes                                |
+| -------------------------------------- | -------------------------------------- |
 | `src/features/article/ArticleView.tsx` | Add `BookmarkButton` to article header |
-| `src/app/navigation.tsx` | Add "Bookmarks" link to sidebar |
-| `src/store/index.ts` | Register bookmark store slice |
+| `src/app/navigation.tsx`               | Add "Bookmarks" link to sidebar        |
+| `src/store/index.ts`                   | Register bookmark store slice          |
 
 ## Implementation Details
 
@@ -69,6 +69,7 @@ interface BookmarkStore {
 ```
 
 **Implementation steps**:
+
 1. Create store with Zustand `create()` following history-store pattern
 2. Wire IndexedDB persistence via `bookmark-db.ts`
 3. Sync to IndexedDB on every mutation (same pattern as history-store)
@@ -84,6 +85,7 @@ interface BookmarkStore {
 **Pattern to follow**: `src/features/history/HistoryIndicator.tsx`
 
 **Implementation steps**:
+
 1. Create component that reads bookmark state for current article
 2. Toggle bookmark on click
 3. Show filled/unfilled icon based on state
@@ -99,11 +101,12 @@ interface BookmarkStore {
 
 ### Unit Tests
 
-| Test File | Coverage |
-|-----------|----------|
+| Test File                                       | Coverage                                   |
+| ----------------------------------------------- | ------------------------------------------ |
 | `src/features/bookmarks/bookmark-store.spec.ts` | Add, remove, toggle tag, create/delete tag |
 
 **Key test cases**:
+
 - Adding a bookmark caches article content
 - Removing a bookmark clears cached content
 - Tags persist across store rehydration
@@ -111,11 +114,11 @@ interface BookmarkStore {
 
 ## Failure Modes
 
-| Component | Failure Mode | Trigger | Impact | Mitigation |
-|---|---|---|---|---|
-| Bookmark Store | IndexedDB quota exceeded | User bookmarks many large articles, filling storage | New bookmarks silently fail to persist | Check quota before caching content; fall back to metadata-only bookmark (no offline content) |
-| Bookmark Store | Concurrent tab writes | Two tabs bookmark different articles simultaneously | Last-write-wins race condition corrupts store | IndexedDB transactions are atomic per-store; ensure each write is a single transaction |
-| BookmarkButton | Article content not loaded | User clicks bookmark before article body finishes loading | Bookmark saved with empty content field | Disable bookmark button until article content is available; or save metadata immediately and backfill content |
+| Component      | Failure Mode               | Trigger                                                   | Impact                                        | Mitigation                                                                                                    |
+| -------------- | -------------------------- | --------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Bookmark Store | IndexedDB quota exceeded   | User bookmarks many large articles, filling storage       | New bookmarks silently fail to persist        | Check quota before caching content; fall back to metadata-only bookmark (no offline content)                  |
+| Bookmark Store | Concurrent tab writes      | Two tabs bookmark different articles simultaneously       | Last-write-wins race condition corrupts store | IndexedDB transactions are atomic per-store; ensure each write is a single transaction                        |
+| BookmarkButton | Article content not loaded | User clicks bookmark before article body finishes loading | Bookmark saved with empty content field       | Disable bookmark button until article content is available; or save metadata immediately and backfill content |
 
 ## Validation Commands
 

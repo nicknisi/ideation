@@ -6,5 +6,12 @@
     "name": "Nick Nisi",
     "email": "nick@nisi.org"
   },
-  "keywords": ["ideation", "brain-dump", "planning", "prd", "specification", "execution"]
+  "keywords": [
+    "ideation",
+    "brain-dump",
+    "planning",
+    "prd",
+    "specification",
+    "execution"
+  ]
 }

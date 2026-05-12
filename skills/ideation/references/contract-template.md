@@ -83,12 +83,14 @@ Phase 1: {title}
 **Strategy**: {Sequential | Agent Team | Hybrid}
 
 1. **Phase 1** — {title} _(blocking)_
+
    ```bash
    /execute-spec docs/ideation/{project-name}/spec-phase-1.md
    ```
 
 2. **Phases 2 & 3** — parallel after Phase 1
    {See agent team prompt below, or run sequentially:}
+
    ```bash
    /execute-spec docs/ideation/{project-name}/spec-phase-2.md
    /execute-spec docs/ideation/{project-name}/spec-phase-3.md

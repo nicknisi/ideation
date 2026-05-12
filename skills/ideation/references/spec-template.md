@@ -7,7 +7,7 @@ Use this template when generating `spec-phase-{n}.md` for each approved phase.
 # Implementation Spec: {Project Name} - Phase {N}
 
 **Contract**: ./contract.md
-**PRD**: ./prd-phase-{N}.md *(omit if no PRDs were generated)*
+**PRD**: ./prd-phase-{N}.md _(omit if no PRDs were generated)_
 **Estimated Effort**: {T-shirt size: S/M/L/XL}
 
 ## Technical Approach
@@ -212,11 +212,11 @@ interface {StateName} {
 
 {For each non-trivial component, name the ways it can fail. Not every failure needs handling code — some just need acknowledgment. The goal is to ensure specs don't have blind spots.}
 
-| Component | Failure Mode | Trigger | Impact | Mitigation |
-|---|---|---|---|---|
-| {Component 1} | {Named failure} | {What causes it} | {What happens to the user/system} | {How to handle or acknowledge it} |
-| {Component 1} | {Data shadow path} | {When data is nil/empty/stale} | {Consequence} | {Strategy} |
-| {Component 2} | {Edge case} | {Unusual but valid input} | {Unexpected behavior} | {Guard or accept} |
+| Component     | Failure Mode       | Trigger                        | Impact                            | Mitigation                        |
+| ------------- | ------------------ | ------------------------------ | --------------------------------- | --------------------------------- |
+| {Component 1} | {Named failure}    | {What causes it}               | {What happens to the user/system} | {How to handle or acknowledge it} |
+| {Component 1} | {Data shadow path} | {When data is nil/empty/stale} | {Consequence}                     | {Strategy}                        |
+| {Component 2} | {Edge case}        | {Unusual but valid input}      | {Unexpected behavior}             | {Guard or accept}                 |
 
 {Skip components that are trivial (config, types, constants, re-exports).}
 

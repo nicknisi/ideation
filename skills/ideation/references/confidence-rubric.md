@@ -179,7 +179,7 @@ Use this to track your assessment:
 | Consistency      | /20      |       |
 | **TOTAL**        | **/100** |       |
 
-**Lowest dimension**: _________________ (target questions here first)
+**Lowest dimension**: ********\_******** (target questions here first)
 
 **Questions to ask**:
 
@@ -215,11 +215,11 @@ After each round of questions:
 
 ### Quality Levels
 
-| Level | Criteria | Action |
-|---|---|---|
-| **Strong** | Feedback Strategy section present with inner-loop command. All iterative components have feedback loops (playground + experiment + check command). Trivial components correctly omit loops. Inner-loop command runs in seconds. | Present spec as-is |
-| **Adequate** | Feedback Strategy present but some iterative components lack loops, or experiments are vague ("test it works" instead of parameterized checks). | Present spec with a note about gaps |
-| **Weak** | No Feedback Strategy section, or complex/iterative components missing feedback loops entirely. | Revise spec before presenting — add loops for iterative components |
+| Level        | Criteria                                                                                                                                                                                                                        | Action                                                             |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| **Strong**   | Feedback Strategy section present with inner-loop command. All iterative components have feedback loops (playground + experiment + check command). Trivial components correctly omit loops. Inner-loop command runs in seconds. | Present spec as-is                                                 |
+| **Adequate** | Feedback Strategy present but some iterative components lack loops, or experiments are vague ("test it works" instead of parameterized checks).                                                                                 | Present spec with a note about gaps                                |
+| **Weak**     | No Feedback Strategy section, or complex/iterative components missing feedback loops entirely.                                                                                                                                  | Revise spec before presenting — add loops for iterative components |
 
 ### Quality Checklist
 

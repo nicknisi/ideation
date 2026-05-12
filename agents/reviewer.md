@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Spec-aware code reviewer for execute-spec. Reads git diff against the original spec and produces structured, machine-parseable findings. Cannot edit files — enforced by tool restrictions.
-tools: ["Read", "Grep", "Bash"]
+tools: ['Read', 'Grep', 'Bash']
 ---
 
 # Reviewer — Spec-Aware Code Review
@@ -77,23 +77,23 @@ severity/category file:line — description → action
 
 **Severity levels:**
 
-| Severity | Meaning | Blocks commit? |
-|---|---|---|
-| `critical` | Must fix. Functional breakage, security vulnerability, or fundamental spec deviation. | Yes |
-| `high` | Should fix. Significant pattern mismatch, missing test coverage for core logic, or incorrect approach. | Yes |
-| `medium` | Should fix when possible. Minor deviations, style issues, incomplete edge case handling. | No |
-| `low` | Suggestion. Improvements that aren't problems — cleaner naming, redundant code, minor optimizations. | No |
+| Severity   | Meaning                                                                                                | Blocks commit? |
+| ---------- | ------------------------------------------------------------------------------------------------------ | -------------- |
+| `critical` | Must fix. Functional breakage, security vulnerability, or fundamental spec deviation.                  | Yes            |
+| `high`     | Should fix. Significant pattern mismatch, missing test coverage for core logic, or incorrect approach. | Yes            |
+| `medium`   | Should fix when possible. Minor deviations, style issues, incomplete edge case handling.               | No             |
+| `low`      | Suggestion. Improvements that aren't problems — cleaner naming, redundant code, minor optimizations.   | No             |
 
 **Categories:**
 
-| Category | What it catches | Unique to ideation? |
-|---|---|---|
-| `spec-deviation` | Implementation doesn't match what the spec described | Yes |
-| `pattern-mismatch` | New code doesn't follow referenced pattern files | Yes |
-| `logic` | Bugs, incorrect conditionals, wrong return values | No |
-| `security` | Vulnerabilities, secrets, auth issues | No |
-| `performance` | Inefficient patterns, unnecessary work | No |
-| `testing` | Missing or weak tests, untested edge cases | No |
+| Category           | What it catches                                      | Unique to ideation? |
+| ------------------ | ---------------------------------------------------- | ------------------- |
+| `spec-deviation`   | Implementation doesn't match what the spec described | Yes                 |
+| `pattern-mismatch` | New code doesn't follow referenced pattern files     | Yes                 |
+| `logic`            | Bugs, incorrect conditionals, wrong return values    | No                  |
+| `security`         | Vulnerabilities, secrets, auth issues                | No                  |
+| `performance`      | Inefficient patterns, unnecessary work               | No                  |
+| `testing`          | Missing or weak tests, untested edge cases           | No                  |
 
 ### 5. Make Verdict
 
@@ -134,6 +134,7 @@ low/logic src/utils.ts:67 — Redundant null check, TypeScript type guarantees n
 No findings. Implementation matches spec and follows referenced patterns.
 
 ### Fixed from Prior Cycle
+
 {Only on cycle > 1. List findings from the prior cycle that have been addressed:}
 
 - [FIXED] critical/spec-deviation src/store.ts:15 — Now uses GraphQL as specified

@@ -61,6 +61,7 @@ Phase 1: Core Bookmarking + Tags ┐
 ### Strategy: Hybrid (Phase 1 sequential, then Phases 2-3 parallel)
 
 1. **Phase 1 — Core Bookmarking** (sequential, blocks all others)
+
    ```
    /ideation:execute-spec docs/ideation/bookmarks/spec-phase-1.md
    ```

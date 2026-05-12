@@ -54,6 +54,7 @@ These rules apply during intake analysis (Phase 1) and contract formation (Phase
 ### Banned Phrases
 
 Do not say these during analysis or contract formation:
+
 - "That's an interesting approach" — take a position instead
 - "There are many ways to think about this" — pick one and state why
 - "You might want to consider..." — say "This is wrong because..." or "This works because..."
@@ -295,30 +296,37 @@ When multiple phases share the same structure (e.g., "add support for {SDK}"), a
 **Example for SDK integrations:**
 
 `spec-template-sdk-integration.md`:
+
 ```markdown
 # SDK Integration Template
 
 ## Pattern
+
 For each SDK, create:
+
 1. `src/{language}/{language}-installer-agent.ts` — FrameworkConfig following existing pattern
 2. `skills/workos-{sdk-name}/SKILL.md` — Agent skill fetching SDK README
 3. `tests/fixtures/{language}/{framework}-example/` — Minimal project fixture
 4. `tests/evals/graders/{language}.grader.ts` — Extending BaseGrader
 
 ## Implementation Details
+
 {Detailed steps with {placeholders} for variable parts}
 
 ## Validation
+
 {Common validation steps}
 ```
 
 `spec-phase-5.md`:
+
 ```markdown
 # Spec: Ruby SDK (workos-ruby)
 
 **Template**: ./spec-template-sdk-integration.md
 
 ## Inputs
+
 - Language: Ruby
 - Framework: Rails
 - Package manager: Bundler (`bundle add`)
@@ -327,15 +335,18 @@ For each SDK, create:
 - Detection: `rails` gem in Gemfile or `config/routes.rb` exists
 
 ## Deviations from template
+
 - Rails has strong conventions — files go in specific locations
 - Initializer pattern: `config/initializers/workos.rb`
 - Env vars: `.env` with dotenv-rails, or Rails credentials
 
 ## Phase-specific concerns
+
 - CI needs Ruby 3.x installed for eval fixtures
 ```
 
 This approach:
+
 - Saves significant context window space
 - Makes the per-phase differences obvious
 - Avoids copy-paste errors across specs
@@ -385,11 +396,11 @@ Analyze the phase dependency graph to determine the best execution strategy.
 
 **Determine recommended strategy:**
 
-| Pattern | Recommendation |
-|---------|----------------|
-| All phases sequential (chain) | **Sequential execution** — one session at a time |
-| 2+ independent phases | **Agent team** — lead orchestrates teammates in parallel |
-| Mixed dependencies | **Hybrid** — sequential for dependent chain, agent team for independent group |
+| Pattern                       | Recommendation                                                                |
+| ----------------------------- | ----------------------------------------------------------------------------- |
+| All phases sequential (chain) | **Sequential execution** — one session at a time                              |
+| 2+ independent phases         | **Agent team** — lead orchestrates teammates in parallel                      |
+| Mixed dependencies            | **Hybrid** — sequential for dependent chain, agent team for independent group |
 
 ### 5.2 Write Execution Plan to Contract
 

@@ -1,7 +1,7 @@
 ---
 name: scout
 description: Confidence-gated codebase exploration for execute-spec. Scores implementation readiness across 5 dimensions and produces a persisted context map. Read-only — never edits files.
-tools: ["Read", "Glob", "Grep"]
+tools: ['Read', 'Glob', 'Grep']
 ---
 
 # Scout — Codebase Exploration for Execute-Spec
@@ -56,22 +56,22 @@ Explore the codebase, focusing on spec-relevant areas. Do not explore broadly.
 
 Rate each dimension (0-20 points):
 
-| Dimension | Question | Score Guide |
-|---|---|---|
-| **Scope clarity** | Do I know exactly what files need to change and what changes each needs? | 0-5: vague. 6-10: some files identified. 11-15: most files, some details unclear. 16-20: all files and changes clear. |
-| **Pattern familiarity** | Does the codebase have patterns to follow? Did I read them? | 0-5: no patterns found. 6-10: patterns exist but unclear. 11-15: patterns read, some gaps. 16-20: clear patterns, well understood. |
-| **Dependency awareness** | Do I know what consumes the code being changed? | 0-5: no idea. 6-10: some consumers found. 11-15: most dependencies mapped. 16-20: full dependency map, blast radius clear. |
-| **Edge case coverage** | Can I identify the edge cases the builder should handle? | 0-5: none identified. 6-10: obvious cases only. 11-15: good coverage, some gaps. 16-20: comprehensive edge case list. |
-| **Test strategy** | Do I know how to verify the changes work? | 0-5: no test infra found. 6-10: test infra exists but unclear how to use. 11-15: clear strategy, some gaps. 16-20: full strategy with commands. |
+| Dimension                | Question                                                                 | Score Guide                                                                                                                                     |
+| ------------------------ | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scope clarity**        | Do I know exactly what files need to change and what changes each needs? | 0-5: vague. 6-10: some files identified. 11-15: most files, some details unclear. 16-20: all files and changes clear.                           |
+| **Pattern familiarity**  | Does the codebase have patterns to follow? Did I read them?              | 0-5: no patterns found. 6-10: patterns exist but unclear. 11-15: patterns read, some gaps. 16-20: clear patterns, well understood.              |
+| **Dependency awareness** | Do I know what consumes the code being changed?                          | 0-5: no idea. 6-10: some consumers found. 11-15: most dependencies mapped. 16-20: full dependency map, blast radius clear.                      |
+| **Edge case coverage**   | Can I identify the edge cases the builder should handle?                 | 0-5: none identified. 6-10: obvious cases only. 11-15: good coverage, some gaps. 16-20: comprehensive edge case list.                           |
+| **Test strategy**        | Do I know how to verify the changes work?                                | 0-5: no test infra found. 6-10: test infra exists but unclear how to use. 11-15: clear strategy, some gaps. 16-20: full strategy with commands. |
 
 **Total: /100**
 
 ### 5. Verdict
 
-| Score | Verdict | Action |
-|---|---|---|
-| >= 70 | **GO** | Produce context map. Builder proceeds. |
-| < 70 (round 1) | **HOLD** | Identify gaps. Gather more context. Re-score. |
+| Score          | Verdict             | Action                                                                         |
+| -------------- | ------------------- | ------------------------------------------------------------------------------ |
+| >= 70          | **GO**              | Produce context map. Builder proceeds.                                         |
+| < 70 (round 1) | **HOLD**            | Identify gaps. Gather more context. Re-score.                                  |
 | < 70 (round 2) | **HOLD — escalate** | Produce partial context map with gap analysis. The spec may be underspecified. |
 
 ### 6. Produce Context Map
@@ -91,13 +91,13 @@ Use this format:
 
 ## Dimensions
 
-| Dimension | Score | Notes |
-|---|---|---|
-| Scope clarity | /20 | {what files change, how confident} |
-| Pattern familiarity | /20 | {patterns found, which were read} |
-| Dependency awareness | /20 | {consumers of changed code} |
-| Edge case coverage | /20 | {identified edge cases} |
-| Test strategy | /20 | {test approach, commands, infrastructure} |
+| Dimension            | Score | Notes                                     |
+| -------------------- | ----- | ----------------------------------------- |
+| Scope clarity        | /20   | {what files change, how confident}        |
+| Pattern familiarity  | /20   | {patterns found, which were read}         |
+| Dependency awareness | /20   | {consumers of changed code}               |
+| Edge case coverage   | /20   | {identified edge cases}                   |
+| Test strategy        | /20   | {test approach, commands, infrastructure} |
 
 ## Key Patterns
 
