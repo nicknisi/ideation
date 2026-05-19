@@ -1,6 +1,6 @@
 # Ideation Plugin
 
-Transform brain dumps into structured implementation artifacts: contracts and implementation specs. Includes execution workflow for implementing specs in fresh sessions with per-component feedback loops.
+Transform brain dumps into structured implementation artifacts through a conversational interview. HTML is used for interactive decision-making (contract with scope slider, visual comparisons during the interview). Markdown is used for reference documents (specs, PRDs) consumed directly by `/execute-spec`. Includes execution workflow for implementing specs in fresh sessions with per-component feedback loops.
 
 ## Skills
 
@@ -8,7 +8,7 @@ Transform brain dumps into structured implementation artifacts: contracts and im
 
 Transforms raw, unstructured brain dumps (dictated freestyle) into actionable implementation artifacts through a confidence-gated workflow.
 
-Use this when you have messy ideas, scattered thoughts, or dictated stream-of-consciousness, or when you want to plan a feature, spec something out, or turn rough ideas into actionable specs.
+Use this before building any new feature, planning a migration, designing a system, or turning scattered ideas into a plan. Covers small single-spec projects through multi-phase initiatives.
 
 **How to invoke:**
 
@@ -31,31 +31,53 @@ I want to build something. Here's what I'm thinking...
 **The workflow:**
 
 1. **Intake** - Accept your messy, unstructured input without judgment. Take a position upfront — what's strong, what's weak.
-2. **Interview loop** - One question at a time, each with a recommended answer. Explores the codebase inline — if it can look something up instead of asking, it does. Challenges vague demand, undefined terms, and hypothetical users. Loops until confidence ≥ 95%.
-3. **Contract** - When ≥95% confident, write `contract.md` (with revision lineage tracking via `Supersedes` field). Artifacts created lazily — no files until decisions are locked.
-4. **Phasing & specs** - Determine phases, generate specs with feedback loops and failure mode catalogs
-5. **Feedback quality check** - Self-review specs for feedback loop coverage before presenting
-6. **Execution handoff** - Analyze orchestration strategy, write execution plan to contract, present summary
+2. **Interview loop** - One question at a time, each with a recommended answer. Explores the codebase inline — if it can look something up instead of asking, it does. Challenges vague demand, undefined terms, and hypothetical users. Loops until confidence >= 95%.
+3. **Contract** - When >= 95% confident, write `contract.html` with a **scope slider** (MVP / Full / Stretch tiers). Drag the slider to see what's in scope at each level, then pick your tier in the terminal. Includes revision lineage tracking via `Supersedes` link.
+4. **HTML visualizations** - During interview and phasing, generates ephemeral HTML pages for decisions: side-by-side comparisons, UI mockups, architecture options. Deleted after you choose.
+5. **Phasing & specs** - Determine phases, generate Markdown specs with feedback loops and failure mode catalogs
+6. **Feedback quality check** - Self-review specs for feedback loop coverage before presenting
+7. **Execution handoff** - SVG dependency graph in contract, copy-to-clipboard execute commands
 
 **Output artifacts:**
 
 All artifacts are written to `./docs/ideation/{project-name}/`:
 
 ```
-contract.md                    # Problem, goals, success criteria, scope, execution plan (with Supersedes lineage)
+_comparison.html               # Ephemeral decision aid (deleted after choice is made)
+contract.html                  # Interactive contract with scope slider (for review)
+contract.md                    # Plain contract (for /execute-spec lineage)
 prd-phase-1.md                 # Phase 1 requirements (only if PRDs chosen)
-spec-phase-1.md                # Phase 1 implementation spec (with failure modes)
+spec-phase-1.md                # Implementation spec (for /execute-spec)
 spec-template-{pattern}.md     # Shared template for repeatable phases (if applicable)
 spec-phase-N.md                # Per-phase delta or full spec
+implementation-notes-phase-1.html  # Decisions made during execution (per-phase)
 ```
+
+HTML artifacts (contract, implementation notes, ephemeral visualizations) are self-contained single files with all CSS/JS inlined — no external dependencies. They open in your browser automatically. Features include:
+
+- **Tabs** for section navigation (CSS-only, no JS framework)
+- **Confidence meter** showing scoring across 5 dimensions
+- **Scope slider** with MVP / Full / Stretch tiers (drag to see what's included)
+- **SVG dependency graphs** for execution planning
+- **Copy-to-clipboard buttons** on `/execute-spec` commands
+- **Dark mode** automatic via `prefers-color-scheme`
+
+Specs and PRDs are Markdown — readable as-is and consumed directly by `/execute-spec`.
 
 **Bundled references:**
 
-- `contract-template.md` - Lean contract structure
-- `prd-template.md` - Phased PRD template
-- `spec-template.md` - Implementation spec template (includes feedback loops and failure modes)
+Shared (plugin root):
+
+- `interview-engine.md` - Shared interview engine (Phases 1-2)
 - `confidence-rubric.md` - Scoring criteria for confidence assessment and spec feedback quality
 - `feedback-loop-guide.md` - Component-type mapping and design criteria for feedback loops
+
+Skill-specific:
+
+- `html-guide.md` - HTML component library, design tokens, and constraints (for contract, exploration, visualizations)
+- `contract-template.html` / `contract-template.md` - Contract templates
+- `prd-template.md` - PRD template
+- `spec-template.md` - Implementation spec template (includes feedback loops and failure modes)
 
 ## Interview Loop
 
@@ -81,9 +103,15 @@ Specs now include a **Failure Modes** section that catalogs how each non-trivial
 
 Trivial components (config, types, constants) skip failure mode enumeration — same rule as feedback loops.
 
+## Implementation Notes
+
+During execute-spec, the agent keeps a running `implementation-notes-phase-{N}.html` log of decisions it made that weren't covered by the spec — spec gaps, deviations, tradeoffs, codebase surprises, and dependency mismatches. Each entry records what the spec said (or didn't), what the agent chose, and what it rejected.
+
+One file per phase. Opens in your browser automatically after execution. If the agent followed the spec without any judgment calls, no file is created.
+
 ## Contract Lineage
 
-Contracts track revision history via a `Supersedes` field. When re-running ideation on the same project, the prior contract is renamed to `contract-{date}.md` and the new contract references it, creating a traceable revision chain.
+Contracts track revision history via a `Supersedes` link. When re-running ideation on the same project, the prior `contract.html` is renamed to `contract-{date}.html` (and the sibling `contract.md` to `contract-{date}.md`) and the new contract references it, creating a traceable revision chain.
 
 ## Confidence Scoring
 
@@ -142,11 +170,12 @@ search too...
 3. Explores codebase inline — finds existing tag system, recommends reusing it instead of asking
 4. Challenges assumptions: "Have users complained about folders, or is this your gut?"
 5. Confidence rises to 96/100 after ~5 questions
-6. Generates `contract.md` (artifacts created lazily — no files until now)
+6. Generates `contract.html` with scope slider — drag between MVP / Full / Stretch to see what's included at each tier. Pick your scope in the terminal.
 7. After approval, asks: "Straight to specs or PRDs first?"
-8. Generates implementation specs with feedback loops and failure modes
+8. At decision points (phasing, orchestration), opens side-by-side visual comparisons in browser
+9. Generates Markdown specs with feedback loops and failure modes
 
-**Result:** Clean, structured artifacts ready for implementation.
+**Result:** Interactive HTML contract for reviewing the plan, plus Markdown specs ready for `/execute-spec`.
 
 ## Full Workflow Diagram
 
@@ -157,8 +186,8 @@ flowchart TD
         B --> C{"Confidence<br/>Score"}
         C -->|"< 95"| D["Interview Loop<br/><i>one question at a time,<br/>recommended answer,<br/>explore codebase inline</i>"]
         D --> C
-        C -->|"≥ 95"| E["Generate Contract<br/><i>problem, goals, success,<br/>scope boundaries</i>"]
-        E --> F{"User<br/>Approval"}
+        C -->|"≥ 95"| E["Generate Contract<br/><i>scope slider: MVP/Full/Stretch,<br/>confidence meter, tabs</i>"]
+        E --> F{"User<br/>Approval<br/>(pick scope tier)"}
         F -->|"Needs changes"| E
         F -->|"Approved"| G{"PRDs or<br/>straight to specs?"}
         G -->|"PRDs first"| H["Generate PRDs"] --> I
@@ -243,7 +272,7 @@ flowchart TD
 
 ### Reading the Diagram
 
-**Ideation (left/top)** — brain dump → confidence-gated questioning → contract → specs → execution plan. Human approves at each gate.
+**Ideation (left/top)** — brain dump → confidence-gated questioning → contract with scope slider → specs → execution plan. Human approves at each gate.
 
 **Execute-Spec (right/bottom)** — three phases per spec:
 
@@ -252,8 +281,6 @@ flowchart TD
 3. **Review** cycles verify → review → fix up to 3 times before commit
 
 The loop between phases (`next phase → Load Spec`) shows multi-phase execution across fresh sessions, each loading the persisted context map.
-
-## Skills
 
 ### /ideation:execute-spec
 
@@ -291,9 +318,50 @@ Executes a spec file generated by the ideation skill. Invokes the Scout agent fo
 8. **Fix** — if critical/high findings, fix and re-verify/re-review (up to 3 cycles)
 9. **Commit** — only after review passes or user accepts remaining issues
 
-## Cross-Session Execution
+### /ideation:autopilot
 
-**Recommended workflow:**
+Orchestrates full project execution — reads the contract, walks the phase dependency graph, and dispatches subagents to execute each spec. Parallel for independent phases, sequential for dependent ones.
+
+**Usage:**
+
+```bash
+# Auto-detect contract
+/ideation:autopilot
+
+# Specify contract path
+/ideation:autopilot docs/ideation/my-project/contract.md
+```
+
+**Behavior:**
+
+- Parses the contract's Execution Plan to derive phase dependencies and spec paths
+- Computes execution waves — groups of phases whose blockers are all satisfied
+- Dispatches each phase as a subagent with a clean context running `/execute-spec`
+- Independent phases within a wave run in parallel
+- **Full auto** — continues without pausing on success
+- **Gates on failure** — if a phase fails review after 3 cycles, pauses to ask: skip, retry, or stop
+- Each phase commits independently — completed work is durable even if later phases fail
+
+**Example execution:**
+
+```
+Execution plan for bookmark-feature:
+  Wave 1: Phase 1 (Core data model)
+  Wave 2: Phase 2 (API endpoints) + Phase 3 (UI components)  [parallel]
+  Wave 3: Phase 4 (Search integration)
+
+4 phases across 3 waves. Starting now.
+
+Wave 1/3: Phase 1 — PASS (abc1234)
+Wave 2/3: Phase 2 + Phase 3 — PASS (def5678, ghi9012)
+Wave 3/3: Phase 4 — PASS (jkl3456)
+
+All 4 phases complete.
+```
+
+## Manual Cross-Session Execution
+
+For manual control, run specs individually:
 
 ```bash
 # Phase 1
@@ -306,10 +374,6 @@ Executes a spec file generated by the ideation skill. Invokes the Scout agent fo
 /ideation:execute-spec         # previous task completed, picks up next
 # ... implement, commit ...
 ```
-
-**For parallel execution across phases, use agent teams** — when 2+ phases are independent, the contract's Execution Plan section includes a ready-to-paste agent team prompt. Start a new session, enter delegate mode (Shift+Tab), and paste the prompt from the contract. The lead spawns teammates with plan approval, each implementing their assigned spec in parallel.
-
-Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` enabled in settings.
 
 **Within a single phase, use `--parallel`:**
 
@@ -326,4 +390,4 @@ Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` enabled in settings.
 
 ## Version
 
-0.11.0
+0.12.0

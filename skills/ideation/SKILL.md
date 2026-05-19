@@ -1,112 +1,72 @@
 ---
 name: ideation
-description: Transform raw brain dumps (dictated freestyle) into structured implementation artifacts. Use when user has messy ideas, scattered thoughts, or dictated stream-of-consciousness, or when they want to plan a feature, spec something out, or turn rough ideas into actionable specs. Produces contracts and implementation specs written to ./docs/ideation/{project-name}/.
+description: "You MUST use this before building any new feature, planning a migration, designing a system, or turning scattered ideas into a plan. Triggers on: feature requests, project ideas, brain dumps, 'help me plan,' 'spec this out,' 'think through this,' 'interview me,' 'I want to build,' 'let's design,' or any unstructured idea that needs structure before code. Covers small single-spec projects through multi-phase initiatives. Runs a conversational interview, writes an interactive HTML contract, then generates implementation-ready Markdown specs. Skip ONLY for well-defined implementation tasks (writing code to a known spec, fixing bugs, refactoring, explaining code)."
 ---
 
 <what-to-do>
 
 # Ideation
 
-Transform unstructured brain dumps into structured, actionable implementation artifacts through a conversational interview that builds shared understanding before writing anything.
+Transform unstructured brain dumps into implementation artifacts through a conversational interview that builds shared understanding before writing anything. HTML is used for interactive decision-making (visualizations, comparisons, contract); Markdown is used for reference documents (specs, PRDs).
 
 ## Workflow
 
 ```
-INTAKE → INTERVIEW LOOP → CONTRACT → PHASING → SPEC GENERATION → HANDOFF
-              ↓                 ↓          ↓            ↓               ↓
-         Accept the mess   One question   Write     Repeatable?    Analyze deps
-                           at a time,     when        ↓               ↓
-                           explore code   locked   Template +    Sequential?
-                           when possible            per-phase     Parallel?
-                                                    deltas        Agent Team?
+INTAKE → INTERVIEW LOOP → CONTRACT.HTML → PHASING → SPEC.MD GENERATION → HANDOFF
+              ↓                  ↓             ↓             ↓                ↓
+         Accept the mess    One question    HTML with     Repeatable?      SVG graph
+                            at a time,      tabs +          ↓              + copy buttons
+                            explore code    meter        Template +        in contract
+                            + show HTML     + scope       per-phase
+                            examples        slider        deltas
 ```
 
-## Phase 1: Intake
+## Phases 1-2: Interview
 
-Accept whatever the user provides — scattered thoughts, voice transcripts, bullet points, contradictions, topic jumping. **The mess is the input.**
+Read and follow `${CLAUDE_PLUGIN_ROOT}/references/interview-engine.md` for the complete intake and interview loop process. Execute all phases described there before proceeding to Phase 3.
 
-Acknowledge receipt. State what looks strong and what looks weak. Take a position. Then begin the interview.
+Read `${CLAUDE_PLUGIN_ROOT}/references/confidence-rubric.md` for the detailed scoring criteria.
 
-## Phase 2: Interview Loop
+## Phase 3: Contract (HTML)
 
-Interview the user relentlessly about every aspect of this plan until reaching shared understanding. Walk down each branch of the decision tree, resolving dependencies between decisions one by one.
-
-### Core rules
-
-1. **Ask one question at a time.** Wait for the answer before asking the next question. Do not batch questions.
-2. **For each question, provide your recommended answer.** Frame it as: "Here's what I'd recommend — [position]. Do you agree, or would you change it?" This accelerates convergence and forces you to take positions.
-3. **If a question can be answered by exploring the codebase, explore the codebase instead.** Don't ask the user what you can look up. Use `Agent` with `subagent_type: "Explore"` or direct `Glob`/`Grep`/`Read` to find the answer, then state what you found and move on.
-4. **Use `AskUserQuestion` tool for every question.** Provide 2-4 options including your recommendation. Mark the recommended option with "(Recommended)".
-
-### What to explore
-
-When exploring the codebase during the interview, look for:
-
-- Project structure, frameworks, languages, patterns in use
-- Existing code related to the brain dump's scope
-- Conventions — how similar features are implemented, what abstractions exist
-- Testing patterns and infrastructure
-- Feedback infrastructure — test runners, dev servers, storybook, API scripts. See `references/feedback-loop-guide.md` for the infrastructure-to-playground mapping.
-
-**Do not write exploration findings to files.** They're context for the interview, not artifacts.
-
-### Confidence tracking
-
-Track confidence internally across 5 dimensions (0-20 each, see `references/confidence-rubric.md`):
-
-| Dimension        | Question                                                       |
-| ---------------- | -------------------------------------------------------------- |
-| Problem Clarity  | Do I understand what problem we're solving and why it matters? |
-| Goal Definition  | Are the goals specific and measurable?                         |
-| Success Criteria | Can I write tests or validation steps for "done"?              |
-| Scope Boundaries | Do I know what's in and out of scope?                          |
-| Consistency      | Are there contradictions I need resolved?                      |
-
-**Score conservatively.** When uncertain between two levels, choose the lower one. One extra question costs seconds; a bad contract costs hours.
-
-When confidence reaches ≥ 95%, stop interviewing and generate the contract. There is no fixed question limit — keep asking until you have shared understanding. The user can say "stop", "wrap up", or "that's enough" to end the interview early.
-
-### What to challenge during the interview
-
-- **Vague demand**: "Users want X" → "What evidence? Who specifically?"
-- **Undefined terms**: "Better UX", "more intuitive" → "What does 'better' mean? Faster? Fewer clicks?"
-- **Hypothetical users**: "Developers will love this" → Flag as a gap, score conservatively.
-- **Contradictions**: Surface them explicitly. "You said X earlier but now Y — which is it?"
-- **Weak premises**: If the idea is weak, say it's weak and why. Don't soften.
-
-### Banned phrases
-
-- "That's an interesting approach" — take a position instead
-- "There are many ways to think about this" — pick one and state why
-- "You might want to consider..." — say "This is wrong because..." or "This works because..."
-- "That could work" — say whether it WILL work based on evidence
-- "I can see why you'd think that" — if the premise is weak, say so
-
-## Phase 3: Contract
-
-When confidence ≥ 95%, generate the contract. **Not before.** Create artifacts lazily — only when you have something to write.
+When confidence ≥ 95%, generate the contract as an interactive HTML document. **Not before.** The contract output is `.html`, NOT `.md`.
 
 1. Use `AskUserQuestion` to confirm project name if not obvious from context
 2. Convert to kebab-case for directory name
-3. Create output directory `./docs/ideation/{project-name}/` **only now** — not during intake or exploration
+3. Create output directory `./docs/ideation/{project-name}/`
 4. **Check for prior contract (lineage detection)**:
-   - Check if `./docs/ideation/{project-name}/contract.md` already exists
-   - If it does, read its `Created` date and rename it to `contract-{created-date}.md`
-   - Set the new contract's `Supersedes` field to the renamed file path
-   - If no prior contract exists, set `Supersedes` to "None"
-5. Write `contract.md` using `references/contract-template.md`
-6. Use `AskUserQuestion` to get approval:
+   - Check if `./docs/ideation/{project-name}/contract.html` already exists
+   - If it does, read it, extract the Created date from the meta line, and rename it to `contract-{created-date}.html`
+   - Also rename any sibling `contract.md` to `contract-{created-date}.md` so both formats stay in sync
+   - Set the new contract's Supersedes link to the renamed HTML file path
+   - If no prior contract exists, omit the Supersedes link
+5. **MANDATORY: Use `Read` tool to read `references/html-guide.md` now.** This file contains all CSS design tokens, component patterns, and the document skeleton. You cannot generate correct HTML without it. Do not skip this step.
+6. **MANDATORY: Use `Read` tool to read `references/contract-template.html` now.** This is the HTML structure to follow. Fill in the `{placeholder}` values with contract content.
+7. Write `contract.html` following the template structure with ALL CSS and JS inlined. The file must be a complete, self-contained HTML document that opens correctly in a browser from `file://`.
+
+**The contract is HTML, not Markdown.** If you find yourself writing `# Heading` or `- bullet` to the contract file, stop — you are writing Markdown. Write `<h1>Heading</h1>` and `<li>bullet</li>` instead.
+
+8. **Include a scope slider** in the Scope tab. Define 3 scope tiers based on the interview findings:
+   - **MVP** — minimum viable version, core functionality only
+   - **Full** — everything in the contract's "In Scope" section
+   - **Stretch** — full scope plus items from "Future Considerations" that could be pulled in
+     For each tier, list what's included and excluded. Use a range input (`<input type="range">`) with 3 stops that reveals/hides scope items as the user drags. The slider is a visual aid — the user sees what each tier includes, then tells you in the terminal which tier to target. This replaces the static in-scope/out-of-scope lists for the Scope tab.
+9. After writing, open in browser: run `open ./docs/ideation/{project-name}/contract.html` (macOS) or `xdg-open` (Linux)
+10. Use `AskUserQuestion` to get approval — include the scope tier question:
 
 ```
-Question: "Does this contract accurately capture your intent?"
+Question: "Does this contract capture your intent? Use the scope slider in your browser to pick a tier."
 Options:
-- "Approved" - Contract is accurate, proceed
-- "Needs changes" - Some parts need revision
-- "Missing scope" - Important items are not captured
+- "Approved — MVP scope" - Ship the minimum viable version first
+- "Approved — Full scope" - Build everything in the In Scope list
+- "Approved — Stretch scope" - Include Future Considerations items too
+- "Needs changes" - Some parts need revision before approving
 - "Start over" - Fundamentally off track, re-interview
 ```
 
-**If not approved:** Revise based on feedback. If feedback reveals a fundamental misunderstanding, return to the interview loop. Otherwise edit `contract.md` directly and re-present. Iterate until approved.
+The approved scope tier determines what goes into specs. Items outside the chosen tier move to "Future Considerations" in the contract.
+
+**If not approved:** Revise based on feedback. If feedback reveals a fundamental misunderstanding, return to the interview loop. Otherwise re-write the HTML file and re-open in browser. Iterate until approved.
 
 **Do not proceed until contract is explicitly approved.**
 
@@ -116,7 +76,7 @@ Options:
 
 ## Phase 4: Phasing & Specification
 
-After contract is approved, determine phases and generate specs. PRDs are optional.
+After contract is approved, determine phases and generate Markdown specs. PRDs are optional.
 
 ### 4.1 Choose Workflow
 
@@ -152,7 +112,7 @@ Typical phasing:
 
 ### 4.3 Generate PRDs (only if user chose "PRDs then specs")
 
-For each phase, generate `prd-phase-{n}.md` using `references/prd-template.md`.
+For each phase, use the `Read` tool to read `references/prd-template.md`, then generate `prd-phase-{n}.md`.
 
 Include:
 
@@ -163,7 +123,7 @@ Include:
 - Dependencies (prerequisites and outputs)
 - Acceptance criteria
 
-Present all PRDs for review. Use `AskUserQuestion`:
+Present all PRDs for review via `AskUserQuestion`:
 
 ```
 Question: "Do these PRD phases look correct?"
@@ -178,24 +138,23 @@ Iterate until user explicitly approves.
 
 ### 4.4 Generate Implementation Specs
 
-Generate specs using `references/spec-template.md`. Create spec files lazily — only when a phase's details are resolved.
+Use the `Read` tool to read `references/spec-template.md`, then generate `spec-phase-{n}.md`. Create spec files lazily — only when a phase's details are resolved.
 
 #### Standard phases (each is unique)
 
 For each phase, generate a full `spec-phase-{n}.md` with:
 
-- Technical approach
-- File changes (new and modified)
-- Implementation details with code patterns
-- Testing requirements
-- Error handling
-- Validation commands
-- Feedback strategy (top-level inner-loop command and playground type)
-- Per-component feedback loops (where applicable)
+- **Technical approach** — high-level strategy
+- **Feedback strategy** — inner-loop command, playground, rationale
+- **File changes** — table with new/modified/deleted indicators
+- **Implementation details** — per-component sections, each with a feedback loop (playground → experiment → check command)
+- **Testing requirements** — table of test files and coverage
+- **Failure modes** — table with component, failure, trigger, impact, mitigation columns
+- **Validation commands** — code blocks
 
 **Reference existing code:** When the interview's codebase exploration identified relevant patterns, include "Pattern to follow: `path/to/similar/file.ts`" in the spec's implementation details.
 
-**Designing feedback loops:** For each iterative component, define a playground (environment to interact with), experiment (parameterized check), and check command (fastest single validation). Match the feedback mechanism to the component type — data layers use tests, UI uses dev server, APIs use curl scripts, config/types skip loops entirely. See `references/feedback-loop-guide.md` for the full component-type mapping and design criteria.
+**Designing feedback loops:** For each iterative component, define a playground (environment to interact with), experiment (parameterized check), and check command (fastest single validation). Match the feedback mechanism to the component type — data layers use tests, UI uses dev server, APIs use curl scripts, config/types skip loops entirely. See `${CLAUDE_PLUGIN_ROOT}/references/feedback-loop-guide.md` for the full component-type mapping and design criteria.
 
 **Naming failure modes:** For each non-trivial component, ask: "How would this fail?" Fill in the spec's Failure Modes table with named failures, data shadow paths (nil, empty, stale data), and edge cases (concurrent access, oversized input, missing permissions). Trivial components (config, types, constants) skip failure mode enumeration.
 
@@ -211,63 +170,11 @@ When multiple phases share the same structure (e.g., "add support for {SDK}"), a
    - Any phase-specific concerns or edge cases
    - Reference to the template: "Follow `spec-template-{pattern-name}.md` with the inputs below"
 
-**Example for SDK integrations:**
-
-`spec-template-sdk-integration.md`:
-
-```markdown
-# SDK Integration Template
-
-## Pattern
-
-For each SDK, create:
-
-1. `src/{language}/{language}-installer-agent.ts` — FrameworkConfig following existing pattern
-2. `skills/workos-{sdk-name}/SKILL.md` — Agent skill fetching SDK README
-3. `tests/fixtures/{language}/{framework}-example/` — Minimal project fixture
-4. `tests/evals/graders/{language}.grader.ts` — Extending BaseGrader
-
-## Implementation Details
-
-{Detailed steps with {placeholders} for variable parts}
-
-## Validation
-
-{Common validation steps}
-```
-
-`spec-phase-5.md`:
-
-```markdown
-# Spec: Ruby SDK (workos-ruby)
-
-**Template**: ./spec-template-sdk-integration.md
-
-## Inputs
-
-- Language: Ruby
-- Framework: Rails
-- Package manager: Bundler (`bundle add`)
-- Manifest file: Gemfile
-- SDK package: workos
-- Detection: `rails` gem in Gemfile or `config/routes.rb` exists
-
-## Deviations from template
-
-- Rails has strong conventions — files go in specific locations
-- Initializer pattern: `config/initializers/workos.rb`
-- Env vars: `.env` with dotenv-rails, or Rails credentials
-
-## Phase-specific concerns
-
-- CI needs Ruby 3.x installed for eval fixtures
-```
-
-### 4.5 Present Phases for Review
+### 4.5 Present Specs for Review
 
 Present the phase breakdown and specs for user approval before proceeding to handoff.
 
-**Before presenting specs, evaluate feedback loop quality** using the Spec Feedback Quality checklist from `references/confidence-rubric.md`. Self-review each spec:
+**Before presenting specs, evaluate feedback loop quality** using the Spec Feedback Quality checklist from `${CLAUDE_PLUGIN_ROOT}/references/confidence-rubric.md`. Self-review each spec:
 
 - **Strong**: All iterative components have feedback loops, inner-loop command defined, trivial components correctly skipped → present spec as-is
 - **Adequate**: Most components have loops but some gaps → present spec with a note about what's missing
@@ -278,7 +185,7 @@ If Weak, fix the gaps first. Don't present a spec without feedback loops for its
 Use `AskUserQuestion`:
 
 ```
-Question: "Do these specs look correct?"
+Question: "Do these specs look correct? (Review them in your browser)"
 Options:
 - "Approved" - Specs look good, proceed to execution handoff
 - "Adjust approach" - Implementation strategy needs changes
@@ -290,7 +197,7 @@ If not approved, revise the relevant specs based on feedback and re-present. Ite
 
 ## Phase 5: Execution Handoff
 
-After specs are generated, analyze orchestration options and hand off for implementation.
+After specs are approved, update the contract HTML with the execution plan and auto-generate Markdown specs for `/execute-spec`.
 
 ### 5.1 Analyze Orchestration Strategy
 
@@ -313,17 +220,17 @@ Analyze the phase dependency graph to determine the best execution strategy.
 | 2+ independent phases         | **Agent team** — lead orchestrates teammates in parallel                      |
 | Mixed dependencies            | **Hybrid** — sequential for dependent chain, agent team for independent group |
 
-### 5.2 Write Execution Plan to Contract
+### 5.2 Update Contract HTML with Execution Plan
 
-Append the `## Execution Plan` section to the contract file (`./docs/ideation/{project-name}/contract.md`). This makes the contract fully self-contained — someone can pick it up cold and know exactly how to execute.
+Read the existing `contract.html` and update the Execution Plan tab panel. This makes the contract fully self-contained — someone can pick it up cold and know exactly how to execute.
 
-Use the Execution Plan section from the contract template. Fill in:
+1. **SVG Dependency Graph** — generate inline SVG using the dep-graph component from `references/html-guide.md`. Vertical flow for sequential, horizontal spread for parallel phases at the same depth.
 
-1. **Dependency Graph** — ASCII art showing which phases block which. Keep it simple.
-2. **Execution Steps** — ordered list with the exact `/execute-spec` commands. Mark which are sequential vs parallel.
-3. **Agent Team Prompt** — only if 2+ phases are parallelizable. Ready-to-paste prompt for delegate mode. **Omit this subsection entirely** for fully sequential projects.
+2. **Execution Steps** — code blocks with copy buttons for each `/execute-spec` command. Mark which are sequential vs parallel.
 
-**Shared file detection:** Before writing the agent team prompt, scan spec files' "Modified Files" sections. If multiple specs modify the same files, include a coordination note in the prompt:
+3. **Agent Team Prompt** — only if 2+ phases are parallelizable. Place in a collapsible section with a copy button. **Omit this subsection entirely** for fully sequential projects.
+
+**Shared file detection:** Before writing the agent team prompt, scan spec files' "Modified Files" sections. If multiple specs modify the same files, include a coordination note:
 
 ```
 Coordinate on shared files ({list}) to avoid merge conflicts —
@@ -332,53 +239,34 @@ only one teammate should modify a shared file at a time.
 
 **Batching:** If more than 5 parallelizable phases, note in the execution steps to start with the highest-priority batch first.
 
-### 5.3 Present Handoff Summary
+Re-open the contract in the browser after updating.
 
-After writing the execution plan, present a brief conversational summary.
+### 5.3 Generate Contract Markdown
+
+Generate `contract.md` from `references/contract-template.md` with the same content as `contract.html` — needed for execute-spec lineage detection. Include the Execution Plan section.
+
+Specs and PRDs are already Markdown from Phase 4 — no conversion needed.
+
+### 5.4 Present Handoff Summary
+
+After updating the contract and generating MD specs, present a brief conversational summary.
 
 **Always include:**
 
 ```
 Ideation complete. Artifacts written to `./docs/ideation/{project-name}/`.
 
-The contract includes the full execution plan — dependency graph,
-commands, and agent team prompt (if parallel). Open `contract.md`
-to pick up implementation from any session.
+Open contract.html in your browser to review the full plan — dependency graph,
+execution commands, and scope are all in the Execution Plan tab.
+
+Specs (spec-phase-*.md) are ready. To execute all phases:
+  /ideation:autopilot
+
+Or run individual phases manually:
+  /ideation:execute-spec docs/ideation/{project-name}/spec-phase-1.md
 ```
 
-**Then show the first step** — either the first `/execute-spec` command for sequential execution, or a pointer to the agent team prompt in the contract for parallel execution.
-
-**Agent team context** (include when the execution plan has an agent team prompt):
-
-```
-The agent team prompt is in the contract's Execution Plan section.
-To use it: start a new Claude Code session, enter delegate mode
-(Shift+Tab), and paste the prompt from the contract.
-```
-
-Agent teams let a single lead session automatically spawn and coordinate multiple teammates — the user starts **one** `claude` session, and the lead handles spawning, task assignment, plan approval, and synthesis. No manual terminal juggling.
-
-**Why delegate mode?** Pressing Shift+Tab restricts the lead to coordination-only tools: spawning teammates, messaging, managing tasks, and approving plans. This prevents the lead from implementing tasks itself and ensures work is distributed to teammates.
-
-**Why one session?** The lead automatically spawns each teammate as a separate Claude Code instance. Each teammate gets its own context window, loads project context (CLAUDE.md, MCP servers, skills), and works independently. You interact with the lead and it coordinates everything — use Shift+Up/Down to message individual teammates if needed.
-
-Ensure agent teams are enabled in `.claude/settings.json` or `~/.claude/settings.json`:
-
-```json
-{
-  "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
-  }
-}
-```
-
-### 5.4 Why Fresh Sessions?
-
-- Ideation consumes significant context (contract, specs, exploration)
-- Execution benefits from clean context focused on the spec
-- Human review between phases catches issues early
-- Each phase is independently committable
-- Each session creates granular implementation tasks scoped to that phase
+**Recommend `/ideation:autopilot`** as the default. It reads the contract, walks the dependency graph, dispatches subagents per phase (parallel when possible), and only stops on failures. Manual `/execute-spec` is available for finer control.
 
 </supporting-info>
 
@@ -387,49 +275,79 @@ Ensure agent teams are enabled in `.claude/settings.json` or `~/.claude/settings
 All artifacts written to `./docs/ideation/{project-name}/`:
 
 ```
-contract.md                        # Lean contract (problem, goals, success, scope)
+_comparison.html                   # Ephemeral decision aid (deleted after choice is made)
+contract.html                      # Interactive contract with scope slider (for review)
+contract.md                        # Plain contract (for execute-spec lineage)
 prd-phase-1.md                     # Phase 1 requirements (only if PRDs chosen)
 ...
-spec-phase-1.md                    # Phase 1 implementation spec (always full)
+spec-phase-1.md                    # Implementation spec (for execute-spec)
 spec-template-{pattern}.md         # Shared template for repeatable phases (if applicable)
-spec-phase-{n}.md                  # Per-phase delta referencing template (if repeatable)
+spec-phase-{n}.md                  # Per-phase delta or full spec
 ...
 ```
 
 ## Bundled Resources
 
-### References
+### Shared References (plugin root)
 
-- `references/contract-template.md` - Template for lean contract document
-- `references/prd-template.md` - Template for phased PRD documents
-- `references/spec-template.md` - Template for implementation specs
-- `references/confidence-rubric.md` - Detailed scoring criteria for confidence assessment and spec feedback quality
-- `references/feedback-loop-guide.md` - Component-type mapping and design criteria for spec feedback loops
-- `references/workflow-example.md` - End-to-end workflow walkthrough
+- `${CLAUDE_PLUGIN_ROOT}/references/interview-engine.md` - Interview engine (Phases 1-2)
+- `${CLAUDE_PLUGIN_ROOT}/references/confidence-rubric.md` - Scoring criteria for confidence assessment and spec feedback quality
+- `${CLAUDE_PLUGIN_ROOT}/references/feedback-loop-guide.md` - Component-type mapping and design criteria for spec feedback loops
+- `${CLAUDE_PLUGIN_ROOT}/references/workflow-example.md` - End-to-end workflow walkthrough
+
+### Skill References
+
+HTML (interactive artifacts — contract, exploration, interview visualizations):
+
+- `references/html-guide.md` - HTML component library, design tokens, and constraints
+- `references/contract-template.html` - Interactive HTML contract template
+
+Markdown (specs, PRDs, contract copy for execute-spec):
+
+- `references/contract-template.md` - Plain contract template
+- `references/prd-template.md` - Plain PRD template
+- `references/spec-template.md` - Plain spec template
 
 ### Examples
 
 Completed artifact examples for reference when generating output:
 
-- `examples/contract-example.md` - A filled-in contract for a bookmark feature
-- `examples/prd-example.md` - A filled-in PRD for the same feature (Phase 1)
-- `examples/spec-example.md` - A filled-in spec for the same feature
+- `examples/contract-example.md` - A filled-in MD contract for a bookmark feature
+- `examples/prd-example.md` - A filled-in MD PRD for the same feature (Phase 1)
+- `examples/spec-example.md` - A filled-in MD spec for the same feature
 
 When generating artifacts, reference these examples for tone, structure, and level of detail.
 
+## HTML Visualizations for Decisions
+
+During the interview and phasing stages, generate ephemeral HTML pages when visual context helps the user make better decisions. These are disposable aids — created, reviewed, then deleted.
+
+**When to use this:**
+
+- **Interview examples** — show UI mockups, layout options, or component structures the user is choosing between
+- **Architecture comparisons** — 2-3 valid approaches with meaningfully different trade-offs shown side-by-side
+- **Phasing strategies** — "core-first vs. risk-first vs. value-first" with visual dependency flows
+- **Orchestration strategy** — sequential vs. parallel vs. hybrid with timeline visuals
+- Any decision where visual layout would clarify trade-offs better than text
+
+**How it works:**
+
+1. Write `_comparison.html` (or `_examples.html`, `_mockup.html` — prefix with `_` to mark as ephemeral) to the project's ideation directory using `references/html-guide.md` components
+2. Show each option as a card or column with: name, description, trade-offs, and a visual where appropriate
+3. Open in browser: `open ./docs/ideation/{project-name}/_comparison.html`
+4. Ask via `AskUserQuestion`: reference the browser view in the question text
+5. After the user chooses, delete the ephemeral file — it served its purpose
+
+**When NOT to use this:** Simple yes/no decisions, choices where the recommended option is clearly best, or any decision that's faster to explain in text. Don't slow down the flow with unnecessary visual aids.
+
 ## Important Notes
 
-- **ALWAYS use `AskUserQuestion` tool for questions and approvals.** Never ask questions in plain text.
-- **One question at a time.** Provide your recommended answer with each question.
-- **Explore the codebase during the interview** — don't ask what you can look up.
-- **Score confidence conservatively.** When uncertain, score lower.
-- Never skip the confidence check. Don't assume understanding.
-- Always write artifacts to files. Don't just display them.
-- **Create files lazily** — only when decisions are locked, not speculatively.
-- Each phase should be independently valuable.
-- Specs should be detailed enough to implement without re-reading PRDs or the contract.
-- Keep contracts lean. Heavy docs slow iteration.
+- **HTML is for interactive artifacts only** — contract and ephemeral decision visualizations. Specs and PRDs are Markdown.
+- **Use the `Read` tool to load templates before writing.** You MUST read `references/html-guide.md` before Phase 3 and read `references/contract-template.html` before generating the contract. Read `references/spec-template.md` before generating specs.
+- **Use `AskUserQuestion` for all questions and approvals.** One question at a time, with your recommended answer.
+- **Score confidence conservatively.** When uncertain, score lower. No fixed question limit.
+- **Open HTML artifacts in the browser** after writing. Use `open` (macOS) or `xdg-open` (Linux).
+- **Create files lazily.** Only when decisions are locked, not speculatively.
 - **Reference existing code patterns** in specs — "Pattern to follow" with real file paths.
-- **Use template + delta** for repeatable phases — don't generate N identical specs.
-- **Small projects don't need phases.** If scope is 1-3 components, generate a single spec.
-- **No question limit.** Keep interviewing until shared understanding. The user can say "stop" or "wrap up" to end early.
+- **Small projects don't need phases.** 1-3 components → single spec. Use template + delta for repeatable phases.
+- **Specs must stand alone** — detailed enough to implement without re-reading PRDs or the contract.
