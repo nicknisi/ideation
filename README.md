@@ -1,6 +1,6 @@
 # Ideation Plugin
 
-Transform brain dumps into structured implementation artifacts through a conversational interview. HTML is used for interactive decision-making (contract with scope slider, visual comparisons during the interview). Markdown is used for reference documents (specs, PRDs) consumed directly by `/execute-spec`. Includes execution workflow for implementing specs in fresh sessions with per-component feedback loops.
+Transform brain dumps into structured implementation artifacts through a conversational interview. HTML is used for interactive decision-making (contract with confidence scoring, visual comparisons during the interview). Markdown is used for reference documents (specs, PRDs) consumed directly by `/ideation:execute-spec`. Includes execution workflow for implementing specs in fresh sessions with per-component feedback loops.
 
 ## Skills
 
@@ -32,11 +32,11 @@ I want to build something. Here's what I'm thinking...
 
 1. **Intake** - Accept your messy, unstructured input without judgment. Take a position upfront — what's strong, what's weak.
 2. **Interview loop** - One question at a time, each with a recommended answer. Explores the codebase inline — if it can look something up instead of asking, it does. Challenges vague demand, undefined terms, and hypothetical users. Loops until confidence >= 95%.
-3. **Contract** - When >= 95% confident, write `contract.html` with a **scope slider** (MVP / Full / Stretch tiers). Drag the slider to see what's in scope at each level, then pick your tier in the terminal. Includes revision lineage tracking via `Supersedes` link.
+3. **Contract** - When >= 95% confident, generate `contract.html` via the contract-gen CLI. "Mission Brief" poster layout with confidence scoring, nested scope tiers (MVP / Full / Stretch), and copyable execution commands. Pick your scope tier in the terminal. Includes revision lineage tracking via `Supersedes` link.
 4. **HTML visualizations** - During interview and phasing, generates ephemeral HTML pages for decisions: side-by-side comparisons, UI mockups, architecture options. Deleted after you choose.
 5. **Phasing & specs** - Determine phases, generate Markdown specs with feedback loops and failure mode catalogs
 6. **Feedback quality check** - Self-review specs for feedback loop coverage before presenting
-7. **Execution handoff** - SVG dependency graph in contract, copy-to-clipboard execute commands
+7. **Execution handoff** - Phase track in contract, copy-to-clipboard ideation commands
 
 **Output artifacts:**
 
@@ -44,10 +44,10 @@ All artifacts are written to `./docs/ideation/{project-name}/`:
 
 ```
 _comparison.html               # Ephemeral decision aid (deleted after choice is made)
-contract.html                  # Interactive contract with scope slider (for review)
-contract.md                    # Plain contract (for /execute-spec lineage)
+contract.html                  # Mission Brief contract (for review)
+contract.md                    # Plain contract (for execute-spec lineage)
 prd-phase-1.md                 # Phase 1 requirements (only if PRDs chosen)
-spec-phase-1.md                # Implementation spec (for /execute-spec)
+spec-phase-1.md                # Implementation spec (for execute-spec)
 spec-template-{pattern}.md     # Shared template for repeatable phases (if applicable)
 spec-phase-N.md                # Per-phase delta or full spec
 implementation-notes-phase-1.html  # Decisions made during execution (per-phase)
@@ -57,12 +57,13 @@ HTML artifacts (contract, implementation notes, ephemeral visualizations) are se
 
 - **Tabs** for section navigation (CSS-only, no JS framework)
 - **Confidence meter** showing scoring across 5 dimensions
-- **Scope slider** with MVP / Full / Stretch tiers (drag to see what's included)
-- **SVG dependency graphs** for execution planning
-- **Copy-to-clipboard buttons** on `/execute-spec` commands
+- **Nested scope tiers** showing MVP / Full / Stretch commitment levels
+- **Per-dimension confidence scores** with reasons in the hero
+- **Horizontal phase track** with risk coloring and gate support
+- **Copy-to-clipboard buttons** on `/ideation:autopilot` and per-phase commands
 - **Dark mode** automatic via `prefers-color-scheme`
 
-Specs and PRDs are Markdown — readable as-is and consumed directly by `/execute-spec`.
+Specs and PRDs are Markdown — readable as-is and consumed directly by `/ideation:execute-spec`.
 
 **Bundled references:**
 
@@ -170,12 +171,12 @@ search too...
 3. Explores codebase inline — finds existing tag system, recommends reusing it instead of asking
 4. Challenges assumptions: "Have users complained about folders, or is this your gut?"
 5. Confidence rises to 96/100 after ~5 questions
-6. Generates `contract.html` with scope slider — drag between MVP / Full / Stretch to see what's included at each tier. Pick your scope in the terminal.
+6. Generates `contract.html` via contract-gen CLI — Mission Brief layout with confidence scoring, nested scope tiers, and copyable execution commands. Pick your scope in the terminal.
 7. After approval, asks: "Straight to specs or PRDs first?"
 8. At decision points (phasing, orchestration), opens side-by-side visual comparisons in browser
 9. Generates Markdown specs with feedback loops and failure modes
 
-**Result:** Interactive HTML contract for reviewing the plan, plus Markdown specs ready for `/execute-spec`.
+**Result:** Mission Brief HTML contract for reviewing the plan, plus Markdown specs ready for `/ideation:execute-spec`.
 
 ## Full Workflow Diagram
 
@@ -186,7 +187,7 @@ flowchart TD
         B --> C{"Confidence<br/>Score"}
         C -->|"< 95"| D["Interview Loop<br/><i>one question at a time,<br/>recommended answer,<br/>explore codebase inline</i>"]
         D --> C
-        C -->|"≥ 95"| E["Generate Contract<br/><i>scope slider: MVP/Full/Stretch,<br/>confidence meter, tabs</i>"]
+        C -->|"≥ 95"| E["Generate Contract<br/><i>Mission Brief: confidence hero,<br/>nested scope tiers, phase track</i>"]
         E --> F{"User<br/>Approval<br/>(pick scope tier)"}
         F -->|"Needs changes"| E
         F -->|"Approved"| G{"PRDs or<br/>straight to specs?"}
@@ -194,7 +195,7 @@ flowchart TD
         G -->|"Straight to specs"| I["Generate Specs<br/><i>with feedback loops</i>"]
         I --> J["Self-Review<br/>Feedback Quality"]
         J -->|"Weak"| I
-        J -->|"Strong/Adequate"| K["Write Execution Plan<br/><i>dependency graph,<br/>commands, agent team prompt</i>"]
+        J -->|"Strong/Adequate"| K["Write Execution Plan<br/><i>phase track,<br/>commands, agent team prompt</i>"]
         K --> L["📄 Artifacts in<br/>docs/ideation/project/"]
     end
 
@@ -272,7 +273,7 @@ flowchart TD
 
 ### Reading the Diagram
 
-**Ideation (left/top)** — brain dump → confidence-gated questioning → contract with scope slider → specs → execution plan. Human approves at each gate.
+**Ideation (left/top)** — brain dump → confidence-gated questioning → Mission Brief contract → specs → execution plan. Human approves at each gate.
 
 **Execute-Spec (right/bottom)** — three phases per spec:
 
@@ -336,7 +337,7 @@ Orchestrates full project execution — reads the contract, walks the phase depe
 
 - Parses the contract's Execution Plan to derive phase dependencies and spec paths
 - Computes execution waves — groups of phases whose blockers are all satisfied
-- Dispatches each phase as a subagent with a clean context running `/execute-spec`
+- Dispatches each phase as a subagent with a clean context running `/ideation:execute-spec`
 - Independent phases within a wave run in parallel
 - **Full auto** — continues without pausing on success
 - **Gates on failure** — if a phase fails review after 3 cycles, pauses to ask: skip, retry, or stop

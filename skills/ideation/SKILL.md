@@ -7,18 +7,18 @@ description: "You MUST use this before building any new feature, planning a migr
 
 # Ideation
 
-Transform unstructured brain dumps into implementation artifacts through a conversational interview that builds shared understanding before writing anything. HTML is used for interactive decision-making (visualizations, comparisons, contract); Markdown is used for reference documents (specs, PRDs).
+Transform unstructured brain dumps into implementation artifacts through a conversational interview that builds shared understanding before writing anything. HTML is used for interactive decision-making (visualizations, comparisons, Mission Brief contract); Markdown is used for reference documents (specs, PRDs).
 
 ## Workflow
 
 ```
 INTAKE → INTERVIEW LOOP → CONTRACT.HTML → PHASING → SPEC.MD GENERATION → HANDOFF
               ↓                  ↓             ↓             ↓                ↓
-         Accept the mess    One question    HTML with     Repeatable?      SVG graph
-                            at a time,      tabs +          ↓              + copy buttons
-                            explore code    meter        Template +        in contract
-                            + show HTML     + scope       per-phase
-                            examples        slider        deltas
+         Accept the mess    One question    Mission       Repeatable?      Phase track
+                            at a time,      Brief with      ↓              + copy buttons
+                            explore code    confidence   Template +        in contract
+                            + show HTML     + scope      per-phase
+                            examples        tiers        deltas
 ```
 
 ## Phases 1-2: Interview
@@ -29,42 +29,82 @@ Read `${CLAUDE_PLUGIN_ROOT}/references/confidence-rubric.md` for the detailed sc
 
 ## Phase 3: Contract (HTML)
 
-When confidence ≥ 95%, generate the contract as an interactive HTML document. **Not before.** The contract output is `.html`, NOT `.md`.
+When confidence ≥ 95%, generate the Mission Brief contract as an HTML document. **Not before.**
 
 1. Use `AskUserQuestion` to confirm project name if not obvious from context
-2. Convert to kebab-case for directory name
-3. Create output directory `./docs/ideation/{project-name}/`
-4. **Check for prior contract (lineage detection)**:
-   - Check if `./docs/ideation/{project-name}/contract.html` already exists
-   - If it does, read it, extract the Created date from the meta line, and rename it to `contract-{created-date}.html`
-   - Also rename any sibling `contract.md` to `contract-{created-date}.md` so both formats stay in sync
-   - Set the new contract's Supersedes link to the renamed HTML file path
-   - If no prior contract exists, omit the Supersedes link
-5. **MANDATORY: Use `Read` tool to read `references/html-guide.md` now.** This file contains all CSS design tokens, component patterns, and the document skeleton. You cannot generate correct HTML without it. Do not skip this step.
-6. **MANDATORY: Use `Read` tool to read `references/contract-template.html` now.** This is the HTML structure to follow. Fill in the `{placeholder}` values with contract content.
-7. Write `contract.html` following the template structure with ALL CSS and JS inlined. The file must be a complete, self-contained HTML document that opens correctly in a browser from `file://`.
+2. Convert to kebab-case for directory name (this becomes the `slug`)
+3. Create output directory `./docs/ideation/{slug}/`
+4. **Write `contract-data.json`** in the output directory. This is a JSON file conforming to the `ContractData` schema — the CLI generates the HTML from it. The JSON captures all interview findings:
 
-**The contract is HTML, not Markdown.** If you find yourself writing `# Heading` or `- bullet` to the contract file, stop — you are writing Markdown. Write `<h1>Heading</h1>` and `<li>bullet</li>` instead.
+   ```json
+   {
+     "projectName": "Human-Readable Name",
+     "slug": "kebab-case-name",
+     "date": "YYYY-MM-DD",
+     "status": "Draft",
+     "supersedes": null,
+     "confidence": {
+       "score": 96,
+       "dimensions": [
+         { "key": "scope", "score": 100, "label": "Scope", "reason": "One sentence explaining the score" },
+         { "key": "risk", "score": 92, "label": "Risk", "reason": "One sentence" },
+         { "key": "effort", "score": 95, "label": "Effort", "reason": "One sentence" },
+         { "key": "clarity", "score": 98, "label": "Clarity", "reason": "One sentence" },
+         { "key": "tests", "score": 95, "label": "Tests", "reason": "One sentence" }
+       ]
+     },
+     "problem": ["paragraph 1", "paragraph 2"],
+     "goals": ["Measurable goal 1", "Measurable goal 2"],
+     "successCriteria": ["Pass/fail criterion 1", "Pass/fail criterion 2"],
+     "scope": {
+       "mvp": [{"item": "Core feature", "reason": "Why it's MVP"}],
+       "full": [{"item": "Full feature", "reason": "Optional rationale"}],
+       "stretch": [{"item": "Stretch feature"}],
+       "outOfScope": [{"item": "Excluded item", "reason": "Why excluded"}],
+       "future": ["Deferred idea 1"]
+     },
+     "execution": {
+       "strategy": "Sequential",
+       "phases": [
+         {
+           "title": "Phase name",
+           "risk": "low",
+           "blocking": true,
+           "specPath": "docs/ideation/slug/spec-phase-1.md",
+           "notes": "Brief description of what this phase covers"
+         }
+       ],
+       "agentTeamPrompt": "only if 2+ phases parallelizable"
+     }
+   }
+   ```
 
-8. **Include a scope slider** in the Scope tab. Define 3 scope tiers based on the interview findings:
-   - **MVP** — minimum viable version, core functionality only
-   - **Full** — everything in the contract's "In Scope" section
-   - **Stretch** — full scope plus items from "Future Considerations" that could be pulled in
-     For each tier, list what's included and excluded. Use a range input (`<input type="range">`) with 3 stops that reveals/hides scope items as the user drags. The slider is a visual aid — the user sees what each tier includes, then tells you in the terminal which tier to target. This replaces the static in-scope/out-of-scope lists for the Scope tab.
-9. After writing, open in browser: run `open ./docs/ideation/{project-name}/contract.html` (macOS) or `xdg-open` (Linux)
-10. Use `AskUserQuestion` to get approval — include the scope tier question:
+   **Confidence dimensions:** Each dimension gets a numeric score (0-100) and a one-sentence reason. The overall `score` is what the hero displays; dimensions show the breakdown.
+
+   **Phase fields:** `risk` (high/medium/low), `blocking` (boolean), `specPath` (path to spec), `notes` (brief description). Optional: `kind` ("gate" for human checkpoints), `prereqs` (array of phase titles this depends on).
+
+5. **Run the contract generator**:
+   ```bash
+   npx tsx ${CLAUDE_PLUGIN_ROOT}/scripts/contract-gen.ts \
+     --input ./docs/ideation/{slug}/contract-data.json \
+     --output ./docs/ideation/{slug}/contract.html
+   ```
+   The CLI handles lineage automatically — if `contract.html` already exists, it renames it to `contract-{date}.html` and sets the supersedes link.
+
+6. Open in browser: run `open ./docs/ideation/{slug}/contract.html` (macOS) or `xdg-open` (Linux)
+7. Use `AskUserQuestion` to get approval — include the scope tier question:
 
 ```
-Question: "Does this contract capture your intent? Use the scope slider in your browser to pick a tier."
+Question: "Does this contract capture your intent? Which scope tier should we target?"
 Options:
+- "Approved — Full scope (Recommended)" - Build MVP + Full tiers
 - "Approved — MVP scope" - Ship the minimum viable version first
-- "Approved — Full scope" - Build everything in the In Scope list
-- "Approved — Stretch scope" - Include Future Considerations items too
+- "Approved — Stretch scope" - Include MVP + Full + Stretch tiers
 - "Needs changes" - Some parts need revision before approving
 - "Start over" - Fundamentally off track, re-interview
 ```
 
-The approved scope tier determines what goes into specs. Items outside the chosen tier move to "Future Considerations" in the contract.
+The approved scope tier determines what goes into specs. Items outside the chosen tier move to "Future Considerations."
 
 **If not approved:** Revise based on feedback. If feedback reveals a fundamental misunderstanding, return to the interview loop. Otherwise re-write the HTML file and re-open in browser. Iterate until approved.
 
@@ -197,11 +237,11 @@ If not approved, revise the relevant specs based on feedback and re-present. Ite
 
 ## Phase 5: Execution Handoff
 
-After specs are approved, update the contract HTML with the execution plan and auto-generate Markdown specs for `/execute-spec`.
+After specs are approved, update the contract HTML with the execution plan and auto-generate Markdown specs for `/ideation:execute-spec`.
 
 ### 5.1 Analyze Orchestration Strategy
 
-Do not create tasks during ideation handoff — they are ephemeral and will be lost when the user starts a fresh session. Each `/execute-spec` session creates its own granular implementation tasks.
+Do not create tasks during ideation handoff — they are ephemeral and will be lost when the user starts a fresh session. Each `/ideation:execute-spec` session creates its own granular implementation tasks.
 
 Analyze the phase dependency graph to determine the best execution strategy.
 
@@ -220,15 +260,15 @@ Analyze the phase dependency graph to determine the best execution strategy.
 | 2+ independent phases         | **Agent team** — lead orchestrates teammates in parallel                      |
 | Mixed dependencies            | **Hybrid** — sequential for dependent chain, agent team for independent group |
 
-### 5.2 Update Contract HTML with Execution Plan
+### 5.2 Update Contract Data with Execution Plan
 
-Read the existing `contract.html` and update the Execution Plan tab panel. This makes the contract fully self-contained — someone can pick it up cold and know exactly how to execute.
+Update `contract-data.json` with the final execution plan, then re-run `contract-gen.ts`. This makes the contract fully self-contained — someone can pick it up cold and know exactly how to execute.
 
-1. **SVG Dependency Graph** — generate inline SVG using the dep-graph component from `references/html-guide.md`. Vertical flow for sequential, horizontal spread for parallel phases at the same depth.
+1. **Phase Track** — populate `execution.phases` with phase titles, risk, blockers, spec paths, notes, and human gates. The CLI renders the horizontal phase track with risk coloring.
 
-2. **Execution Steps** — code blocks with copy buttons for each `/execute-spec` command. Mark which are sequential vs parallel.
+2. **Execution Commands** — the CLI renders copy buttons for `/ideation:autopilot` and each `/ideation:execute-spec` command.
 
-3. **Agent Team Prompt** — only if 2+ phases are parallelizable. Place in a collapsible section with a copy button. **Omit this subsection entirely** for fully sequential projects.
+3. **Agent Team Prompt** — only if 2+ phases are parallelizable. Set `execution.agentTeamPrompt` so the CLI renders it in a collapsible section with a copy button. **Omit this field entirely** for fully sequential projects.
 
 **Shared file detection:** Before writing the agent team prompt, scan spec files' "Modified Files" sections. If multiple specs modify the same files, include a coordination note:
 
@@ -239,7 +279,7 @@ only one teammate should modify a shared file at a time.
 
 **Batching:** If more than 5 parallelizable phases, note in the execution steps to start with the highest-priority batch first.
 
-Re-open the contract in the browser after updating.
+Re-open the regenerated contract in the browser after updating.
 
 ### 5.3 Generate Contract Markdown
 
@@ -256,8 +296,8 @@ After updating the contract and generating MD specs, present a brief conversatio
 ```
 Ideation complete. Artifacts written to `./docs/ideation/{project-name}/`.
 
-Open contract.html in your browser to review the full plan — dependency graph,
-execution commands, and scope are all in the Execution Plan tab.
+Open contract.html in your browser to review the full plan — phase track,
+execution commands, and scope are all in the Mission Brief.
 
 Specs (spec-phase-*.md) are ready. To execute all phases:
   /ideation:autopilot
@@ -266,7 +306,7 @@ Or run individual phases manually:
   /ideation:execute-spec docs/ideation/{project-name}/spec-phase-1.md
 ```
 
-**Recommend `/ideation:autopilot`** as the default. It reads the contract, walks the dependency graph, dispatches subagents per phase (parallel when possible), and only stops on failures. Manual `/execute-spec` is available for finer control.
+**Recommend `/ideation:autopilot`** as the default. It reads the contract, walks the dependency graph, dispatches subagents per phase (parallel when possible), and only stops on failures. Manual `/ideation:execute-spec` is available for finer control.
 
 </supporting-info>
 
@@ -276,7 +316,7 @@ All artifacts written to `./docs/ideation/{project-name}/`:
 
 ```
 _comparison.html                   # Ephemeral decision aid (deleted after choice is made)
-contract.html                      # Interactive contract with scope slider (for review)
+contract.html                      # Mission Brief contract (for review)
 contract.md                        # Plain contract (for execute-spec lineage)
 prd-phase-1.md                     # Phase 1 requirements (only if PRDs chosen)
 ...
