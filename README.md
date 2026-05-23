@@ -360,6 +360,33 @@ Wave 3/3: Phase 4 — PASS (jkl3456)
 All 4 phases complete.
 ```
 
+### get-goal-prompt
+
+Generate a `/goal` command to execute specs autonomously. Reads the contract, builds a goal prompt with phase ordering and spec paths, and copies it to your clipboard. Paste to start.
+
+**Usage:**
+
+```bash
+# Auto-detect contract
+/ideation:get-goal-prompt
+
+# Specify contract path
+/ideation:get-goal-prompt docs/ideation/my-project/contract.md
+```
+
+**How it works:**
+
+- Reads the contract, extracts phases with spec paths and dependency order
+- Skips already-committed phases (checks git log)
+- Constructs a `/goal` condition (under 4000 chars) with execution instructions
+- Copies the full `/goal` command to clipboard and prints it
+- You paste the command to start — `/goal` handles autonomous execution with a separate evaluator checking completion after each turn
+
+**When to use this vs autopilot:**
+
+- **autopilot** — parallel dispatch, dependency-wave computation, failure gates with skip/retry/stop
+- **get-goal-prompt** — simpler, built-in retry via `/goal`, session resumable with `--resume`, runs in non-interactive mode via `claude -p`
+
 ## Manual Cross-Session Execution
 
 For manual control, run specs individually:
