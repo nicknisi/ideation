@@ -8,3 +8,4 @@ node_modules/
 PRODUCT.md
 DESIGN.md
 test-fixtures/**/out/
+docs/ideation/
