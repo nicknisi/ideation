@@ -122,7 +122,7 @@ No feedback loop → implement fully, then run validation commands. **If validat
 
 ### Parallel Execution (`--parallel`)
 
-Default is sequential. With `--parallel`, dispatch subagents wave by wave, with waves planned by the tested wave-planner CLI — not ad-hoc rules. Pattern: `plugins/ideation/skills/autopilot/SKILL.md` Step 3 (same `{ title, prereqs, files }` manifest; skill prepares the manifest, tested code plans the waves).
+Default is sequential. With `--parallel`, dispatch subagents wave by wave, with waves planned by the tested wave-planner CLI — not ad-hoc rules. Pattern: `skills/autopilot/SKILL.md` Step 3 (same `{ title, prereqs, files }` manifest; skill prepares the manifest, tested code plans the waves).
 
 1. **Build a component manifest**, one entry per component: `title` (matches the task subject), `prereqs` (titles it's blocked by), `files` (every path it touches from its File Changes rows). **Unattributable files → give that component ALL declared files** (serializes it against everything).
 2. **Plan the waves:**

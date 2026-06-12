@@ -29,7 +29,7 @@ Final summary: `completed = [P1, P2]`, `failed = [P3]`, `skipped = [P4]`.
 Proves the graph wires the planner correctly. Run anytime:
 
 ```bash
-node --test plugins/ideation/test-fixtures/orchestration/graph.test.mjs
+node --test test-fixtures/orchestration/graph.test.mjs
 ```
 
 This reads the same `contract-data.json` the rebuilt autopilot consumes and asserts the
@@ -58,7 +58,7 @@ This exercises the part the deterministic check can't: `agent()` actually dispat
    ```
 2. **Opt into Workflow** (the engine is a dynamic Workflow) and **run autopilot** against the fixture:
    ```
-   /ideation:autopilot plugins/ideation/test-fixtures/orchestration/contract.md
+   /ideation:autopilot test-fixtures/orchestration/contract.md
    ```
 3. **Observe** in `/workflows`: Wave 1 = P1; Wave 2 = P2 + P3 **concurrently**; P4 never dispatched.
 4. **Assert** the final summary buckets match the table above, and the failure gate prompts.

@@ -1,0 +1,9 @@
+node_modules/
+*.log
+.env
+
+# Local-only Claude/impeccable state
+.claude/settings.local.json
+.impeccable/
+PRODUCT.md
+DESIGN.md

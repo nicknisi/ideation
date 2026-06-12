@@ -57,20 +57,20 @@ Phase 1 — root
 1. **Phase 1** — root _(blocking)_
 
    ```bash
-   /ideation:execute-spec plugins/ideation/test-fixtures/orchestration/spec-phase-1.md
+   /ideation:execute-spec test-fixtures/orchestration/spec-phase-1.md
    ```
 
 2. **Phases 2 & 3** — parallel after Phase 1
 
    ```bash
-   /ideation:execute-spec plugins/ideation/test-fixtures/orchestration/spec-phase-2.md
-   /ideation:execute-spec plugins/ideation/test-fixtures/orchestration/spec-phase-3.md
+   /ideation:execute-spec test-fixtures/orchestration/spec-phase-2.md
+   /ideation:execute-spec test-fixtures/orchestration/spec-phase-3.md
    ```
 
 3. **Phase 4** — dependent on the failure _(blocked by Phase 3)_
 
    ```bash
-   /ideation:execute-spec plugins/ideation/test-fixtures/orchestration/spec-phase-4.md
+   /ideation:execute-spec test-fixtures/orchestration/spec-phase-4.md
    ```
 
 ---

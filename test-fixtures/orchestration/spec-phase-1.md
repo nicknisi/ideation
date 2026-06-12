@@ -19,7 +19,7 @@ committable repo change.
 
 | File Path                                                     | Purpose                     |
 | ------------------------------------------------------------- | --------------------------- |
-| `plugins/ideation/test-fixtures/orchestration/out/phase1.txt` | Marker proving Phase 1 ran. |
+| `test-fixtures/orchestration/out/phase1.txt` | Marker proving Phase 1 ran. |
 
 ## Implementation Details
 
@@ -27,15 +27,15 @@ committable repo change.
 
 **Implementation steps**:
 
-1. `mkdir -p plugins/ideation/test-fixtures/orchestration/out`
-2. `echo phase1 > plugins/ideation/test-fixtures/orchestration/out/phase1.txt`
+1. `mkdir -p test-fixtures/orchestration/out`
+2. `echo phase1 > test-fixtures/orchestration/out/phase1.txt`
 
 ## Validation Commands
 
 ```bash
-mkdir -p plugins/ideation/test-fixtures/orchestration/out
-echo phase1 > plugins/ideation/test-fixtures/orchestration/out/phase1.txt
-test -f plugins/ideation/test-fixtures/orchestration/out/phase1.txt
+mkdir -p test-fixtures/orchestration/out
+echo phase1 > test-fixtures/orchestration/out/phase1.txt
+test -f test-fixtures/orchestration/out/phase1.txt
 ```
 
 ---

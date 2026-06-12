@@ -17,7 +17,7 @@ Would write a marker file — but should never run because Phase 3 fails.
 
 | File Path                                                     | Purpose                                                    |
 | ------------------------------------------------------------- | ---------------------------------------------------------- |
-| `plugins/ideation/test-fixtures/orchestration/out/phase4.txt` | Marker — its ABSENCE after a failure run is the assertion. |
+| `test-fixtures/orchestration/out/phase4.txt` | Marker — its ABSENCE after a failure run is the assertion. |
 
 ## Implementation Details
 
@@ -25,14 +25,14 @@ Would write a marker file — but should never run because Phase 3 fails.
 
 **Implementation steps**:
 
-1. `echo phase4 > plugins/ideation/test-fixtures/orchestration/out/phase4.txt`
+1. `echo phase4 > test-fixtures/orchestration/out/phase4.txt`
 
 ## Validation Commands
 
 ```bash
-mkdir -p plugins/ideation/test-fixtures/orchestration/out
-echo phase4 > plugins/ideation/test-fixtures/orchestration/out/phase4.txt
-test -f plugins/ideation/test-fixtures/orchestration/out/phase4.txt
+mkdir -p test-fixtures/orchestration/out
+echo phase4 > test-fixtures/orchestration/out/phase4.txt
+test -f test-fixtures/orchestration/out/phase4.txt
 ```
 
 ---

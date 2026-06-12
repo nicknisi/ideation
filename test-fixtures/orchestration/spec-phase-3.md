@@ -18,7 +18,7 @@ so `execute-spec` fails validation and reports this phase as FAIL **without comm
 
 | File Path                                                     | Purpose                                      |
 | ------------------------------------------------------------- | -------------------------------------------- |
-| `plugins/ideation/test-fixtures/orchestration/out/phase3.txt` | Marker (written, but validation still fails) |
+| `test-fixtures/orchestration/out/phase3.txt` | Marker (written, but validation still fails) |
 
 ## Implementation Details
 
@@ -26,14 +26,14 @@ so `execute-spec` fails validation and reports this phase as FAIL **without comm
 
 **Implementation steps**:
 
-1. `echo phase3 > plugins/ideation/test-fixtures/orchestration/out/phase3.txt`
+1. `echo phase3 > test-fixtures/orchestration/out/phase3.txt`
 2. Run the failing validation below — it MUST exit 1, so the phase never commits.
 
 ## Validation Commands
 
 ```bash
-mkdir -p plugins/ideation/test-fixtures/orchestration/out
-echo phase3 > plugins/ideation/test-fixtures/orchestration/out/phase3.txt
+mkdir -p test-fixtures/orchestration/out
+echo phase3 > test-fixtures/orchestration/out/phase3.txt
 echo "Deliberate fixture failure — Phase 3 is rigged to fail." >&2
 exit 1
 ```

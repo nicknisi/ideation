@@ -119,7 +119,7 @@ inlined mirror of both functions.
 ## Testing
 
 ```bash
-node --test 'plugins/ideation/workflows/*.test.mjs'
+node --test 'workflows/*.test.mjs'
 ```
 
 The planner tests cover the graph math; the smoke test runs the full script body with

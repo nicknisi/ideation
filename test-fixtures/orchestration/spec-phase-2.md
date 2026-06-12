@@ -17,7 +17,7 @@ Write a marker file marking this phase done.
 
 | File Path                                                     | Purpose                     |
 | ------------------------------------------------------------- | --------------------------- |
-| `plugins/ideation/test-fixtures/orchestration/out/phase2.txt` | Marker proving Phase 2 ran. |
+| `test-fixtures/orchestration/out/phase2.txt` | Marker proving Phase 2 ran. |
 
 ## Implementation Details
 
@@ -25,14 +25,14 @@ Write a marker file marking this phase done.
 
 **Implementation steps**:
 
-1. `echo phase2 > plugins/ideation/test-fixtures/orchestration/out/phase2.txt`
+1. `echo phase2 > test-fixtures/orchestration/out/phase2.txt`
 
 ## Validation Commands
 
 ```bash
-mkdir -p plugins/ideation/test-fixtures/orchestration/out
-echo phase2 > plugins/ideation/test-fixtures/orchestration/out/phase2.txt
-test -f plugins/ideation/test-fixtures/orchestration/out/phase2.txt
+mkdir -p test-fixtures/orchestration/out
+echo phase2 > test-fixtures/orchestration/out/phase2.txt
+test -f test-fixtures/orchestration/out/phase2.txt
 ```
 
 ---

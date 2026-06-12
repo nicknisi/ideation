@@ -33,7 +33,7 @@ export const meta = {
  * }
  *
  * KEEP IN SYNC: the three planner functions below are mirrored from
- * plugins/ideation/workflows/wave-planner.mjs (the unit-tested source of truth).
+ * workflows/wave-planner.mjs (the unit-tested source of truth).
  * They are inlined here so the script loads without relying on the Workflow
  * sandbox supporting relative imports.
  */
