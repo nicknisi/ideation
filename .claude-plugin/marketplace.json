@@ -1,0 +1,19 @@
+{
+  "name": "ideation",
+  "description": "Single-plugin marketplace for the ideation plugin — evidence-gated planning interviews that turn brain dumps into contracts and implementation specs.",
+  "owner": {
+    "name": "Nick Nisi",
+    "email": "nick@nisi.org"
+  },
+  "plugins": [
+    {
+      "name": "ideation",
+      "source": "./",
+      "description": "Transform brain dumps into implementation specs through an evidence-gated interview stress-tested by adversarial plan critics. Interactive HTML contract for planning decisions, Markdown specs for execution. /ideation:autopilot runs all phases on a deterministic workflow engine with overlap-serialized parallel waves; /ideation:retro mines implementation notes into learnings future interviews read.",
+      "author": {
+        "name": "Nick Nisi",
+        "email": "nick@nisi.org"
+      }
+    }
+  ]
+}
