@@ -7,3 +7,4 @@ node_modules/
 .impeccable/
 PRODUCT.md
 DESIGN.md
+test-fixtures/**/out/
