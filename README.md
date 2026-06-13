@@ -478,10 +478,6 @@ For manual control, run specs individually:
 ## Installation
 
 ```bash
-/plugin marketplace add nicknisi/claude-plugins
-/plugin install ideation@nicknisi
+/plugin marketplace add nicknisi/ideation
+/plugin install ideation@ideation
 ```
-
-## Version
-
-0.14.0
