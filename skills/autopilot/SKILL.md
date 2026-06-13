@@ -118,6 +118,8 @@ Options:
 - "Accept and finish" — Treat failures as acknowledged; report and finish.
 ```
 
+**Unattended** (driven by a `/goal` wrapper, or any run with no interactive user): do not block on `AskUserQuestion` — apply "Stop here" semantics: report the three buckets and halt. Completed phases are already committed and durable; retry belongs to whoever is driving (a `/goal` wrapper re-runs this skill, and the Step 2 git pre-pass resumes past everything committed).
+
 **If "Retry failed phases":**
 
 - **Same session:** re-invoke the `Workflow` tool with `resumeFromRunId: <runId>` (and the same `scriptPath`). Cached passing phases return instantly; only the failed/unreached phases re-run.

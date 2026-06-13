@@ -43,32 +43,32 @@ When all 5 evidence gates are `ready` — **not before** — generate the Missio
      "gates": {
        "dimensions": [
          {
-           "key": "scope",
-           "label": "Scope",
+           "key": "problem",
+           "label": "Problem Clarity",
            "status": "ready",
            "evidence": "One sentence citing the artifact that makes this gate ready"
          },
          {
-           "key": "risk",
-           "label": "Risk",
+           "key": "goals",
+           "label": "Goal Definition",
            "status": "ready",
            "evidence": "One sentence"
          },
          {
-           "key": "effort",
-           "label": "Effort",
+           "key": "criteria",
+           "label": "Success Criteria",
            "status": "ready",
            "evidence": "One sentence"
          },
          {
-           "key": "clarity",
-           "label": "Clarity",
+           "key": "scope",
+           "label": "Scope Boundaries",
            "status": "ready",
            "evidence": "One sentence"
          },
          {
-           "key": "tests",
-           "label": "Tests",
+           "key": "consistency",
+           "label": "Consistency",
            "status": "not-ready",
            "evidence": "One sentence naming the gap that keeps this gate not-ready"
          }
@@ -106,7 +106,7 @@ When all 5 evidence gates are `ready` — **not before** — generate the Missio
    }
    ```
 
-   Field semantics live in the `contract-gen.ts` types. Key contracts: each gate `dimension` has a `status` (`ready`/`not-ready`) and one-sentence `evidence` (the artifact making it ready, or the gap keeping it not-ready) — readiness is derived from the dimensions, no counts. Proceed only when all 5 are ready — record not-ready gates only when the user ends the interview early. **Success criteria carry their own verification**: give every criterion a `check` — a runnable command plus its expected outcome (`"npx vitest run src/auth — exits 0"`, `"curl -s localhost:3000/health — returns 200"`) — whenever it can be verified mechanically. Omit `check` only when verification is genuinely human judgment; the contract renders those with a visible "judgment call" tag, and the success-criteria critic challenges any omission where a command is plausible. Phase fields: `risk` (high/medium/low), `blocking`, `specPath`, `notes`; optional `kind` ("gate" for human checkpoints) and `prereqs` (array of phase titles). `status` stays `"Draft"` here — a Draft contract renders the phase track as a plan preview with no run commands; commands appear when Phase 5 flips it to `"Approved"`.
+   Field semantics live in the `contract-gen.ts` types. Key contracts: the five gate dimensions are exactly the rubric's gates — Problem Clarity, Goal Definition, Success Criteria, Scope Boundaries, Consistency (see `${CLAUDE_PLUGIN_ROOT}/references/confidence-rubric.md`; the example above uses their canonical keys/labels). Each `dimension` has a `status` (`ready`/`not-ready`) and one-sentence `evidence` (the artifact making it ready, or the gap keeping it not-ready) — readiness is derived from the dimensions, no counts. Proceed only when all 5 are ready — record not-ready gates only when the user ends the interview early. **Success criteria carry their own verification**: give every criterion a `check` — a runnable command plus its expected outcome (`"npx vitest run src/auth — exits 0"`, `"curl -s localhost:3000/health — returns 200"`) — whenever it can be verified mechanically. Omit `check` only when verification is genuinely human judgment; the contract renders those with a visible "judgment call" tag, and the success-criteria critic challenges any omission where a command is plausible. Phase fields: `risk` (high/medium/low), `blocking`, `specPath`, `notes`; optional `kind` ("gate" for human checkpoints) and `prereqs` (array of phase titles). `status` stays `"Draft"` here — a Draft contract renders the phase track as a plan preview with no run commands; commands appear when Phase 5 flips it to `"Approved"`.
 
 4. **Fan out the plan critics** (before rendering — fixing a blocker is a one-line JSON edit at this stage, not a regenerate loop). Issue all three `Agent` calls in one message so they run concurrently: `subagent_type: ideation:plan-critic`, prompt = per-invocation inputs only (`contract-data.json` path, project directory, and the **lens** — one of `scope-creep`, `hidden-dependency`, `success-criteria`); workflow/format/read-only `tools` come from the registered definition and are platform-enforced.
 
@@ -114,7 +114,7 @@ When all 5 evidence gates are `ready` — **not before** — generate the Missio
 
    **Failure tolerance:** a failed critic or an unregistered `ideation:plan-critic` (older Claude Code) → warn, proceed without that lens, note the gap in the digest. Critics amplify quality; never block the contract on a critic failure. **Run-once rule:** critics run exactly once per contract — re-run only if a revision changes goals or scope _fundamentally_, not for wording. The "Needs changes" approval loop does **not** re-trigger them.
 
-5. **Run the generator** (it handles lineage — an existing `contract.html` is renamed to `contract-{date}.html` with the supersedes link set):
+5. **Run the generator** (it handles lineage — an existing **Approved** `contract.html` is renamed to `contract-{date}.html` with the supersedes link set; a Draft is replaced in place, so interview revisions and the Draft→Approved flip don't accumulate snapshots):
 
    ```bash
    npx tsx ${CLAUDE_PLUGIN_ROOT}/scripts/contract-gen.ts \
@@ -170,7 +170,7 @@ Break scope into logical implementation phases.
 
 ### 4.3 Generate PRDs (only if "PRDs then specs")
 
-Read `references/prd-template.md`, then generate `prd-phase-{n}.md` per phase: overview/rationale, user stories, functional requirements (grouped), non-functional requirements, dependencies (prerequisites and outputs), acceptance criteria. Review via `AskUserQuestion`, iterating until approved:
+Read `${CLAUDE_PLUGIN_ROOT}/skills/ideation/references/prd-template.md`, then generate `prd-phase-{n}.md` per phase: overview/rationale, user stories, functional requirements (grouped), non-functional requirements, dependencies (prerequisites and outputs), acceptance criteria. Review via `AskUserQuestion`, iterating until approved:
 
 ```
 Question: "Do these PRD phases look correct?"
@@ -183,7 +183,7 @@ Options:
 
 ### 4.4 Generate Implementation Specs
 
-Read `references/spec-template.md`, then generate specs **lazily** — only when a phase's details are resolved.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/ideation/references/spec-template.md`, then generate specs **lazily** — only when a phase's details are resolved.
 
 **Standard phases** (each unique): a full `spec-phase-{n}.md` with technical approach, feedback strategy (inner-loop command, playground, rationale), file changes (table with new/modified/deleted), implementation details (per-component, each with a playground → experiment → check-command loop), testing requirements (table), failure modes (table: component, failure, trigger, impact, mitigation), validation commands.
 
@@ -233,7 +233,7 @@ Update `contract-data.json` with the final plan and re-run `contract-gen.ts` so 
 
 ### 5.3 Generate Contract Markdown
 
-Generate `contract.md` from `references/contract-template.md` mirroring `contract.html` (including the Execution Plan) — needed for execute-spec lineage detection. Specs and PRDs are already Markdown.
+Generate `contract.md` from `${CLAUDE_PLUGIN_ROOT}/skills/ideation/references/contract-template.md` mirroring `contract.html` (including the Execution Plan) — needed for execute-spec lineage detection. Specs and PRDs are already Markdown.
 
 ### 5.4 Present Handoff Summary
 
@@ -276,6 +276,7 @@ All written to `./docs/ideation/{project-name}/`:
 
 ```
 _comparison.html                   # Ephemeral decision aid (deleted after choice is made)
+contract-data.json                 # Machine-readable contract (source of truth; consumed by autopilot)
 contract.html                      # Mission Brief contract (for review)
 contract.md                        # Plain contract (for execute-spec lineage)
 prd-phase-1.md                     # Phase 1 requirements (only if PRDs chosen)
@@ -295,7 +296,7 @@ spec-phase-{n}.md                  # Per-phase delta or full spec
 - `feedback-loop-guide.md` — component-type mapping and design criteria for spec feedback loops
 - `workflow-example.md` — end-to-end walkthrough
 
-**Skill references** — HTML (interactive): `references/html-guide.md` (component library, design tokens, constraints — for ephemeral comparison artifacts only; `contract.html` comes exclusively from `scripts/contract-gen.ts`). Markdown: `references/contract-template.md`, `references/prd-template.md`, `references/spec-template.md`.
+**Skill references** — these live at `${CLAUDE_PLUGIN_ROOT}/skills/ideation/references/`, a different base from the shared refs above; bare `references/...` mentions in this file resolve there. HTML (interactive): `references/html-guide.md` (component library, design tokens, constraints — for ephemeral comparison artifacts only; `contract.html` comes exclusively from `scripts/contract-gen.ts`). Markdown: `references/contract-template.md`, `references/prd-template.md`, `references/spec-template.md`.
 
 **Examples** (filled-in artifacts for a bookmark feature — reference for tone, structure, detail): `examples/contract-example.md`, `examples/prd-example.md`, `examples/spec-example.md`.
 

@@ -138,7 +138,7 @@ One file per phase. Opens in your browser automatically after execution. If the 
 
 ## Contract Lineage
 
-Contracts track revision history via a `Supersedes` link. When re-running ideation on the same project, the prior `contract.html` is renamed to `contract-{date}.html` (and the sibling `contract.md` to `contract-{date}.md`) and the new contract references it, creating a traceable revision chain.
+Contracts track revision history via a `Supersedes` link. When re-running ideation on the same project, the prior **Approved** `contract.html` is renamed to `contract-{date}.html` (and the sibling `contract.md` to `contract-{date}.md`) and the new contract references it, creating a traceable revision chain. Draft contracts are replaced in place — interview revisions and the same-session Draft→Approved flip don't accumulate snapshot files; only approved commitments earn lineage.
 
 ## Evidence Gates
 

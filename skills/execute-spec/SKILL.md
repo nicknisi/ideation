@@ -84,7 +84,7 @@ One-time setup before building. Read the spec's Feedback Strategy for the playgr
 
 ### 6. Initialize Implementation Notes
 
-Create `{project-directory}/implementation-notes-phase-{n}.html` — a running log of decisions not covered by the spec, for the human to review. Write the shell once using Section 1 (Base Styles only) of `${CLAUDE_PLUGIN_ROOT}/skills/ideation/references/html-guide.md`: title "Implementation Notes — Phase {N}" and an empty `<main>`.
+Maintain `{project-directory}/implementation-notes-phase-{n}.html` — a running log of decisions not covered by the spec, for the human to review. **Create the file lazily, on the first logged entry** (not upfront): write the shell using Section 1 (Base Styles only) of `${CLAUDE_PLUGIN_ROOT}/skills/ideation/references/html-guide.md` — title "Implementation Notes — Phase {N}" and a `<main>` holding the entry — then append subsequent entries. A clean phase with zero entries means no file ever exists, which avoids create-then-delete churn.
 
 **Log an entry** for a spec gap (had to make a judgment call), spec deviation (and why), tradeoff (multiple valid approaches), codebase surprise, or dependency mismatch. Format:
 
@@ -102,7 +102,7 @@ Create `{project-directory}/implementation-notes-phase-{n}.html` — a running l
 </section>
 ```
 
-Don't log routine implementation. If no entries are logged by the end of the phase, delete the empty file.
+Don't log routine implementation.
 
 ## Build Phase
 
@@ -140,7 +140,7 @@ Subagents only build; they do not run review cycles. After all complete, the **m
 
 ## Post-Execution: Verify-Review-Fix Loop
 
-Code is **not committed** until review passes or the user accepts remaining issues. **Do not stage files until after review passes** — the reviewer reads `git diff HEAD`, so keep changes unstaged for a clean, complete diff.
+Code is **not committed** until review passes or the user accepts remaining issues. **Do not stage files until after review passes** — the reviewer reads `git diff HEAD`, so keep changes unstaged for a clean, complete diff. One exception: `git diff HEAD` is blind to untracked files, so first register every net-new file with `git add -N <path>` (intent-to-add — the file appears in the diff without its content being staged). Without this, a phase whose only output is new files produces an empty diff: review gets wrongly skipped and the work never commits.
 
 ### Verify
 
@@ -148,7 +148,7 @@ Run all of the spec's Validation Commands (type check, lint, tests, build). Fix 
 
 ### Review (Cycle 1 of max 3)
 
-**Empty diff** → skip review entirely; report the components as no-ops and go to the completion report.
+**Empty diff** (after `git add -N` of new files) → skip review entirely; report the components as no-ops and go to the completion report.
 
 Invoke `Agent` with `subagent_type: ideation:reviewer`. Per-invocation inputs only (workflow/format/`tools` come from the registered definition; `tools` is platform-enforced — Bash for `git diff HEAD`/`git log` only, never edits): spec path, the pattern file list (from Section 3), the cycle number, and — if cycle > 1 — the prior cycle's findings, including any the builder refuted (marked `[REFUTED: evidence]`) so the reviewer re-examines them.
 
@@ -191,7 +191,7 @@ Options:
 
 ### Commit
 
-Only after PASS or user acceptance: stage the phase's changed files by name (never `git add -A`), commit following the project's conventions, and include the cycle count in the body if review took multiple cycles.
+Only after PASS or user acceptance: stage the phase's changed files by name (never `git add -A`), commit following the project's conventions, and include the cycle count in the body if review took multiple cycles. Process artifacts (`context-map.md`, `implementation-notes-*.html`) are working files, not phase deliverables — leave them out of the phase commit unless the project's conventions track `docs/ideation/`.
 
 ### Completion Report
 

@@ -569,7 +569,7 @@ function generate(data: ContractData): string {
 ${CSS}
     </style>
   </head>
-  <body>
+  <body data-contract-status="${esc(d.status)}">
 ${buildHeader(d)}
     <main>
 ${buildFirstMove(d)}
@@ -680,34 +680,48 @@ function nextLineagePath(
 
 if (existsSync(outputPath)) {
   const existing = readFileSync(outputPath, 'utf8');
-  const dateMatch = existing.match(/(\d{4}-\d{2}-\d{2})/);
-  const existingDate = dateMatch?.[1] ?? 'unknown';
-  const htmlMtime = statSync(outputPath).mtimeMs;
-  const renamedPath = nextLineagePath(
-    outputDir,
-    basename(outputPath, '.html'),
-    existingDate,
-    '.html',
-  );
-  const renamedBase = basename(renamedPath);
-  renameSync(outputPath, renamedPath);
-
-  // Archive the sibling .md only if it belongs to the superseded revision —
-  // an .md newer than the .html being archived was written for the NEW
-  // revision and must stay in place.
-  const mdPath = outputPath.replace(/\.html$/, '.md');
-  if (existsSync(mdPath) && statSync(mdPath).mtimeMs <= htmlMtime) {
-    renameSync(
-      mdPath,
-      nextLineagePath(outputDir, basename(mdPath, '.md'), existingDate, '.md'),
+  // A Draft being overwritten is the same contract still converging
+  // (interview revisions, the same-session Draft→Approved flip) — replace it
+  // in place. Only Approved contracts are commitments worth a lineage
+  // snapshot. Files generated before the status attribute existed fall
+  // through to the snapshot path.
+  if (/data-contract-status="Draft"/.test(existing)) {
+    console.log('Replacing Draft contract in place (no lineage snapshot)');
+  } else {
+    const dateMatch = existing.match(/(\d{4}-\d{2}-\d{2})/);
+    const existingDate = dateMatch?.[1] ?? 'unknown';
+    const htmlMtime = statSync(outputPath).mtimeMs;
+    const renamedPath = nextLineagePath(
+      outputDir,
+      basename(outputPath, '.html'),
+      existingDate,
+      '.html',
     );
-  }
+    const renamedBase = basename(renamedPath);
+    renameSync(outputPath, renamedPath);
 
-  if (!data.supersedes) {
-    data.supersedes = renamedBase;
-  }
+    // Archive the sibling .md only if it belongs to the superseded revision —
+    // an .md newer than the .html being archived was written for the NEW
+    // revision and must stay in place.
+    const mdPath = outputPath.replace(/\.html$/, '.md');
+    if (existsSync(mdPath) && statSync(mdPath).mtimeMs <= htmlMtime) {
+      renameSync(
+        mdPath,
+        nextLineagePath(
+          outputDir,
+          basename(mdPath, '.md'),
+          existingDate,
+          '.md',
+        ),
+      );
+    }
 
-  console.log(`Renamed existing contract to ${renamedBase}`);
+    if (!data.supersedes) {
+      data.supersedes = renamedBase;
+    }
+
+    console.log(`Renamed existing contract to ${renamedBase}`);
+  }
 }
 
 const html = generate(data);

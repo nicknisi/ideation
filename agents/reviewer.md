@@ -21,7 +21,7 @@ You receive:
 
 ### 1. Gather Context
 
-Run `git diff HEAD` via Bash to see all changes relative to the last commit (both staged and unstaged). This is your primary input — what was actually built.
+Run `git diff HEAD` via Bash to see all changes relative to the last commit (both staged and unstaged). This is your primary input — what was actually built. The builder registers net-new files with `git add -N` so they appear here; if the diff is empty but the spec's File Changes lists new files, report that mismatch as a finding rather than passing an empty review.
 
 Read the spec file. Extract:
 

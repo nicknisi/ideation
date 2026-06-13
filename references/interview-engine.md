@@ -18,7 +18,7 @@ Acknowledge receipt. State what looks strong and what looks weak. Take a positio
 
 While the sweep runs, acknowledge the brain dump and state what looks strong and weak — don't block on the agents. Weave their findings in as they return.
 
-**Skip the sweep when greenfield** — there's no repo, or the brain dump is unrelated to the existing code. Exploring an unrelated codebase wastes tokens and slows the opener.
+**Skip the sweep when greenfield** — there's no repo, or the brain dump is unrelated to the existing code. Exploring an unrelated codebase wastes tokens and slows the opener. **Also skip it when the repo is tiny**: if a handful of `Read` calls covers the whole codebase, read it inline — the sweep exists to compress exploration that wouldn't fit the opener, not to add ceremony to a three-file project.
 
 **Cap at 3 sweep agents.** Scope each agent's prompt to the brain dump's stated area; beyond 3 agents, latency and token cost outrun the value for an interview opener. Sweep findings stay in conversation context — the "do not write exploration findings to files" rule below applies to the sweep too.
 

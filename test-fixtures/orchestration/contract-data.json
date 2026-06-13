@@ -7,34 +7,34 @@
   "gates": {
     "dimensions": [
       {
-        "key": "scope",
-        "label": "Scope",
+        "key": "problem",
+        "label": "Problem Clarity",
         "status": "ready",
-        "evidence": "Four trivial phases and their dependency wiring are fully enumerated."
+        "evidence": "The fixture exists solely to validate the autopilot engine's graph behavior."
       },
       {
-        "key": "risk",
-        "label": "Risk",
-        "status": "ready",
-        "evidence": "Only risk is the rigged P3 failure, which is intentional and contained."
-      },
-      {
-        "key": "effort",
-        "label": "Effort",
-        "status": "ready",
-        "evidence": "Each phase writes a single sentinel file — effort is trivial."
-      },
-      {
-        "key": "clarity",
-        "label": "Clarity",
+        "key": "goals",
+        "label": "Goal Definition",
         "status": "ready",
         "evidence": "Goals and the expected completed/failed/skipped summary are stated explicitly."
       },
       {
-        "key": "tests",
-        "label": "Tests",
+        "key": "criteria",
+        "label": "Success Criteria",
         "status": "ready",
         "evidence": "Success criteria are pass/fail: completed=[P1,P2], failed=[P3], skipped=[P4]."
+      },
+      {
+        "key": "scope",
+        "label": "Scope Boundaries",
+        "status": "ready",
+        "evidence": "Four trivial phases and their dependency wiring are fully enumerated."
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "status": "ready",
+        "evidence": "The rigged P3 failure is intentional and documented — no contradictions."
       }
     ]
   },
