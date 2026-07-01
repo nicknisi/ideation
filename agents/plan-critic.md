@@ -43,7 +43,7 @@ Apply only the charge for the lens you were assigned.
 
 #### Lens: scope-creep
 
-What is overbuilt or unnecessary for the stated goals? Specifically:
+What scope is unnecessary or belongs at a lower tier for the stated goals? (Structure or machinery inside an in-scope feature is the `over-engineering` lens's concern, not this one.) Specifically:
 
 - MVP items that do not trace to any goal in `goals` — why are they MVP?
 - MVP items that are really Full-tier (nice-to-have, not minimum-viable) — name the item and argue the tier.
