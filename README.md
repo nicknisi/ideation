@@ -160,11 +160,12 @@ The contract HTML renders these as a per-gate ✓/✗ evidence checklist in the 
 
 ## Plan Critics
 
-Before the contract renders, three adversarial critics review the plan in parallel — while a blocker is still a one-line `contract-data.json` edit rather than a regenerate-review-regenerate loop:
+Before the contract renders, four adversarial critics review the plan in parallel — while a blocker is still a one-line `contract-data.json` edit rather than a regenerate-review-regenerate loop:
 
 | Lens                | Looks for                                                   |
 | ------------------- | ----------------------------------------------------------- |
 | `scope-creep`       | Scope items that should be a tier lower (or out of scope)   |
+| `over-engineering`  | In-scope features built with more structure than the goal needs |
 | `hidden-dependency` | Phases that depend on work an earlier phase doesn't deliver |
 | `success-criteria`  | Goals that can't actually be checked pass/fail              |
 
@@ -231,7 +232,7 @@ flowchart TD
         B --> C{"5 Evidence<br/>Gates Ready?"}
         C -->|"Not yet"| D["Interview Loop<br/><i>one question at a time,<br/>recommended answer,<br/>explore codebase inline</i>"]
         D --> C
-        C -->|"All ready"| CR["Plan Critics<br/><i>scope-creep, hidden-dependency,<br/>success-criteria — parallel</i>"]
+        C -->|"All ready"| CR["Plan Critics<br/><i>scope-creep, over-engineering,<br/>hidden-dependency, success-criteria<br/>— parallel</i>"]
         CR --> E["Generate Contract<br/><i>Mission Brief: gate checklist,<br/>nested scope tiers, phase track</i>"]
         E --> F{"User<br/>Approval<br/>(pick scope tier,<br/>see critic digest)"}
         F -->|"Needs changes"| E
