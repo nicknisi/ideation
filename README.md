@@ -2,6 +2,13 @@
 
 Transform brain dumps into structured implementation artifacts through a conversational interview. HTML is used for interactive decision-making (the Mission Brief contract with evidence-gate readiness, visual comparisons during the interview). Markdown is used for reference documents (specs, PRDs) consumed directly by `/ideation:execute-spec`. Includes an execution workflow for implementing specs in fresh sessions with per-component feedback loops, adversarial plan critics, a Scout/Reviewer agent pipeline, and a retro loop that feeds learnings back into future runs.
 
+## What's New (0.16.0)
+
+- **Fourth plan critic: `over-engineering`.** Joins `scope-creep`, `hidden-dependency`, and `success-criteria`. It flags speculative generality in the plan — single-user abstractions, unused configurability, infrastructure ahead of demand, defensive handling for cases the contract can't raise. Where `scope-creep` asks whether a *feature* belongs, this asks whether an in-scope feature is built with more *structure* than its goal needs. See [Plan Critics](#plan-critics).
+- **Interviews open by surfacing silent assumptions.** Before the first clarifying question, the interview names the interpretations it would otherwise silently default to and lets you correct them — cheap insurance against interviewing toward the wrong target.
+- **Specs prefer the minimum approach.** Implementation specs call for the simplest approach that meets the phase's success criteria, naming the goal that justifies any added structure — the implementation-stage companion to the `over-engineering` critic.
+- **Sharper trigger boundary.** Ideation now frames itself as the planning-HOW stage and cedes deciding-WHETHER (weighing options, "should I build X") to a lightweight companion brainstorming skill.
+
 ## What's New (0.14.0)
 
 This release ships the full Fable 5 upgrade. Six behavior changes, plus one breaking schema change:
