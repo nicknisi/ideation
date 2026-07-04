@@ -100,7 +100,7 @@ repo use consistent relative paths; no resolution or normalization).
 
 The engine runs in the background and notifies on completion. Watch progress with `/workflows`.
 
-**If the `Workflow` tool is unavailable** (feature not enabled in this Claude Code): degrade gracefully — tell the user, then walk the phases yourself in dependency order using `/ideation:execute-spec <specPath>` per phase (the contract's per-phase commands), committing each before the next. This is the legacy manual path.
+**If the `Workflow` tool is unavailable** (feature not enabled in this Claude Code): degrade gracefully — tell the user, then walk the phases yourself in dependency order. `execute-spec` is user-invocation-only (it cannot be launched via the Skill tool), so for each `<specPath>` follow its workflow directly — read `$CLAUDE_PLUGIN_ROOT/skills/execute-spec/SKILL.md` and run it in `--headless` mode — committing each before the next. This is the legacy manual path.
 
 ## Step 5: Handle the Summary
 
@@ -169,6 +169,6 @@ division clean and the report fast.)
 1. **The engine orchestrates; the skill prepares and gates.** Wave planning, parallelism, and result handling are deterministic JS in `workflows/execute-contract.mjs`. This skill builds the `args`, runs the git pre-pass, and handles the human-in-the-loop moments the sandbox can't.
 2. **No wave math, no `RESULT:` parsing here.** Pass `prereqs` through untouched; read the structured summary the engine returns.
 3. **The contract is the source of truth** — phase order, dependencies, and spec paths all come from `contract-data.json` (`contract.md` Execution Plan as fallback).
-4. **Subagents get clean contexts** — the engine dispatches each phase as a fresh-context subagent running `/ideation:execute-spec --headless`. No phase inherits another's context.
+4. **Subagents get clean contexts** — the engine dispatches each phase as a fresh-context subagent that runs the execute-spec workflow in headless mode. Because that skill is user-invocation-only, the subagent follows its `SKILL.md` directly rather than invoking the slash command. No phase inherits another's context.
 5. **Gate on failures, not successes** — the happy path is fully hands-off; the engine runs everything still reachable and only the skill pauses, after the run, when something failed.
 6. **Already-committed phases are durable** — each phase commits independently. The git pre-pass makes resume work across sessions; `resumeFromRunId` makes it instant within a session.

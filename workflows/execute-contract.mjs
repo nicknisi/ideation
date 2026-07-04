@@ -12,7 +12,7 @@ export const meta = {
  * the things this sandboxed script CANNOT: it reads contract-data.json, runs the
  * git-log skip pre-pass, and owns interactive failure-gating + resume. This script
  * receives everything as `args`, plans topological waves, dispatches each phase as
- * a fresh-context subagent running /ideation:execute-spec --headless, and returns
+ * a fresh-context subagent that follows the execute-spec workflow (headless), and returns
  * { completed, failed, skipped, results } for the skill to act on.
  *
  * Design choices:
@@ -187,11 +187,15 @@ const PHASE_RESULT_SCHEMA = {
 function buildPhasePrompt(phase, a) {
   return `You are executing one phase of the "${a.projectName}" ideation project.
 
-Run the execute-spec skill in headless mode against this phase's spec:
+Execute this phase's spec by following the execute-spec skill's workflow in
+headless mode. That skill is user-invocation-only — it CANNOT be launched with
+the Skill tool from here — so run it by hand:
 
-    /ideation:execute-spec --headless ${phase.specPath}
+1. Resolve the plugin root with Bash: \`echo "$CLAUDE_PLUGIN_ROOT"\`.
+2. Read \`$CLAUDE_PLUGIN_ROOT/skills/execute-spec/SKILL.md\` and follow its full
+   workflow — Scout → Build → Verify-Review-Fix → Commit — treating
+   \`--headless ${phase.specPath}\` as its $ARGUMENTS.
 
-Follow that skill's full workflow: Scout → Build → Verify-Review-Fix → Commit.
 The --headless flag auto-proceeds through confirmation steps so execution does
 not block. Commit only when validations pass and the review cycle passes (or
 escalates per the skill's rules).
