@@ -2,6 +2,13 @@
 
 Transform brain dumps into structured implementation artifacts through a conversational interview. HTML is used for interactive decision-making (the Mission Brief contract with evidence-gate readiness, visual comparisons during the interview). Markdown is used for reference documents (specs, PRDs) consumed directly by `/ideation:execute-spec`. Includes an execution workflow for implementing specs in fresh sessions with per-component feedback loops, adversarial plan critics, a Scout/Reviewer agent pipeline, and a retro loop that feeds learnings back into future runs.
 
+## What's New (0.16.0)
+
+- **Fourth plan critic: `over-engineering`.** Joins `scope-creep`, `hidden-dependency`, and `success-criteria`. It flags speculative generality in the plan — single-user abstractions, unused configurability, infrastructure ahead of demand, defensive handling for cases the contract can't raise. Where `scope-creep` asks whether a *feature* belongs, this asks whether an in-scope feature is built with more *structure* than its goal needs. See [Plan Critics](#plan-critics).
+- **Interviews open by surfacing silent assumptions.** Before the first clarifying question, the interview names the interpretations it would otherwise silently default to and lets you correct them — cheap insurance against interviewing toward the wrong target.
+- **Specs prefer the minimum approach.** Implementation specs call for the simplest approach that meets the phase's success criteria, naming the goal that justifies any added structure — the implementation-stage companion to the `over-engineering` critic.
+- **Sharper trigger boundary.** Ideation now frames itself as the planning-HOW stage and cedes deciding-WHETHER (weighing options, "should I build X") to a lightweight companion brainstorming skill.
+
 ## What's New (0.14.0)
 
 This release ships the full Fable 5 upgrade. Six behavior changes, plus one breaking schema change:
@@ -54,7 +61,7 @@ I want to build something. Here's what I'm thinking...
 
 1. **Intake** - Accept your messy, unstructured input without judgment. Take a position upfront — what's strong, what's weak. On an existing codebase, fire a parallel exploration sweep so the first question is already informed.
 2. **Interview loop** - One question at a time, each with a recommended answer. Explores the codebase inline — if it can look something up instead of asking, it does. Challenges vague demand, undefined terms, and hypothetical users. Loops until all 5 evidence gates are `ready`.
-3. **Contract** - When all 5 gates are `ready`, three plan critics stress-test the plan in parallel; then generate `contract.html` via the contract-gen CLI. Command Deck instrument-panel layout with the gate readiness checklist, nested scope tiers (MVP / Full / Stretch), and copyable execution commands. Pick your scope tier in the terminal. Includes revision lineage tracking via `Supersedes` link.
+3. **Contract** - When all 5 gates are `ready`, four plan critics stress-test the plan in parallel; then generate `contract.html` via the contract-gen CLI. Command Deck instrument-panel layout with the gate readiness checklist, nested scope tiers (MVP / Full / Stretch), and copyable execution commands. Pick your scope tier in the terminal. Includes revision lineage tracking via `Supersedes` link.
 4. **HTML visualizations** - During interview and phasing, decisions default to inline `AskUserQuestion` previews; ephemeral HTML pages (comparisons, mockups, architecture options) are reserved for decisions that need real visual rendering. Deleted after you choose.
 5. **Phasing & specs** - Determine phases, generate Markdown specs with feedback loops and failure mode catalogs
 6. **Feedback quality check** - Self-review specs for feedback loop coverage before presenting
@@ -160,11 +167,12 @@ The contract HTML renders these as a per-gate ✓/✗ evidence checklist in the 
 
 ## Plan Critics
 
-Before the contract renders, three adversarial critics review the plan in parallel — while a blocker is still a one-line `contract-data.json` edit rather than a regenerate-review-regenerate loop:
+Before the contract renders, four adversarial critics review the plan in parallel — while a blocker is still a one-line `contract-data.json` edit rather than a regenerate-review-regenerate loop:
 
 | Lens                | Looks for                                                   |
 | ------------------- | ----------------------------------------------------------- |
 | `scope-creep`       | Scope items that should be a tier lower (or out of scope)   |
+| `over-engineering`  | In-scope features built with more structure than the goal needs |
 | `hidden-dependency` | Phases that depend on work an earlier phase doesn't deliver |
 | `success-criteria`  | Goals that can't actually be checked pass/fail              |
 
@@ -215,7 +223,7 @@ search too...
 3. Explores codebase inline — finds existing tag system, recommends reusing it instead of asking
 4. Challenges assumptions: "Have users complained about folders, or is this your gut?"
 5. All 5 evidence gates reach `ready` after ~5 questions
-6. Three plan critics stress-test the plan; then generates `contract.html` via contract-gen CLI — Command Deck layout with the gate readiness checklist, nested scope tiers, and copyable execution commands. Pick your scope in the terminal.
+6. Four plan critics stress-test the plan; then generates `contract.html` via contract-gen CLI — Command Deck layout with the gate readiness checklist, nested scope tiers, and copyable execution commands. Pick your scope in the terminal.
 7. After approval, asks: "Straight to specs or PRDs first?"
 8. At decision points (phasing, orchestration), opens side-by-side visual comparisons in browser
 9. Generates Markdown specs with feedback loops and failure modes
@@ -231,7 +239,7 @@ flowchart TD
         B --> C{"5 Evidence<br/>Gates Ready?"}
         C -->|"Not yet"| D["Interview Loop<br/><i>one question at a time,<br/>recommended answer,<br/>explore codebase inline</i>"]
         D --> C
-        C -->|"All ready"| CR["Plan Critics<br/><i>scope-creep, hidden-dependency,<br/>success-criteria — parallel</i>"]
+        C -->|"All ready"| CR["Plan Critics<br/><i>scope-creep, over-engineering,<br/>hidden-dependency, success-criteria<br/>— parallel</i>"]
         CR --> E["Generate Contract<br/><i>Mission Brief: gate checklist,<br/>nested scope tiers, phase track</i>"]
         E --> F{"User<br/>Approval<br/>(pick scope tier,<br/>see critic digest)"}
         F -->|"Needs changes"| E

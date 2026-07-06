@@ -30,6 +30,10 @@ If `docs/ideation/learnings.md` exists, read it. It holds generalizable spec-gap
 
 Interview the user relentlessly about every aspect of this plan until reaching shared understanding. Walk down each branch of the decision tree, resolving dependencies between decisions one by one.
 
+### Open by surfacing the silent assumptions
+
+A brain dump always admits more than one reading, and the failure mode is to silently pick one and interview as if it were settled. Before the first clarifying question, say back the interpretations you'd otherwise default to — scope (all of X vs. a slice), trigger (on-demand vs. scheduled vs. automatic), surface (the thing literally asked for vs. the adjacent thing they may mean) — and let the user correct them. This costs one turn and routinely saves three gates' worth of questions aimed at the wrong target. State the forks; don't ask permission to state them.
+
 ### Core rules
 
 1. **One focused question per turn by default.** Wait for the answer before asking the next question. Batch up to 4 questions in a single `AskUserQuestion` call **only when the questions are independent** — i.e., they target different gates and none depends on the answer to another. (`AskUserQuestion` supports 1–4 questions.) Never batch questions that chain logically; ask those one at a time so each answer informs the next.
