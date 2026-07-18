@@ -62,6 +62,13 @@ Done when: git log shows a commit referencing every phase's slug-qualified spec 
 Fill in `{project-name}` and `{contract-path}`. If some phases are already committed,
 add one line after the template: `Phases {titles} are already committed — autopilot will skip them.`
 
+**If `contract-data.json` carries a `branch` field** (express runs execute on an
+isolation branch), prepend a step before step 1 — `Ensure the checkout is on
+branch {branch} (git switch {branch}, creating it if missing) — all phase
+commits belong there.` — and renumber. Autopilot re-asserts the branch itself,
+but the /goal stating it keeps a recovered session from doing spec fixes on the
+wrong branch between autopilot runs.
+
 ## Step 3: Output and Copy
 
 1. Copy the full `/goal` command to the clipboard:

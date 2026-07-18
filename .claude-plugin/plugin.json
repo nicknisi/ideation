@@ -1,7 +1,7 @@
 {
   "name": "ideation",
-  "version": "0.16.0",
-  "description": "Transform brain dumps into implementation specs through an evidence-gated interview stress-tested by adversarial plan critics. Interactive HTML contract for planning decisions, Markdown specs for execution. /ideation:autopilot runs all phases on a deterministic workflow engine with overlap-serialized parallel waves; /ideation:retro mines implementation notes into learnings future interviews read.",
+  "version": "0.17.0",
+  "description": "Transform brain dumps into implementation specs through an evidence-gated interview stress-tested by adversarial plan critics. Interactive HTML contract for planning decisions, Markdown specs for execution. /ideation:autopilot runs all phases on a deterministic workflow engine with overlap-serialized parallel waves; /ideation:express skips artifact review for one-pass interview-to-execution on an isolation branch; /ideation:retro mines implementation notes into learnings future interviews read.",
   "author": {
     "name": "Nick Nisi",
     "email": "nick@nisi.org"

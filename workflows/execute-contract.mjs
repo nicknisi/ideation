@@ -28,6 +28,8 @@ export const meta = {
  *   projectName: string,
  *   slug: string,
  *   projectDir: string,
+ *   strict?: boolean,            // dispatch phases with --strict (fail-closed
+ *                                // headless; express-approved contracts)
  *   phases: [{ title, specPath, prereqs: [titles], risk }],
  *   completedPhases?: [titles]   // already committed; excluded from dispatch
  * }
@@ -185,15 +187,23 @@ const PHASE_RESULT_SCHEMA = {
 };
 
 function buildPhasePrompt(phase, a) {
+  const flags = a.strict ? '--headless --strict' : '--headless';
   return `You are executing one phase of the "${a.projectName}" ideation project.
 
 Run the execute-spec skill in headless mode against this phase's spec:
 
-    /ideation:execute-spec --headless ${phase.specPath}
+    /ideation:execute-spec ${flags} ${phase.specPath}
 
 Follow that skill's full workflow: Scout → Build → Verify-Review-Fix → Commit.
 The --headless flag auto-proceeds through confirmation steps so execution does
-not block. Commit only when validations pass and the review cycle passes (or
+not block.${
+    a.strict
+      ? ` The --strict flag fails closed where headless otherwise fails open:
+a scout HOLD or a crashed/verdict-less reviewer stops the phase with result
+"FAIL" instead of proceeding or committing — this contract was express-approved,
+so no human reviewed the specs.`
+      : ''
+  } Commit only when validations pass and the review cycle passes (or
 escalates per the skill's rules).
 
 This phase: "${phase.title}"${phase.risk ? ` (risk: ${phase.risk})` : ''}.

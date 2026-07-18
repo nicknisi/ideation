@@ -205,6 +205,48 @@ describe('execute-contract script body', () => {
     );
   });
 
+  it('strict args dispatch phases with --headless --strict', async () => {
+    const run_ = loadScript();
+    const prompts = [];
+    const agent = async prompt => (
+      prompts.push(prompt),
+      { result: 'PASS', commitHash: 'sha', summary: 'ok', findings: [] }
+    );
+    await run_(
+      { ...diamondArgs(), strict: true },
+      agent,
+      async t => Promise.all(t.map(x => x())),
+      () => {},
+      () => {},
+    );
+    assert.ok(prompts.length > 0, 'expected dispatched phases');
+    assert.ok(
+      prompts.every(p => p.includes('--headless --strict')),
+      'every phase prompt should carry --headless --strict',
+    );
+  });
+
+  it('non-strict args dispatch phases with plain --headless', async () => {
+    const run_ = loadScript();
+    const prompts = [];
+    const agent = async prompt => (
+      prompts.push(prompt),
+      { result: 'PASS', commitHash: 'sha', summary: 'ok', findings: [] }
+    );
+    await run_(
+      diamondArgs(),
+      agent,
+      async t => Promise.all(t.map(x => x())),
+      () => {},
+      () => {},
+    );
+    assert.ok(prompts.length > 0, 'expected dispatched phases');
+    assert.ok(
+      prompts.every(p => p.includes('--headless') && !p.includes('--strict')),
+      'phase prompts should carry --headless without --strict',
+    );
+  });
+
   it('empty phases → empty summary, no dispatch', async () => {
     const run_ = loadScript();
     let called = false;

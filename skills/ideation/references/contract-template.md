@@ -9,6 +9,7 @@ Use this template when generating `contract.md` after all 5 evidence gates are r
 **Created**: {date}
 **Readiness**: {“All 5 gates ready” | “{N} gates open: {labels} — interview ended early”}
 **Status**: Draft | Approved
+**Approval**: {Interactive review | Express — single consolidated confirmation, no per-artifact review}
 **Supersedes**: {path to prior contract, or "None"}
 
 ## Problem Statement
