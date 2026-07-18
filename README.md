@@ -2,9 +2,15 @@
 
 Transform brain dumps into structured implementation artifacts through a conversational interview. HTML is used for interactive decision-making (the Mission Brief contract with evidence-gate readiness, visual comparisons during the interview). Markdown is used for reference documents (specs, PRDs) consumed directly by `/ideation:execute-spec`. Includes an execution workflow for implementing specs in fresh sessions with per-component feedback loops, adversarial plan critics, a Scout/Reviewer agent pipeline, and a retro loop that feeds learnings back into future runs.
 
+## What's New (0.17.0)
+
+- **`/ideation:express` — one-pass planning-to-execution.** The exact same evidence-gated interview, then ONE consolidated confirmation (scope tier + run mode, led by the success-criteria check commands), then contract + specs generated without per-artifact approval loops and executed immediately via autopilot on an isolation branch (`ideation/{slug}`). The design follows the pattern every mature spec-driven tool converged on (Kiro Quick Plan, BMAD quick-dev, Claude Code plan mode): express modes delete the review _gates_, never the artifacts or the upfront elicitation. See [express](#express).
+- **Fail-closed strict execution.** Express contracts carry `approvalMode: "express"` in `contract-data.json`; autopilot passes `strict: true` to the engine, and phases dispatch as `/ideation:execute-spec --headless --strict` — a scout HOLD stops instead of proceeding, and a crashed reviewer stops instead of committing validation-only. The fail-open headless defaults remain for interactively reviewed contracts, whose artifacts a human approved.
+- **Single-spec auto-detect fix.** `/ideation:execute-spec` with no argument now also globs `docs/ideation/*/spec.md`, so small single-spec projects are found without an explicit path.
+
 ## What's New (0.16.0)
 
-- **Fourth plan critic: `over-engineering`.** Joins `scope-creep`, `hidden-dependency`, and `success-criteria`. It flags speculative generality in the plan — single-user abstractions, unused configurability, infrastructure ahead of demand, defensive handling for cases the contract can't raise. Where `scope-creep` asks whether a *feature* belongs, this asks whether an in-scope feature is built with more *structure* than its goal needs. See [Plan Critics](#plan-critics).
+- **Fourth plan critic: `over-engineering`.** Joins `scope-creep`, `hidden-dependency`, and `success-criteria`. It flags speculative generality in the plan — single-user abstractions, unused configurability, infrastructure ahead of demand, defensive handling for cases the contract can't raise. Where `scope-creep` asks whether a _feature_ belongs, this asks whether an in-scope feature is built with more _structure_ than its goal needs. See [Plan Critics](#plan-critics).
 - **Interviews open by surfacing silent assumptions.** Before the first clarifying question, the interview names the interpretations it would otherwise silently default to and lets you correct them — cheap insurance against interviewing toward the wrong target.
 - **Specs prefer the minimum approach.** Implementation specs call for the simplest approach that meets the phase's success criteria, naming the goal that justifies any added structure — the implementation-stage companion to the `over-engineering` critic.
 - **Sharper trigger boundary.** Ideation now frames itself as the planning-HOW stage and cedes deciding-WHETHER (weighing options, "should I build X") to a lightweight companion brainstorming skill.
@@ -75,7 +81,7 @@ All artifacts are written to `./docs/ideation/{project-name}/`:
 _comparison.html               # Ephemeral decision aid (deleted after choice is made)
 contract-data.json             # Machine-readable contract (source of truth; consumed by autopilot)
 contract.html                  # Mission Brief contract (for review)
-contract.md                    # Plain contract (for execute-spec lineage)
+contract.md                    # Plain contract (autopilot fallback + get-goal-prompt)
 contract-{date}.html / .md     # Superseded revisions (lineage chain)
 prd-phase-1.md                 # Phase 1 requirements (only if PRDs chosen)
 spec-phase-1.md                # Implementation spec (for execute-spec)
@@ -112,6 +118,27 @@ Skill-specific:
 - `contract-template.md` - Markdown contract template (the HTML contract has no template — it is generator output)
 - `prd-template.md` - PRD template
 - `spec-template.md` - Implementation spec template (includes feedback loops and failure modes)
+
+### express
+
+One-pass ideation for well-understood work: `/ideation:express` runs the identical evidence-gated interview, then collapses the four post-interview approval gates (contract approval, PRDs-vs-specs, spec approval, run-mode choice) into a single informed confirmation and goes straight to execution.
+
+```
+/ideation:express
+
+[provide your brain dump]
+```
+
+**What stays from the full flow:** the entire interview (no question limit, same gates), the four plan critics, and every artifact — `contract-data.json`, `contract.html`, `contract.md`, and specs are all still generated for post-hoc review.
+
+**What changes:**
+
+- **Two hard preconditions**, checked when the interview ends: all 5 gates `ready` (an early-stopped interview falls back to the standard flow) and a majority of success criteria carrying `check` commands (unattended execution can only trust what it verifies mechanically). Failing either routes to the standard ideation flow — never a silent downgrade.
+- **One confirmation**, led by the success-criteria check commands (approve what "done" means, not the essay), plus scope-tier contents and the critic digest. Answering it is the approval.
+- **Isolation branch.** Execution commits to `ideation/{slug}`; review moves to the branch diff. A bad run is a deleted branch, not a revert (autopilot's git-log skip pre-pass would treat reverted phase commits as complete).
+- **Fail-closed execution.** `approvalMode: "express"` → engine `strict: true` → `/ideation:execute-spec --headless --strict`.
+
+Not for exploratory or unfamiliar territory — the full flow's review gates earn their keep there.
 
 ## Interview Loop
 
@@ -169,12 +196,12 @@ The contract HTML renders these as a per-gate ✓/✗ evidence checklist in the 
 
 Before the contract renders, four adversarial critics review the plan in parallel — while a blocker is still a one-line `contract-data.json` edit rather than a regenerate-review-regenerate loop:
 
-| Lens                | Looks for                                                   |
-| ------------------- | ----------------------------------------------------------- |
-| `scope-creep`       | Scope items that should be a tier lower (or out of scope)   |
+| Lens                | Looks for                                                       |
+| ------------------- | --------------------------------------------------------------- |
+| `scope-creep`       | Scope items that should be a tier lower (or out of scope)       |
 | `over-engineering`  | In-scope features built with more structure than the goal needs |
-| `hidden-dependency` | Phases that depend on work an earlier phase doesn't deliver |
-| `success-criteria`  | Goals that can't actually be checked pass/fail              |
+| `hidden-dependency` | Phases that depend on work an earlier phase doesn't deliver     |
+| `success-criteria`  | Goals that can't actually be checked pass/fail                  |
 
 Each critic returns `blocker` / `notable` / `nit` findings. Blockers are folded into the contract before it renders; notables are folded in if clearly right, otherwise dismissed with a reason; nits are mentioned only. A **Critic digest** appears at the approval gate so you can see the plan was stress-tested. Critics run **once** per contract and never block it — a failed or unregistered critic logs a warning and proceeds without that lens.
 

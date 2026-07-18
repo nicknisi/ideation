@@ -34,9 +34,10 @@ parse `RESULT:` text yourself — the engine returns a structured summary.**
 ## Step 1: Locate & Parse the Contract
 
 1. Resolve the contract path (argument or glob). Derive the **project directory** from it — for `docs/ideation/my-project/contract.md`, that's `docs/ideation/my-project/`.
-2. Read the sibling **`contract-data.json`** in that directory. Its `execution.phases` array already holds each phase's `title`, `specPath`, `prereqs`, and `risk` — this is the manifest. Also read `projectName` and `slug`.
-3. **Validate** each `specPath` exists. If any are missing, report which and ask the user whether to continue without them or abort.
-4. **Fallback if `contract-data.json` is absent** (older projects with only `contract.md`): parse the `## Execution Plan` section of `contract.md` — phase titles, spec paths from the `/ideation:execute-spec <path>` lines, and blocking relationships from the dependency graph — and build the same phase list. If you cannot, abort with guidance to re-run ideation.
+2. Read the sibling **`contract-data.json`** in that directory. Its `execution.phases` array already holds each phase's `title`, `specPath`, `prereqs`, and `risk` — this is the manifest. Also read `projectName`, `slug`, `approvalMode` (`"express"` = single-confirmation approval, no per-artifact human review — drives `strict` in Step 3), and `branch`.
+3. **If `branch` is set, re-assert the checkout before anything else touches git:** `git branch --show-current` — if it differs, `git switch <branch>` (create with `git switch -c` if missing). This must happen **before** the Step 2 pre-pass: both the skip detection and the phase commits belong on the isolation branch, on every entry, including fresh-session re-runs where the user has since switched away.
+4. **Validate** each `specPath` exists. If any are missing, report which and ask the user whether to continue without them or abort.
+5. **Fallback if `contract-data.json` is absent** (older projects with only `contract.md`): parse the `## Execution Plan` section of `contract.md` — phase titles, spec paths from the `/ideation:execute-spec <path>` lines, and blocking relationships from the dependency graph — and build the same phase list. Also read the header's `**Approval**` line: `Express` → treat as `approvalMode: "express"` (set `strict` in Step 3). If you cannot parse it, abort with guidance to re-run ideation.
 
 ## Step 2: Git Skip Pre-Pass
 
@@ -57,6 +58,7 @@ Assemble the manifest exactly per `${CLAUDE_PLUGIN_ROOT}/workflows/README.md`:
   "projectName": "...",
   "slug": "...",
   "projectDir": "docs/ideation/<slug>/",
+  "strict": false, // true when contract-data.json has approvalMode: "express"
   "phases": [
     {
       "title": "...",
@@ -71,6 +73,7 @@ Assemble the manifest exactly per `${CLAUDE_PLUGIN_ROOT}/workflows/README.md`:
 ```
 
 - `prereqs` are **phase titles** — pass `contract-data.json`'s values straight through; do not remap to indices.
+- `strict: true` (express contracts only) makes the engine dispatch each phase as `/ideation:execute-spec --headless --strict` — fail-closed at scout HOLD and reviewer failure, because no human reviewed the specs. Omit or set `false` for interactively approved contracts.
 - Before invoking, sanity-check that every `prereqs` entry matches some phase `title` (or a `completedPhases` entry). If a title doesn't resolve, it's a manifest bug — report it rather than dispatching a broken graph (the engine will otherwise throw "Unknown prereq").
 
 ### Populate `files` from each spec's File Changes table
@@ -100,7 +103,7 @@ repo use consistent relative paths; no resolution or normalization).
 
 The engine runs in the background and notifies on completion. Watch progress with `/workflows`.
 
-**If the `Workflow` tool is unavailable** (feature not enabled in this Claude Code): degrade gracefully — tell the user, then walk the phases yourself in dependency order using `/ideation:execute-spec <specPath>` per phase (the contract's per-phase commands), committing each before the next. This is the legacy manual path.
+**If the `Workflow` tool is unavailable** (feature not enabled in this Claude Code): degrade gracefully — tell the user, then walk the phases yourself in dependency order using `/ideation:execute-spec <specPath>` per phase (the contract's per-phase commands), committing each before the next. For express contracts, carry the `--strict` semantics into this path too: a scout HOLD or a reviewer failure stops the phase rather than proceeding or committing validation-only. This is the legacy manual path.
 
 ## Step 5: Handle the Summary
 

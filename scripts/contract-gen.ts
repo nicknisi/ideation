@@ -48,6 +48,14 @@ interface ContractData {
   slug: string;
   date: string;
   status: 'Draft' | 'Approved';
+  /** How approval happened: interactive per-artifact review (default when
+      absent) or express — single consolidated confirmation after the
+      interview, no per-artifact human review */
+  approvalMode?: 'interactive' | 'express';
+  /** Isolation branch execution commits to (express runs). Autopilot
+      re-asserts this checkout on every entry so the guarantee survives
+      fresh sessions. */
+  branch?: string;
   /** When the contract was approved (distinct from creation date) */
   approvedOn?: string;
   /** Who approved it */
@@ -264,6 +272,7 @@ function buildHeader(d: ContractData): string {
         </div>
         <div class="deck-meta">
           <span class="status-ind ${statusClass}"><span class="status-dot" aria-hidden="true"></span>${esc(d.status)}</span>
+          ${d.approvalMode === 'express' ? `<span class="mono-meta">express · single-confirmation approval</span>` : ''}
           <span class="mono-meta">created ${esc(d.date)}</span>
           ${d.approvedOn ? `<span class="mono-meta">approved ${esc(d.approvedOn)}${d.approvedBy ? ` · ${esc(d.approvedBy)}` : ''}</span>` : ''}
           ${d.supersedes ? `<span class="mono-meta">supersedes ${esc(d.supersedes)}</span>` : ''}
@@ -532,12 +541,16 @@ function buildClose(d: ContractData): string {
   if (d.status !== 'Approved') return '';
   const phaseCount = d.execution.phases.length;
   const when = d.approvedOn ?? d.date;
+  const expressNote =
+    d.approvalMode === 'express'
+      ? ' Express run — approved in one confirmation after the interview; review lives in the branch diff.'
+      : '';
   return `
     <section class="contract-close">
       <div>
         <div class="label label-accent">Contract approved</div>
         <div class="close-headline">This plan is the commitment.</div>
-        <div class="close-desc">${phaseCount} phase${phaseCount === 1 ? '' : 's'} · ${esc(d.execution.strategy)}. Scope changes mean a new revision that supersedes this brief — not silent drift.</div>
+        <div class="close-desc">${phaseCount} phase${phaseCount === 1 ? '' : 's'} · ${esc(d.execution.strategy)}. Scope changes mean a new revision that supersedes this brief — not silent drift.${expressNote}</div>
       </div>
       <div class="close-meta">
         <span class="status-ind status-go"><span class="status-dot" aria-hidden="true"></span>Approved</span>

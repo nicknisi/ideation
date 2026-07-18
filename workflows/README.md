@@ -40,6 +40,7 @@ stringified one):
   "projectName": "Human-Readable Name",
   "slug": "kebab-slug",
   "projectDir": "docs/ideation/<slug>/",
+  "strict": false, // optional; true → phases dispatch as execute-spec --headless --strict
   "phases": [
     {
       "title": "Phase title (must match prereq references exactly)",
@@ -55,6 +56,11 @@ stringified one):
 
 - **Edges are phase titles**, matching `contract-data.json`'s `execution.phases[].prereqs`.
 - `completedPhases` seeds the planner's satisfied set so a resumed run only executes what remains.
+- **`strict`** is optional. The `/ideation:autopilot` skill sets it to `true` when
+  `contract-data.json` carries `approvalMode: "express"` (single-confirmation
+  approval — no per-artifact human review). Strict phases fail **closed** where
+  plain headless fails open: a scout HOLD or a crashed/verdict-less reviewer
+  stops the phase as FAIL instead of proceeding or committing validation-only.
 - **`files`** is optional. The `/ideation:autopilot` skill populates it by parsing
   each spec's **File Changes** tables. It declares the paths a phase touches so the
   engine can serialize file-conflicting phases (see below). Omitting it (or `[]`)
