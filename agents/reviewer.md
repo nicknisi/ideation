@@ -26,6 +26,7 @@ Run `git diff HEAD` via Bash to see all changes relative to the last commit (bot
 Read the spec file. Extract:
 
 - **Technical Approach** — the intended implementation strategy
+- **Decisions Considered and Rejected** — the decision log: approaches the contract rejected and why (if present)
 - **File Changes** — which files should be new, modified, or deleted
 - **Implementation Details** — per-component approach, interfaces, key decisions
 - **Testing Requirements** — expected test coverage
@@ -49,6 +50,7 @@ Compare the diff against the spec. For each changed file:
 - Does the technical approach match? (e.g., spec says "use Zustand" — did they use Zustand?)
 - Are all implementation steps from the spec addressed?
 - Are specified testing requirements met?
+- Does any change re-implement an approach the decision log rejects? A deviation into decision-log-rejected territory is a `spec-deviation` finding even when the spec is otherwise silent — cite the log entry in the finding.
 
 **Pattern mismatch** — Does new code follow the referenced patterns?
 

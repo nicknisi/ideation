@@ -85,6 +85,22 @@ If the user chooses to spike, help them build the simplest possible throwaway th
 
 This is optional — most interviews don't need it. But when a question is genuinely blocked on "we'd have to try it to know," a 10-minute spike beats a 30-minute circular discussion.
 
+### When to present a strawman
+
+Some gates stall on articulation, not on unknowns. When the same gate is still `not-ready` after 2–3 questions — answers stay vague or contradict each other — the user likely can't state the intent directly but can react to a concrete wrong version. (If the blocker is instead "we'd have to build it to know," that's the prototype spike above, not this move.) Sketch the smallest concrete artifact that embodies your current best guess — a sample output, a config snippet, a 5-line interface, a one-paragraph behavior description — present it in the terminal, and ask:
+
+```
+Question: "Direct questions aren't converging here. Here's a strawman of my current best guess — want to react to it instead?"
+Options:
+- "React to this strawman (Recommended)" — Say what to keep, change, or kill; the reaction becomes the gate's evidence
+- "Keep asking questions" — Continue with direct questions on this gate
+- "Flag the gate and move on" — Record the gate as not-ready with the gap noted
+```
+
+If the user reacts, fold the reaction into the gate's evidence — what they kept, changed, or killed is the articulation the questions couldn't extract. The strawman itself is disposable; only the reaction matters.
+
+This is optional — most interviews don't need it. But when a gate is stalled on wording rather than unknowns, a 1-minute strawman sketch beats a fourth direct question — and it's far cheaper than a prototype spike.
+
 ### What to challenge during the interview
 
 - **Vague demand**: "Users want X" → "What evidence? Who specifically?"

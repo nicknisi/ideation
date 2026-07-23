@@ -57,6 +57,17 @@
     "outOfScope": [],
     "future": []
   },
+  "decisions": [
+    {
+      "decision": "Rig Phase 3's validation to exit 1 deterministically",
+      "rejected": "injecting a probabilistic failure at dispatch time",
+      "reason": "The failure gate must trip on every run for the fixture to prove skip propagation."
+    },
+    {
+      "decision": "Prove graph behavior with planner unit tests instead of live autopilot runs",
+      "reason": "node --test is seconds-fast and deterministic; the live end-to-end run stays a manually-triggered step."
+    }
+  ],
   "execution": {
     "strategy": "Hybrid",
     "phases": [

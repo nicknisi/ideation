@@ -33,6 +33,7 @@ Read the spec file. Extract:
 - **File Changes** — which files will be created, modified, or deleted
 - **Pattern to follow** references — file paths of existing code to match
 - **Technical Approach** — overall implementation strategy
+- **Decisions Considered and Rejected** — the decision log: alternatives the contract rejected and the stated reasons (if present)
 - **Testing Requirements** — what tests are expected
 - **Feedback Strategy** — what inner-loop tools are expected
 
@@ -51,6 +52,8 @@ Explore the codebase, focusing on spec-relevant areas. Do not explore broadly.
 **Check test infrastructure**: Use `Glob` to find test files near the modified files. Read test runner config if present. Understand how similar code is tested.
 
 **Check project conventions**: Read `CLAUDE.md`, `README.md`, or equivalent docs that specify conventions.
+
+**Check the decision log against reality**: During verification, if observed codebase reality contradicts a logged decision's stated reason — e.g., the rejected alternative is already implemented, or the premise the reason cites no longer holds — flag the contradiction in the context map's Risks section as a readiness concern, naming the decision entry and the contradicting evidence.
 
 ### 4. Evaluate Readiness Gates
 

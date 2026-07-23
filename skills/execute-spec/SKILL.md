@@ -69,7 +69,7 @@ After "Proceed anyway", treat missing context-map sections as unavailable (read 
 
 ### 3. Parse Spec Structure
 
-Extract: Technical Approach, File Changes, Implementation Details (per-component instructions + code patterns), Testing Requirements, Validation Commands, Feedback Strategy (inner-loop command + playground type, if present), per-component feedback loops (playground/experiment/check, if present).
+Extract: Technical Approach, Decisions Considered and Rejected (the decision log — alternatives the contract rejected and why, if present), File Changes, Implementation Details (per-component instructions + code patterns), Testing Requirements, Validation Commands, Feedback Strategy (inner-loop command + playground type, if present), per-component feedback loops (playground/experiment/check, if present).
 
 **Collect the pattern file list:** scan every component's Implementation Details for "Pattern to follow" entries into one list. Retain it through build and review — it is passed to the reviewer.
 
@@ -86,6 +86,8 @@ One-time setup before building. Read the spec's Feedback Strategy for the playgr
 ### 6. Initialize Implementation Notes
 
 Maintain `{project-directory}/implementation-notes-phase-{n}.html` — a running log of decisions not covered by the spec, for the human to review. **Create the file lazily, on the first logged entry** (not upfront): write the shell using Section 1 (Base Styles only) of `${CLAUDE_PLUGIN_ROOT}/skills/ideation/references/html-guide.md` — title "Implementation Notes — Phase {N}" and a `<main>` holding the entry — then append subsequent entries. A clean phase with zero entries means no file ever exists, which avoids create-then-delete churn.
+
+Before deciding anywhere the spec is silent, consult the decision log (the spec's Decisions Considered and Rejected section): if the approach you're about to take matches a rejected entry, treat it as a spec conflict — escalate rather than proceed, citing the log entry.
 
 **Log an entry** for a spec gap (had to make a judgment call), spec deviation (and why), tradeoff (multiple valid approaches), codebase surprise, or dependency mismatch. Format:
 

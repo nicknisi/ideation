@@ -11,6 +11,13 @@ Phase 1 implements core bookmarking with tag support. The app uses React with a 
 
 Pattern to follow: the existing "reading history" feature in `src/features/history/` uses the same store + IndexedDB + component pattern.
 
+## Decisions Considered and Rejected
+
+_Carried from the contract; consult before making gap decisions._
+
+- **Tags for organization** — rejected: hierarchical folders. Tags cover every observed use case with less UI surface; folders add drag-and-drop and nesting complexity v1 doesn't need.
+- **IndexedDB for offline storage** — rejected: localStorage. Cached article content exceeds localStorage's practical size limits, and IndexedDB transactions handle concurrent-tab writes.
+
 ## Feedback Strategy
 
 **Inner-loop command**: `pnpm test -- --filter bookmarks`
