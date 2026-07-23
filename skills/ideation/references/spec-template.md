@@ -19,6 +19,15 @@ Use this template when generating `spec-phase-{n}.md` for each approved phase.
 - Patterns or frameworks to use
 - Any spikes or research needed}
 
+## Decisions Considered and Rejected
+
+_Carried from the contract; consult before making gap decisions._
+
+{The contract's decision-log entries relevant to this phase. When relevance is unclear, carry all of them. A contract with zero decisions yields "None recorded."}
+
+- **{decision}** — rejected: {alternative}. {reason}
+- **{decision}** — rejected: {alternative}. {reason}
+
 ## Feedback Strategy
 
 **Inner-loop command**: `{single command that validates the most common change — e.g., pnpm test --filter bookmarks, curl localhost:3000/api/health, pnpm storybook --ci}`
@@ -289,3 +298,5 @@ When filling this template:
 10. **Feedback Strategy**: Define the fastest possible check cycle. The inner-loop command should run in seconds, not minutes. Prefer text output the agent can parse over visual output requiring screenshots. Skip feedback loops for trivial components (config edits, type-only files, constant definitions).
 
 11. **Failure Modes**: Ask "how would this component fail?" for each non-trivial component. Name the failure (don't say "error" — say "stale cache served after deploy"). Identify data shadow paths (nil, empty, upstream timeout). Name edge cases (concurrent writes, oversized input, missing permissions). Not every failure needs a fix — some just need to be named so the implementer is aware. Skip trivial components.
+
+12. **Decisions Considered and Rejected**: Carry the contract's decision log (sourced from interview rejections and critic-blocker fixes) into every spec — this section is the only copy programmatic consumers (execute-spec, scout, reviewer) ever see. Include the phase-relevant entries; when relevance is unclear, include all. A contract with zero decisions yields `None recorded.` — never omit the section.

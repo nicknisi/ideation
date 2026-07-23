@@ -20,6 +20,15 @@ interface ScopeItem {
   reason?: string;
 }
 
+interface DecisionItem {
+  /** What was chosen */
+  decision: string;
+  /** The alternative not taken */
+  rejected?: string;
+  /** Why */
+  reason: string;
+}
+
 interface GateDimension {
   key: string;
   label: string;
@@ -77,6 +86,9 @@ interface ContractData {
     outOfScope: ScopeItem[];
     future: string[];
   };
+  /** Alternatives weighed and turned down (interview rejections +
+      critic-blocker fixes). Absent or empty = section suppressed. */
+  decisions?: DecisionItem[];
   execution: {
     strategy: string;
     phases: Phase[];
@@ -432,6 +444,28 @@ ${d.scope.future.map(f => `            <li>${esc(f)}</li>`).join('\n')}
     </section>`;
 }
 
+function buildDecisionLog(d: ContractData): string {
+  const items = Array.isArray(d.decisions) ? d.decisions : [];
+  if (items.length === 0) return '';
+  return `
+    <section class="section">
+${sectionHdr('Decisions considered and rejected', `×${items.length}`)}
+      <ul class="tier-items">
+${items
+  .map(it => {
+    const clause = [
+      it.rejected ? `rejected: ${esc(it.rejected)}.` : '',
+      it.reason ? esc(it.reason) : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+    return `        <li><strong>${esc(it.decision)}</strong>${clause ? `<span class="tier-reason">— ${clause}</span>` : ''}</li>`;
+  })
+  .join('\n')}
+      </ul>
+    </section>`;
+}
+
 function buildExecution(d: ContractData): string {
   const phases = d.execution.phases;
   const isDraft = d.status === 'Draft';
@@ -589,6 +623,7 @@ ${buildFirstMove(d)}
 ${buildProblemGoals(d)}
 ${buildSuccess(d)}
 ${buildScope(d)}
+${buildDecisionLog(d)}
 ${buildExecution(d)}
 ${buildClose(d)}
     </main>

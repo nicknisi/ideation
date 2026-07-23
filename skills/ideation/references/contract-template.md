@@ -61,6 +61,13 @@ Use this template when generating `contract.md` after all 5 evidence gates are r
 - {Deferred item 1}
 - {Deferred item 2}
 
+## Decisions Considered and Rejected
+
+{Alternatives weighed and turned down — sourced from interview rejections and critic-blocker fixes. When the contract has no recorded decisions, write "None recorded." rather than omitting the section — an executor must be able to distinguish "nothing considered" from "section missing".}
+
+- **{decision}** — rejected: {alternative}. {reason}
+- **{decision}** — rejected: {alternative}. {reason}
+
 ## Execution Plan
 
 _Added during Phase 5 handoff. Pick up this contract cold and know exactly how to execute._
@@ -138,3 +145,5 @@ When filling this template:
 5. **Future Considerations**: Don't delete good ideas that are out of scope - park them here for later.
 
 6. **Supersedes**: Before writing a new contract, check if a `contract.md` already exists in the project directory. If it does, rename it to `contract-{date}.md` (using the Created date from its header) and reference it in the new contract's Supersedes field. This creates a revision chain. If no prior contract exists, set to "None".
+
+7. **Decisions Considered and Rejected**: Entries come from two moments — interview rejections (the user turns down an alternative, or the interviewer's recommendation loses) and critic-blocker fixes (a blocker changes the plan; record what changed and what the pre-fix approach was). Mirror the `decisions` array in `contract-data.json`. A contract with zero recorded decisions keeps the section and writes `None recorded.` — never omit it.

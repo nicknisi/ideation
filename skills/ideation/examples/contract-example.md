@@ -48,6 +48,12 @@ Users of the Acme Reader app have no way to save articles for later. They resort
 - Smart tags (auto-suggested based on article content)
 - Bookmark digest emails (weekly summary of saved items)
 
+## Decisions Considered and Rejected
+
+- **Tags for organization** — rejected: hierarchical folders. Tags cover every observed use case with less UI surface; folders add drag-and-drop and nesting complexity v1 doesn't need.
+- **IndexedDB for offline storage** — rejected: localStorage. Cached article content exceeds localStorage's practical size limits, and IndexedDB transactions handle concurrent-tab writes.
+- **Search scoped to titles and tags** — rejected: full-text search over cached article bodies. Body search can't meet the 200ms budget at 1,000 bookmarks without adding a search index.
+
 ## Execution Plan
 
 ### Dependency Graph
