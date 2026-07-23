@@ -238,11 +238,20 @@ Update `contract-data.json` with the final plan and re-run `contract-gen.ts` so 
 - **Execution Commands** — the CLI renders copy buttons for `/ideation:autopilot` and each `/ideation:execute-spec`.
 - **Agent Team Prompt** — set `execution.agentTeamPrompt` only if 2+ phases are parallelizable (CLI renders it in a collapsible section); **omit entirely** for sequential projects.
 
+Re-render with both outputs — one invocation emits `contract.html` and `contract.md` together (same rules as Phase 3 step 5: the generator is the only renderer, and its permission-denial handling applies):
+
+```bash
+npx tsx ${CLAUDE_PLUGIN_ROOT}/scripts/contract-gen.ts \
+  --input ./docs/ideation/{slug}/contract-data.json \
+  --output ./docs/ideation/{slug}/contract.html \
+  --md-output ./docs/ideation/{slug}/contract.md
+```
+
 **Shared file detection:** before writing the agent team prompt, scan specs' "Modified Files". If multiple specs touch the same files, add a coordination note: "Coordinate on shared files ({list}) — only one teammate should modify a shared file at a time." **Batching:** more than 5 parallelizable phases → note starting with the highest-priority batch first. Re-open the regenerated contract.
 
 ### 5.3 Generate Contract Markdown
 
-Generate `contract.md` from `${CLAUDE_PLUGIN_ROOT}/skills/ideation/references/contract-template.md` mirroring `contract.html` (including the Execution Plan) — autopilot's fallback parser (when `contract-data.json` is absent) and get-goal-prompt consume it. Specs and PRDs are already Markdown.
+`contract.md` is generator output — the `--md-output` flag in 5.2's invocation already emitted it alongside the HTML, rendered from `contract-data.json`. **Never hand-author it.** The generated structure is what autopilot's fallback parser (when `contract-data.json` is absent) and get-goal-prompt consume: the `**Approval**` header line, the Dependency Graph's `(blocked by …)` annotations, and the per-phase `/ideation:execute-spec` lines. Specs and PRDs are already Markdown.
 
 ### 5.4 Present Handoff Summary
 

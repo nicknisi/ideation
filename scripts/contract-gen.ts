@@ -593,6 +593,227 @@ function buildClose(d: ContractData): string {
     </section>`;
 }
 
+// --- Markdown Builders ---
+//
+// contract.md is the generator's second output (via --md-output): the same
+// ContractData rendered in the hand-authored structure the repo's existing
+// contracts use (skills/ideation/references/contract-template.md documents
+// it). The structure is a deliberate legacy compatibility contract —
+// autopilot's fallback parser (when contract-data.json is absent) reads the
+// Execution Plan's graph and /ideation:execute-spec lines plus the
+// **Approval** header line, and get-goal-prompt uses the file as a locator
+// and name source. A parallel composer, not a transform of the HTML: both
+// consume the same `d`, section order stays identical to generate().
+// Markdown needs no escaping; esc() is HTML-specific — do not reuse it.
+
+function mdHeader(d: ContractData): string {
+  const dims = d.gates.dimensions;
+  const open = dims.filter(dim => dim.status !== 'ready');
+  const readiness =
+    open.length === 0
+      ? `All ${dims.length} gates ready`
+      : `${open.length} gate${open.length === 1 ? '' : 's'} open: ${open
+          .map(dim => dim.label)
+          .join(', ')} — interview ended early`;
+  const approval =
+    d.approvalMode === 'express'
+      ? 'Express — single consolidated confirmation, no per-artifact review'
+      : 'Interactive review';
+  return [
+    `# ${d.projectName} Contract`,
+    '',
+    `**Created**: ${d.date}`,
+    `**Readiness**: ${readiness}`,
+    `**Status**: ${d.status}`,
+    `**Approval**: ${approval}`,
+    `**Supersedes**: ${d.supersedes ?? 'None'}`,
+  ].join('\n');
+}
+
+function mdProblem(d: ContractData): string {
+  return ['## Problem Statement', '', d.problem.join('\n\n')].join('\n');
+}
+
+function mdGoals(d: ContractData): string {
+  return [
+    '## Goals',
+    '',
+    ...d.goals.map((g, i) => `${i + 1}. ${g}`),
+  ].join('\n');
+}
+
+function mdCriteria(d: ContractData): string {
+  return [
+    '## Success Criteria',
+    '',
+    ...d.successCriteria.map(asCriterion).map(c => {
+      const suffix = c.check ? `— check: \`${c.check}\`` : '— judgment call';
+      return `- [ ] ${c.criterion} ${suffix}`;
+    }),
+  ].join('\n');
+}
+
+function mdScope(d: ContractData): string {
+  const bullet = (it: ScopeItem) =>
+    `- ${it.item}${it.reason ? ` — ${it.reason}` : ''}`;
+  const list = (items: string[]) => (items.length ? items : ['- None.']);
+  const inScope = [...d.scope.mvp, ...d.scope.full, ...d.scope.stretch];
+  return [
+    '## Scope Boundaries',
+    '',
+    '### In Scope',
+    '',
+    ...list(inScope.map(bullet)),
+    '',
+    '### Out of Scope',
+    '',
+    ...list(d.scope.outOfScope.map(bullet)),
+    '',
+    '### Future Considerations',
+    '',
+    ...list(d.scope.future.map(f => `- ${f}`)),
+  ].join('\n');
+}
+
+function mdDecisions(d: ContractData): string {
+  const items = Array.isArray(d.decisions) ? d.decisions : [];
+  // Absence must be explicit — an executor must be able to distinguish
+  // "nothing considered" from "section missing" (spec-template rule).
+  const body = items.length
+    ? items.map(it => {
+        const clause = it.rejected ? `rejected: ${it.rejected}. ` : '';
+        return `- **${it.decision}** — ${clause}${it.reason}`;
+      })
+    : ['None recorded.'];
+  return ['## Decisions Considered and Rejected', '', ...body].join('\n');
+}
+
+/** ASCII dependency graph. Mirrors buildPipeline's edge semantics: declared
+    prereqs, or an implicit sequential chain when no phase declares any.
+    Multi-parent phases render under their first prereq; the annotation names
+    every prereq — autopilot's fallback parser derives blocking relationships
+    from these `(blocked by …)` annotations. */
+function mdDependencyGraph(phases: Phase[]): string {
+  const anyPrereqs = phases.some(p => p.prereqs && p.prereqs.length > 0);
+  const byTitle = new Map(phases.map((p, i) => [p.title, i] as const));
+  const prereqsOf = (i: number): number[] => {
+    if (!anyPrereqs) return i > 0 ? [i - 1] : [];
+    return (phases[i].prereqs ?? [])
+      .map(t => byTitle.get(t))
+      .filter((x): x is number => x !== undefined);
+  };
+  const children: number[][] = phases.map(() => []);
+  phases.forEach((_, i) => {
+    const parents = prereqsOf(i);
+    if (parents.length) children[parents[0]].push(i);
+  });
+
+  const lines: string[] = [];
+  const visited = new Set<number>();
+  const render = (i: number, depth: number, isLast: boolean): void => {
+    if (visited.has(i)) return;
+    visited.add(i);
+    const parents = prereqsOf(i);
+    const note = parents.length
+      ? `  (blocked by ${parents.map(j => phases[j].title).join(', ')})`
+      : '';
+    const prefix =
+      depth === 0
+        ? ''
+        : `  ${'      '.repeat(depth - 1)}${isLast ? '└── ' : '├── '}`;
+    lines.push(`${prefix}${phases[i].title}${note}`);
+    children[i].forEach((k, idx, kids) =>
+      render(k, depth + 1, idx === kids.length - 1),
+    );
+  };
+  phases.forEach((_, i) => {
+    if (prereqsOf(i).length === 0) render(i, 0, true);
+  });
+  // Cycle guard: anything unreachable from a root still renders, at root level.
+  phases.forEach((_, i) => render(i, 0, true));
+
+  return ['### Dependency Graph', '', '```', ...lines, '```'].join('\n');
+}
+
+function mdExecutionSteps(d: ContractData): string {
+  const phaseLines = d.execution.phases.flatMap((p, i) => {
+    const marker = p.blocking
+      ? ' _(blocking)_'
+      : p.prereqs?.length
+        ? ` _(blocked by ${p.prereqs.join(', ')})_`
+        : '';
+    return [
+      `${i + 1}. **Phase ${i + 1}** — ${p.title}${marker}`,
+      '',
+      '   ```bash',
+      `   ${phaseCommand(p, d.slug, i)}`,
+      '   ```',
+      '',
+    ];
+  });
+  return [
+    '### Execution Steps',
+    '',
+    '**Run the project** (recommended) — autopilot reads this contract, plans dependency waves, runs independent phases in parallel, and gates on failure:',
+    '',
+    '```bash',
+    `/ideation:autopilot docs/ideation/${d.slug}/contract.md`,
+    '```',
+    '',
+    '**Or run phases manually** in dependency order:',
+    '',
+    `**Strategy**: ${d.execution.strategy}`,
+    '',
+    ...phaseLines,
+  ]
+    .join('\n')
+    .replace(/\n+$/, '');
+}
+
+function mdExecutionPlan(d: ContractData): string {
+  const parts = [
+    '## Execution Plan',
+    '',
+    '_Added during Phase 5 handoff. Pick up this contract cold and know exactly how to execute._',
+  ];
+  if (!d.execution.phases.length) {
+    parts.push('', 'Phases are decided after approval.');
+    return parts.join('\n');
+  }
+  parts.push(
+    '',
+    mdDependencyGraph(d.execution.phases),
+    '',
+    mdExecutionSteps(d),
+  );
+  if (d.execution.agentTeamPrompt) {
+    parts.push(
+      '',
+      '### Agent Team Prompt',
+      '',
+      '```',
+      d.execution.agentTeamPrompt,
+      '```',
+    );
+  }
+  return parts.join('\n');
+}
+
+function buildMarkdown(d: ContractData): string {
+  const sections = [
+    mdHeader(d),
+    mdProblem(d),
+    mdGoals(d),
+    mdCriteria(d),
+    mdScope(d),
+    mdDecisions(d),
+    mdExecutionPlan(d),
+    '---',
+    '_This contract was generated from brain dump input. Review and approve before proceeding to specification._',
+  ];
+  return `${sections.join('\n\n')}\n`;
+}
+
 // --- Main Template ---
 
 function generate(data: ContractData): string {
@@ -681,12 +902,16 @@ const { values } = parseArgs({
   options: {
     input: { type: 'string', short: 'i' },
     output: { type: 'string', short: 'o' },
+    'md-output': { type: 'string' },
   },
 });
 
 if (!values.input) {
   console.error(
-    'Usage: contract-gen.ts --input <data.json> --output <contract.html>',
+    'Usage: contract-gen.ts --input <data.json> --output <contract.html> [--md-output <contract.md>]\n' +
+      '  --md-output also emits the Markdown contract and declares generator\n' +
+      '  ownership of both representations: lineage then archives the html+md\n' +
+      '  pair together — including a pre-existing hand-authored sibling md.',
   );
   process.exit(1);
 }
@@ -748,11 +973,19 @@ if (existsSync(outputPath)) {
     const renamedBase = basename(renamedPath);
     renameSync(outputPath, renamedPath);
 
-    // Archive the sibling .md only if it belongs to the superseded revision —
-    // an .md newer than the .html being archived was written for the NEW
-    // revision and must stay in place.
+    // With --md-output the generator owns both representations: the html+md
+    // pair came from the same run, so archive them together — the mtime
+    // comparison below is meaningless when both files are seconds apart, and
+    // the flag declares generator ownership even of a pre-existing
+    // hand-authored md. Without the flag, legacy behavior: archive the
+    // sibling .md only if it belongs to the superseded revision — an .md
+    // newer than the .html being archived was written for the NEW revision
+    // and must stay in place.
     const mdPath = outputPath.replace(/\.html$/, '.md');
-    if (existsSync(mdPath) && statSync(mdPath).mtimeMs <= htmlMtime) {
+    const mdBelongsToArchived =
+      values['md-output'] !== undefined ||
+      (existsSync(mdPath) && statSync(mdPath).mtimeMs <= htmlMtime);
+    if (existsSync(mdPath) && mdBelongsToArchived) {
       renameSync(
         mdPath,
         nextLineagePath(
@@ -775,3 +1008,15 @@ if (existsSync(outputPath)) {
 const html = generate(data);
 writeFileSync(outputPath, html, 'utf8');
 console.log(`Generated ${outputPath} (${html.length} bytes)`);
+
+// After the lineage pass on purpose: `data.supersedes` may have been set
+// above, and the md must record the same lineage the html does.
+if (values['md-output']) {
+  const mdOutputDir = dirname(values['md-output']);
+  if (mdOutputDir && !existsSync(mdOutputDir)) {
+    mkdirSync(mdOutputDir, { recursive: true });
+  }
+  const md = buildMarkdown(data);
+  writeFileSync(values['md-output'], md, 'utf8');
+  console.log(`Generated ${values['md-output']} (${md.length} bytes)`);
+}

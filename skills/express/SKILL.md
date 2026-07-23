@@ -75,7 +75,7 @@ downgrade.
 This phase runs **only** ideation Phase 3 steps 3–4 (write `contract-data.json`,
 then critics). Steps 5–7 (render, open, approval `AskUserQuestion`) are the
 ceremony express deletes — do **not** run them here: rendering moves to Phase 5
-step 4, and the sole approval is Phase 4. This override wins over the "where
+step 3, and the sole approval is Phase 4. This override wins over the "where
 silent, ideation governs" default.
 
 1. State the project name and its kebab-case `slug` (ask only if genuinely
@@ -148,15 +148,12 @@ for whatever they name.
    The Spec Feedback Quality self-review (ideation 4.5) is a **hard gate** here,
    not a presentation note: Weak → fix before proceeding. No human reviews these
    specs before execution. Skip PRDs entirely.
-3. Generate `contract.md` from
-   `${CLAUDE_PLUGIN_ROOT}/skills/ideation/references/contract-template.md`,
-   mirroring the contract including the Execution Plan and the
-   `**Approval**: Express` header line. Required: autopilot's fallback parser
-   and get-goal-prompt consume it. Write it **before** rendering the HTML —
-   the generator's lineage pass archives a superseded `contract.md` only when
-   it is not newer than the `contract.html` being archived, so this ordering is
-   what makes express re-runs archive cleanly.
-4. **Render the contract** per ideation Phase 3 step 5: the generator is the
+3. **Render the contract** per ideation Phase 3 step 5, adding
+   `--md-output docs/ideation/{slug}/contract.md` so one generator invocation
+   emits `contract.html` and `contract.md` together — never hand-author the
+   md; the `**Approval**: Express` header line and Execution Plan render from
+   `contract-data.json`, and autopilot's fallback parser and get-goal-prompt
+   consume the result. The generator is the
    only renderer, never hand-write the HTML, generator and `open` as separate
    Bash calls. **Permission denial does not block express:** print the exact
    `! npx tsx …` command so the user can render the record whenever they like,
