@@ -9,37 +9,37 @@
 <meta property="og:description" content="A Claude Code plugin: an evidence-gated interview, four adversarial plan critics, spec-driven execution in parallel waves, and a push-based learning loop. Includes an animated walkthrough.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://nicknisi.github.io/ideation/">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 6 C18 30 10 64 50 94 C90 64 82 30 50 6 Z' fill='%234e8a3c'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='26' y='26' width='48' height='48' rx='9' transform='rotate(45 50 50)' fill='%232b46c7'/%3E%3C/svg%3E">
 <title>ideation — brain dump in, reviewed commits out</title>
 <style>
 /* ================================================================
    ideation — the plugin's home page: pitch, features, install, and
    The Bookmark Garden (one fictional feature walked through the
-   whole loop). Art direction: a botanist's field guide — cream
-   paper, ink, chlorophyll and marigold, serif display, letterpress
-   chips, leaf-shaped pips. Dark mode is the greenhouse at night.
+   whole loop). Art direction: an editorial field guide — paper
+   white, ink, one cobalt accent, serif display, letterpress chips,
+   leaf-shaped pips. Dark mode is neutral graphite, not navy.
    Self-contained: no fonts, no CDNs, no images. CSS + inline SVG.
    ================================================================ */
 
 :root {
   color-scheme: light;
-  --bg: #f2ecdd;
-  --surface-1: #f8f4e8;
-  --surface-2: #fdfaf1;
-  --wash: #eae2cd;
-  --line: #d9cfb2;
-  --line-strong: #a29672;
-  --ink: #2c3122;
-  --muted: #5d6049;
-  --faint: #83836a;
-  --accent: #96591b;         /* marigold ochre — brand & annotation */
-  --accent-tint: #f2e3c6;
-  --go: #40702f;             /* chlorophyll — growth & success */
-  --go-tint: #e2ead2;
-  --caution: #8f6b0a;
-  --caution-tint: #f1e6c0;
-  --danger: #a53c28;         /* clay — the stamp, blockers */
-  --danger-tint: #f2dcd2;
+  --bg: #f7f7f3;
+  --surface-1: #fcfcfa;
+  --surface-2: #ffffff;
+  --wash: #ebebe4;
+  --line: #dededf;
+  --line-strong: #a6a6a0;
+  --ink: #191b1d;
+  --muted: #50555a;
+  --faint: #75797d;
+  --accent: #2b46c7;         /* cobalt — brand & annotation */
+  --accent-tint: #e6eafb;
+  --go: #187a48;             /* success only: hashes, picks, PASS */
+  --go-tint: #e0f0e7;
+  --caution: #94660a;
+  --caution-tint: #f5ecd2;
+  --danger: #bb3a2c;         /* the stamp, blockers */
+  --danger-tint: #f8e2de;
   --font-serif: 'Iowan Old Style', 'Palatino Nova', Palatino, 'Book Antiqua', Georgia, 'Times New Roman', serif;
   --font-mono: 'Berkeley Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, Consolas, monospace;
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
@@ -51,46 +51,46 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #171b12;
-    --surface-1: #1d2317;
-    --surface-2: #222a1b;
-    --wash: #12160e;
-    --line: #333b26;
-    --line-strong: #55603c;
-    --ink: #eae3ca;
-    --muted: #b2ae91;
-    --faint: #8e8b70;
-    --accent: #d69a4d;       /* lantern light */
-    --accent-tint: #33270f;
-    --go: #92c06d;
-    --go-tint: #202c15;
-    --caution: #d3b153;
-    --caution-tint: #2d2610;
-    --danger: #d97e5f;
-    --danger-tint: #33190f;
+    --bg: #131417;
+    --surface-1: #1a1c20;
+    --surface-2: #202329;
+    --wash: #0c0d0f;
+    --line: #2d3036;
+    --line-strong: #4c505a;
+    --ink: #e9e9e4;
+    --muted: #a8aaa6;
+    --faint: #82858a;
+    --accent: #93a7ff;
+    --accent-tint: #1e2542;
+    --go: #63bf8d;
+    --go-tint: #15291e;
+    --caution: #d2ad55;
+    --caution-tint: #2b2513;
+    --danger: #e0796e;
+    --danger-tint: #331714;
     --press: 3px 3px 0 0 var(--wash);
     --press-strong: 4px 4px 0 0 var(--wash);
   }
 }
 :root[data-theme="dark"] {
     color-scheme: dark;
-    --bg: #171b12;
-    --surface-1: #1d2317;
-    --surface-2: #222a1b;
-    --wash: #12160e;
-    --line: #333b26;
-    --line-strong: #55603c;
-    --ink: #eae3ca;
-    --muted: #b2ae91;
-    --faint: #8e8b70;
-    --accent: #d69a4d;       /* lantern light */
-    --accent-tint: #33270f;
-    --go: #92c06d;
-    --go-tint: #202c15;
-    --caution: #d3b153;
-    --caution-tint: #2d2610;
-    --danger: #d97e5f;
-    --danger-tint: #33190f;
+    --bg: #131417;
+    --surface-1: #1a1c20;
+    --surface-2: #202329;
+    --wash: #0c0d0f;
+    --line: #2d3036;
+    --line-strong: #4c505a;
+    --ink: #e9e9e4;
+    --muted: #a8aaa6;
+    --faint: #82858a;
+    --accent: #93a7ff;
+    --accent-tint: #1e2542;
+    --go: #63bf8d;
+    --go-tint: #15291e;
+    --caution: #d2ad55;
+    --caution-tint: #2b2513;
+    --danger: #e0796e;
+    --danger-tint: #331714;
     --press: 3px 3px 0 0 var(--wash);
     --press-strong: 4px 4px 0 0 var(--wash);
 }
@@ -152,21 +152,24 @@ code {
   right: 22px;
   z-index: 20;
   display: none;
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   color: var(--faint);
   background: var(--surface-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   box-shadow: var(--press);
-  padding: 4px 10px;
   cursor: pointer;
 }
-html.js .theme { display: inline-block; }
+html.js .theme { display: inline-flex; }
 .theme:hover { color: var(--accent); border-color: var(--accent); }
+.theme svg { display: none; width: 16px; height: 16px; }
+.theme[data-mode="auto"] .i-auto,
+.theme[data-mode="light"] .i-sun,
+.theme[data-mode="dark"] .i-moon { display: block; }
 
 /* ── progress rail: five leaves, greening as you go ── */
 .rail {
@@ -190,15 +193,15 @@ html.js .theme { display: inline-block; }
   background: transparent;
 }
 .rail .pip.lit {
-  background: var(--go);
-  border-color: var(--go);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 .rail .rail-count {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
   color: var(--faint);
 }
-.rail.done .rail-count { color: var(--go); }
+.rail.done .rail-count { color: var(--accent); }
 @media (max-width: 999px) { .rail { display: none; } }
 
 /* ── cover ─────────────────────────────────────── */
@@ -394,7 +397,7 @@ html.js .theme { display: inline-block; }
   border-radius: var(--radius);
   padding: 1px 0;
 }
-.q .tag { color: var(--go); background: var(--go-tint); }
+.q .tag { color: var(--accent); background: var(--accent-tint); }
 .a .tag { color: var(--caution); background: var(--caution-tint); }
 .q .txt { color: var(--ink); }
 .q .txt em { color: var(--muted); font-style: normal; }
@@ -413,8 +416,8 @@ html.js .theme { display: inline-block; }
   border-radius: 0 62% 0 62%;
   border: 1.2px solid var(--line-strong);
 }
-.score .minipips i.f { background: var(--go); border-color: var(--go); }
-.score.allgo { color: var(--go); }
+.score .minipips i.f { background: var(--accent); border-color: var(--accent); }
+.score.allgo { color: var(--accent); }
 
 /* strawman sketch */
 .strawman {
@@ -526,16 +529,16 @@ html.js .theme { display: inline-block; }
 /* ── the fork: a branching vine ────────────────── */
 .fork-fig { width: 100%; max-width: 640px; }
 .fork-fig svg { width: 100%; height: auto; display: block; overflow: visible; }
-.fork-fig .trunk, .fork-fig .path-express { stroke: var(--go); stroke-width: 3; fill: none; stroke-linecap: round; }
+.fork-fig .trunk, .fork-fig .path-express { stroke: var(--accent); stroke-width: 3; fill: none; stroke-linecap: round; }
 .fork-fig .path-review { stroke: var(--line-strong); stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-dasharray: 2 7; }
 .fork-fig .node { fill: var(--surface-2); stroke: var(--line-strong); stroke-width: 1.5; }
-.fork-fig .node.hot { stroke: var(--go); }
+.fork-fig .node.hot { stroke: var(--accent); }
 .fork-fig text {
   font-family: var(--font-mono);
   font-size: 12px;
   fill: var(--muted);
 }
-.fork-fig text.hot { fill: var(--go); font-weight: 600; }
+.fork-fig text.hot { fill: var(--accent); font-weight: 600; }
 .fork-fig text.small { font-size: 10.5px; fill: var(--faint); }
 @media (max-width: 679px) {
   /* the subtitle labels overhang the viewBox on narrow screens;
@@ -733,6 +736,8 @@ html.js .theme { display: inline-block; }
   padding: 8px 12px;
   max-width: 100%;
 }
+.chipcmd.stack { flex-direction: column; align-items: stretch; gap: 5px; }
+.chipcmd .cline { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
 .copy {
   display: none; /* enhancement-only: shown once JS confirms clipboard access */
   font-family: var(--font-mono);
@@ -772,7 +777,7 @@ html.clip .copy { display: inline-block; }
 .feature .icon { color: var(--accent); }
 .feature h3 { font-size: 1.125rem; font-weight: 700; }
 .feature p { color: var(--muted); font-size: 0.9375rem; flex: 1; }
-.feature .icon .lit { fill: var(--go); stroke: var(--go); }
+.feature .icon .lit { fill: var(--accent); stroke: var(--accent); }
 
 /* ── the loop at a glance ──────────────────────── */
 .flowmap { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 4px; }
@@ -791,8 +796,8 @@ html.clip .copy { display: inline-block; }
 .hop:hover { translate: 1px 1px; box-shadow: 2px 2px 0 0 var(--line); color: var(--accent); }
 .hop .n { color: var(--faint); margin-right: 6px; font-size: 0.6875rem; }
 .hop-arrow { color: var(--faint); font-family: var(--font-mono); padding: 0 4px; user-select: none; }
-.hop.loopback { border-style: dashed; border-color: var(--go); color: var(--go); box-shadow: none; }
-.hop.loopback:hover { background: var(--go-tint); translate: none; }
+.hop.loopback { border-style: dashed; border-color: var(--accent); color: var(--accent); box-shadow: none; }
+.hop.loopback:hover { background: var(--accent-tint); translate: none; }
 
 /* ================================================================
    Motion. Everything below collapses to a static, fully readable
@@ -891,7 +896,11 @@ html.clip .copy { display: inline-block; }
 </head>
 <body>
 
-<button class="theme" type="button" aria-label="Color theme: cycles auto, light, dark">auto</button>
+<button class="theme" type="button" data-mode="auto" aria-label="Color theme: auto (click to change)">
+  <svg class="i-auto" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M10 3.5 a6.5 6.5 0 0 0 0 13 Z" fill="currentColor" stroke="none"/></svg>
+  <svg class="i-sun" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 1.6 v2.2 M10 16.2 v2.2 M1.6 10 h2.2 M16.2 10 h2.2 M4.06 4.06 l1.56 1.56 M14.38 14.38 l1.56 1.56 M15.94 4.06 l-1.56 1.56 M5.62 14.38 l-1.56 1.56"/></svg>
+  <svg class="i-moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16.7 12.2 A7.5 7.5 0 1 1 7.8 3.3 a6 6 0 0 0 8.9 8.9 Z" fill="currentColor"/></svg>
+</button>
 
 <!-- gate pips doubling as page progress (enhancement-only chrome) -->
 <aside class="rail" aria-hidden="true">
@@ -923,7 +932,10 @@ html.clip .copy { display: inline-block; }
     <p class="lede"><strong>Brain dump in. Reviewed, tested commits out.</strong> An evidence-gated interview turns your messiest thinking into a contract, implementation specs, and executed phases — stress-tested by adversarial critics before you commit to the plan, reviewed before the plan commits code, and remembered by the next project.</p>
   </div>
   <div class="hero-actions st" style="--i:3">
-    <span class="chipcmd"><span class="prompt">&gt;</span>&nbsp;/plugin install ideation@ideation <button class="copy" type="button" data-copy="/plugin install ideation@ideation">copy</button></span>
+    <span class="chipcmd stack">
+      <span class="cline"><span><span class="prompt">&gt;</span> /plugin marketplace add nicknisi/ideation</span> <button class="copy" type="button" data-copy="/plugin marketplace add nicknisi/ideation">copy</button></span>
+      <span class="cline"><span><span class="prompt">&gt;</span> /plugin install ideation@ideation</span> <button class="copy" type="button" data-copy="/plugin install ideation@ideation">copy</button></span>
+    </span>
     <a class="jump" href="#story">watch it run ↓</a>
     <a class="jump" href="https://github.com/nicknisi/ideation">GitHub ↗</a>
   </div>
@@ -1352,7 +1364,7 @@ html.clip .copy { display: inline-block; }
       <p>The same door with the routing pre-answered: one consolidated confirmation, an isolation branch, straight to execution.</p>
     </div>
   </div>
-  <p class="colophon">Made by <a href="https://github.com/nicknisi">Nick Nisi</a> · <a href="https://github.com/nicknisi/ideation">source, README &amp; releases on GitHub</a>.<br>This page is a single self-contained HTML file — no fonts, no CDNs, no images; everything is drawn with CSS and inline SVG. It respects your color-scheme and reduced-motion preferences. And yes: it was planned with <code>/ideation</code>.</p>
+  <p class="colophon">Made by <a href="https://nicknisi.com">Nick Nisi</a> · <a href="https://github.com/nicknisi/ideation">source, README &amp; releases on GitHub</a>.<br>This page is a single self-contained HTML file — no fonts, no CDNs, no images; everything is drawn with CSS and inline SVG. It respects your color-scheme and reduced-motion preferences. And yes: it was planned with <code>/ideation</code>.</p>
 </footer>
 
 <script>
@@ -1366,7 +1378,11 @@ html.clip .copy { display: inline-block; }
   if (themeBtn) {
     var modes = ['auto', 'light', 'dark'];
     var cur = document.documentElement.dataset.theme || 'auto';
-    themeBtn.textContent = cur;
+    var paintTheme = function () {
+      themeBtn.dataset.mode = cur;
+      themeBtn.setAttribute('aria-label', 'Color theme: ' + cur + ' (click to change)');
+    };
+    paintTheme();
     themeBtn.addEventListener('click', function () {
       cur = modes[(modes.indexOf(cur) + 1) % 3];
       if (cur === 'auto') {
@@ -1376,7 +1392,7 @@ html.clip .copy { display: inline-block; }
         document.documentElement.dataset.theme = cur;
         try { localStorage.setItem('ideation-theme', cur); } catch (e) {}
       }
-      themeBtn.textContent = cur;
+      paintTheme();
     });
   }
 
