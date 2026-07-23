@@ -96,6 +96,7 @@ HTML artifacts (contract, implementation notes, ephemeral visualizations) are se
 - **Command Deck layout** — a single instrument-panel page: deck header, run bar, and sectioned panels (no tabs, no JS framework)
 - **Readiness gate checklist** — a ✓/✗ per dimension with its one-sentence evidence citation in the hero (no score; readiness is binary)
 - **Success criteria with checks** — each criterion renders its verifying command; criteria with no mechanical check carry a visible "judgment call" tag
+- **Decision log** — a "Decisions considered and rejected" panel recording interview rejections and critic-blocker fixes; carried into every spec so executors and reviewers can catch rejected approaches re-proposed as deviations
 - **Nested scope tiers** showing MVP / Full / Stretch commitment levels
 - **Horizontal phase track** with risk coloring and gate support
 - **Draft/Approved lifecycle** — a Draft contract shows the phase track as a plan preview with an "awaiting approval" note; run commands appear only once the contract is Approved (Phase 5)
