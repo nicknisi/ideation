@@ -1,0 +1,1068 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>The Bookmark Garden — an ideation walkthrough</title>
+<style>
+/* ================================================================
+   The Bookmark Garden — one fictional feature, walked through the
+   whole ideation loop. Command Deck family: dark-first, cyan-teal
+   accent, go/caution/danger trio, mono structure + sans prose.
+   Self-contained: no fonts, no CDNs, no images. CSS + inline SVG.
+   ================================================================ */
+
+:root {
+  color-scheme: dark;
+  --bg: #0a0f16;
+  --surface-1: #101723;
+  --surface-2: #161f2e;
+  --line: #243140;
+  --line-strong: #38485a;
+  --ink: #e6edf3;
+  --muted: #a2b2c2;
+  --faint: #8295a8;
+  --accent: #56c8ea;
+  --accent-tint: #11313f;
+  --go: #46d49c;
+  --go-tint: #0d2b21;
+  --caution: #e9b65a;
+  --caution-tint: #2e2410;
+  --danger: #f5839b;
+  --danger-tint: #331620;
+  --font-mono: 'Berkeley Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, Consolas, monospace;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --radius: 6px;
+  --radius-lg: 10px;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #eef1f4;
+    --surface-1: #f9fafb;
+    --surface-2: #ffffff;
+    --line: #d4dce3;
+    --line-strong: #aab8c4;
+    --ink: #16202b;
+    --muted: #46545f;
+    --faint: #5b6b7a;
+    --accent: #0a6d89;
+    --accent-tint: #ddeef4;
+    --go: #137455;
+    --go-tint: #dff3ea;
+    --caution: #8c6000;
+    --caution-tint: #f6ecd4;
+    --danger: #b62b50;
+    --danger-tint: #fae3e9;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+html { overflow-x: clip; }
+body {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.65;
+  letter-spacing: 0.011em;
+  color: var(--ink);
+  background: var(--bg);
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+}
+main, .cover, .end {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ── shared voices ─────────────────────────────── */
+.label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+h1, h2, h3 { line-height: 1.2; margin: 0; }
+p { margin: 0; }
+a { color: var(--accent); }
+code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.08em 0.35em;
+}
+
+/* ── progress rail: the five gate pips ─────────── */
+.rail {
+  position: fixed;
+  right: 22px;
+  top: 50%;
+  translate: 0 -50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  z-index: 10;
+}
+.rail .label { writing-mode: vertical-rl; letter-spacing: 0.22em; }
+.rail .pip {
+  width: 11px;
+  height: 11px;
+  rotate: 45deg;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 2px;
+  background: transparent;
+}
+.rail .pip.lit {
+  background: var(--go);
+  border-color: var(--go);
+}
+.rail .rail-count {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--faint);
+}
+.rail.done .rail-count { color: var(--go); }
+@media (max-width: 999px) { .rail { display: none; } }
+
+/* ── cover ─────────────────────────────────────── */
+.cover {
+  min-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 22px;
+  padding-top: 48px;
+  padding-bottom: 24px;
+  position: relative;
+}
+.cover .kicker { color: var(--accent); }
+.cover h1 {
+  font-size: clamp(2.4rem, 7vw, 3.6rem);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+.cover .lede {
+  font-size: 1.125rem;
+  color: var(--muted);
+  max-width: 34em;
+}
+.cover .lede strong { color: var(--ink); font-weight: 600; }
+.cover-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+.scrollhint {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--faint);
+}
+.scrollhint .arrow {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-right: 1.5px solid var(--faint);
+  border-bottom: 1.5px solid var(--faint);
+  rotate: 45deg;
+}
+
+/* the cover plant */
+.plant { overflow: visible; flex: none; }
+.plant .pot { fill: var(--surface-2); stroke: var(--line-strong); stroke-width: 1.5; }
+.plant .stem { stroke: var(--go); stroke-width: 3; fill: none; stroke-linecap: round; }
+.plant .leaf { fill: var(--go); opacity: 0.92; }
+.plant .bloom-outer { fill: var(--accent); }
+.plant .bloom-inner { fill: var(--caution); }
+
+/* ── vignettes ─────────────────────────────────── */
+.vignette {
+  padding: 96px 0 40px;
+  border-top: 1px solid var(--line);
+}
+.vignette > * + * { margin-top: 20px; }
+.chapter {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.chapter::before {
+  content: '';
+  display: inline-block;
+  width: 22px;
+  height: 1px;
+  background: var(--accent);
+  vertical-align: middle;
+  margin-right: 10px;
+}
+.vignette h2 {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+.vignette .intro { color: var(--muted); max-width: 38em; }
+
+/* the one-line "what happened in the flow" caption */
+.what {
+  border-left: 3px solid var(--accent);
+  background: var(--surface-1);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 12px 16px;
+  color: var(--muted);
+  font-size: 0.9375rem;
+  max-width: 44em;
+}
+.what::before {
+  content: 'In the flow';
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+
+/* ── the brain-dump bubble ─────────────────────── */
+.bubble {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 14px 14px 14px 3px;
+  padding: 22px 26px;
+  font-size: 1.0625rem;
+  color: var(--ink);
+  max-width: 40em;
+  rotate: -0.4deg;
+  position: relative;
+}
+.bubble .label { display: block; margin-bottom: 8px; }
+.bubble mark {
+  background: var(--accent-tint);
+  color: var(--accent);
+  border-radius: 3px;
+  padding: 0 3px;
+}
+.bubble.echo { rotate: 0.4deg; border-radius: 14px 14px 3px 14px; }
+
+/* ── terminal panels ───────────────────────────── */
+.term {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.term-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.term-body {
+  padding: 16px 18px;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.75;
+  overflow-x: auto;
+}
+.term-body > * + * { margin-top: 12px; }
+.tline { white-space: pre-wrap; }
+.prompt { color: var(--faint); user-select: none; }
+.cursor {
+  display: inline-block;
+  width: 7px;
+  height: 1em;
+  background: var(--accent);
+  vertical-align: text-bottom;
+}
+
+/* interview Q/A */
+.q, .a { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: baseline; }
+.q .tag, .a .tag {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: center;
+  border-radius: 4px;
+  padding: 1px 0;
+}
+.q .tag { color: var(--accent); background: var(--accent-tint); }
+.a .tag { color: var(--caution); background: var(--caution-tint); }
+.q .txt { color: var(--ink); }
+.q .txt em { color: var(--muted); font-style: normal; }
+.a .txt { color: var(--muted); }
+.score {
+  font-family: var(--font-mono);
+  color: var(--faint);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.score .minipips { display: inline-flex; gap: 5px; }
+.score .minipips i {
+  width: 8px; height: 8px; rotate: 45deg; border-radius: 1.5px;
+  border: 1.2px solid var(--line-strong);
+}
+.score .minipips i.f { background: var(--go); border-color: var(--go); }
+.score.allgo { color: var(--go); }
+
+/* strawman sketch */
+.strawman {
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  background: var(--surface-2);
+  position: relative;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.7;
+  color: var(--muted);
+  max-width: 42em;
+}
+.strawman .label { display: block; margin-bottom: 6px; color: var(--caution); }
+.strawman .wrong { text-decoration: line-through; text-decoration-color: var(--danger); text-decoration-thickness: 1.5px; }
+.stamp {
+  display: inline-block;
+  margin-top: 12px;
+  rotate: -1.6deg;
+  border: 1.5px solid var(--danger);
+  color: var(--danger);
+  background: var(--danger-tint);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.aside-note { color: var(--faint); font-size: 0.8125rem; font-family: var(--font-mono); }
+
+/* option chips (AskUserQuestion) */
+.opts { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.opt {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 7px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--muted);
+  background: var(--surface-2);
+  max-width: 46em;
+}
+.opt .why { color: var(--faint); }
+.opt.rec { border-color: var(--accent); color: var(--ink); }
+.opt.rec::after {
+  content: 'recommended';
+  float: right;
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-left: 12px;
+}
+.opt.picked {
+  border-color: var(--go);
+  background: var(--go-tint);
+  color: var(--ink);
+}
+.opt.picked::before { content: '❯ '; color: var(--go); }
+.qhead { color: var(--ink); font-weight: 600; }
+
+/* ── critics ───────────────────────────────────── */
+.critics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+@media (max-width: 639px) { .critics { grid-template-columns: 1fr; } }
+.critic {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.critic .icon { color: var(--accent); }
+.critic h3 {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+}
+.critic .say { color: var(--muted); font-size: 0.9375rem; flex: 1; }
+.critic .say q { font-style: italic; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 2px 10px;
+  border: 1px solid transparent;
+}
+.chip.blocker { color: var(--danger); background: var(--danger-tint); }
+.chip.notable { color: var(--caution); background: var(--caution-tint); }
+.chip.fixed { color: var(--go); background: var(--go-tint); }
+.chip.logged { color: var(--faint); border-color: var(--line-strong); }
+
+/* digest table-ish lines */
+.digest .lens { color: var(--accent); display: inline-block; min-width: 17ch; }
+
+/* ── the fork ──────────────────────────────────── */
+.fork-fig { width: 100%; max-width: 640px; }
+.fork-fig svg { width: 100%; height: auto; display: block; overflow: visible; }
+.fork-fig .trunk, .fork-fig .path-express { stroke: var(--accent); stroke-width: 3; fill: none; stroke-linecap: round; }
+.fork-fig .path-review { stroke: var(--line-strong); stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-dasharray: 2 7; }
+.fork-fig .node { fill: var(--surface-2); stroke: var(--line-strong); stroke-width: 1.5; }
+.fork-fig .node.hot { stroke: var(--accent); }
+.fork-fig text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  fill: var(--muted);
+}
+.fork-fig text.hot { fill: var(--accent); font-weight: 600; }
+.fork-fig text.small { font-size: 10.5px; fill: var(--faint); }
+@media (max-width: 679px) {
+  /* the subtitle labels overhang the viewBox on narrow screens;
+     the option text below repeats their content */
+  .fork-fig text.small { display: none; }
+}
+
+/* ── execution waves ───────────────────────────── */
+.waves { display: flex; flex-direction: column; gap: 0; }
+.wave { display: grid; grid-template-columns: 84px 1fr; gap: 14px; padding: 14px 0; }
+.wave + .wave { border-top: 1px dashed var(--line); }
+.wave .wlabel { padding-top: 14px; }
+@media (max-width: 559px) {
+  .wave { grid-template-columns: 1fr; gap: 8px; }
+  .wave .wlabel { padding-top: 0; }
+}
+.wave .phases { display: flex; gap: 12px; flex-wrap: wrap; }
+.phase {
+  flex: 1 1 240px;
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--go);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  min-width: 0;
+}
+.phase .pname { font-weight: 600; font-size: 0.9375rem; }
+.phase .pipeline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  color: var(--faint);
+}
+.phase .step { display: inline-flex; align-items: center; gap: 4px; }
+.phase .step::before {
+  content: '';
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--go);
+  flex: none;
+}
+.phase .step + .step { margin-left: 2px; }
+.phase .hash {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--go);
+  background: var(--go-tint);
+  border-radius: 4px;
+  padding: 1px 8px;
+  margin-top: 10px;
+  display: inline-block;
+}
+.phase .cyc {
+  margin-top: 8px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  border-left: 2px solid var(--caution);
+  padding-left: 8px;
+}
+.phase .cyc b { color: var(--caution); font-weight: 600; }
+
+/* ── learning capture ──────────────────────────── */
+.cand {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.9375rem;
+  max-width: 46em;
+}
+.cand .box {
+  font-family: var(--font-mono);
+  color: var(--faint);
+}
+.cand.selected { border-color: var(--go); background: var(--go-tint); color: var(--ink); }
+.cand.selected .box { color: var(--go); }
+.cand .fate {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 4px;
+  color: var(--faint);
+}
+.cand.selected .fate { color: var(--go); }
+
+/* rendered markdown entry */
+.mdentry {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.8;
+  overflow-x: auto;
+  max-width: 46em;
+}
+.mdentry .h { color: var(--accent); font-weight: 700; }
+.mdentry .k { color: var(--go); font-weight: 600; }
+.mdentry .file {
+  float: right;
+  color: var(--faint);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-left: 12px;
+}
+
+/* the punchline attribution line */
+.apply {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--accent);
+  background: var(--accent-tint);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  display: inline-block;
+  max-width: 100%;
+}
+
+/* ── footer ────────────────────────────────────── */
+.end {
+  padding-top: 96px;
+  padding-bottom: 96px;
+  border-top: 1px solid var(--line);
+  margin-top: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.cmds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 639px) { .cmds { grid-template-columns: 1fr; } }
+.cmd {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+}
+.cmd code {
+  font-size: 0.9375rem;
+  color: var(--accent);
+  background: none;
+  border: none;
+  padding: 0;
+}
+.cmd p { color: var(--muted); font-size: 0.9375rem; margin-top: 8px; }
+.colophon { color: var(--faint); font-size: 0.8125rem; max-width: 46em; }
+
+/* ================================================================
+   Motion. Everything below collapses to a static, fully readable
+   page when the visitor prefers reduced motion — and the base
+   state (no JS, no observer) is always visible.
+   ================================================================ */
+@media (prefers-reduced-motion: no-preference) {
+
+  /* scroll-reveal: hidden only when JS confirmed the observer exists */
+  html.js .vignette, html.js .end {
+    opacity: 0;
+    transform: translateY(26px);
+    transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  html.js .vignette.on, html.js .end.on { opacity: 1; transform: none; }
+
+  /* staggered children inside a revealed vignette */
+  html.js .on .st { opacity: 0; animation: rise 0.55s ease forwards; animation-delay: calc(var(--i, 0) * 140ms + 0.25s); }
+
+  /* cursor blink */
+  .cursor { animation: blink 1.1s steps(1) infinite; }
+
+  /* cover plant: grow once, then sway forever */
+  .plant .sprout {
+    transform-origin: 60px 104px;
+    animation: grow 1.4s cubic-bezier(0.3, 1.4, 0.4, 1) 0.3s both,
+               sway 5s ease-in-out 2.2s infinite alternate;
+  }
+  .plant .leaf1 { transform-origin: 60px 86px; animation: unfurl 0.8s ease-out 1.1s both; }
+  .plant .leaf2 { transform-origin: 60px 76px; animation: unfurl 0.8s ease-out 1.35s both; }
+  .plant .bloom { transform-origin: 60px 46px; animation: pop 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) 1.7s both; }
+
+  /* rail + scoreboard pips get a little tick when they light */
+  .rail .pip.lit, .score .minipips i.f { animation: tick 0.35s cubic-bezier(0.3, 1.6, 0.5, 1); }
+  .score.allgo .minipips i.f { animation: tick 0.35s cubic-bezier(0.3, 1.6, 0.5, 1), gloat 2.4s ease-in-out 0.4s 2; }
+
+  /* critics idle: they hover over the draft, having OPINIONS */
+  html.js .on .critic { animation: rise 0.55s ease forwards; opacity: 0; }
+  html.js .on .critic:nth-child(1) { animation-delay: 0.25s; }
+  html.js .on .critic:nth-child(2) { animation-delay: 0.4s; }
+  html.js .on .critic:nth-child(3) { animation-delay: 0.55s; }
+  html.js .on .critic:nth-child(4) { animation-delay: 0.7s; }
+  .critic .icon { animation: bob 3.4s ease-in-out infinite alternate; }
+  .critic:nth-child(2) .icon { animation-delay: 0.6s; }
+  .critic:nth-child(3) .icon { animation-delay: 1.1s; }
+  .critic:nth-child(4) .icon { animation-delay: 1.7s; }
+
+  /* the fork draws itself */
+  html.js .fork-fig .trunk,
+  html.js .fork-fig .path-express,
+  html.js .fork-fig .path-review {
+    stroke-dashoffset: 460;
+  }
+  .fork-fig .trunk, .fork-fig .path-express { stroke-dasharray: 460; }
+  html.js .on .fork-fig .trunk { animation: draw 0.7s ease-out 0.2s forwards; }
+  html.js .on .fork-fig .path-express { animation: draw 0.9s ease-out 0.8s forwards; }
+  html.js .fork-fig .path-review { stroke-dasharray: 2 7; animation: none; stroke-dashoffset: 0; opacity: 0; }
+  html.js .on .fork-fig .path-review { animation: fadein 0.9s ease-out 1s forwards; }
+
+  /* pipeline steps light in sequence; the hash pops last */
+  html.js .on .phase .step { opacity: 0.25; animation: stepon 0.3s ease forwards; }
+  html.js .on .phase .step:nth-child(1) { animation-delay: 0.4s; }
+  html.js .on .phase .step:nth-child(2) { animation-delay: 0.7s; }
+  html.js .on .phase .step:nth-child(3) { animation-delay: 1s; }
+  html.js .on .phase .step:nth-child(4) { animation-delay: 1.3s; }
+  html.js .on .phase .step:nth-child(5) { animation-delay: 1.6s; }
+  html.js .on .phase .hash { opacity: 0; animation: pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) forwards; animation-delay: calc(var(--w, 0) * 0.6s + 1.9s); }
+
+  .scrollhint .arrow { animation: nudge 1.8s ease-in-out infinite; }
+
+  @keyframes rise    { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes blink   { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0; } }
+  @keyframes grow    { from { transform: scaleY(0.04); } to { transform: scaleY(1); } }
+  @keyframes sway    { from { transform: rotate(-1.6deg); } to { transform: rotate(1.8deg); } }
+  @keyframes unfurl  { from { transform: scale(0) rotate(-24deg); } to { transform: scale(1) rotate(0deg); } }
+  @keyframes pop     { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes tick    { from { scale: 1.9; } to { scale: 1; } }
+  @keyframes gloat   { 0%, 100% { scale: 1; } 50% { scale: 1.35; } }
+  @keyframes bob     { from { transform: translateY(-2px) rotate(-2deg); } to { transform: translateY(2.5px) rotate(2deg); } }
+  @keyframes draw    { to { stroke-dashoffset: 0; } }
+  @keyframes fadein  { to { opacity: 1; } }
+  @keyframes stepon  { to { opacity: 1; } }
+  @keyframes nudge   { 0%, 100% { transform: rotate(45deg) translate(0, 0); } 50% { transform: rotate(45deg) translate(3px, 3px); } }
+}
+</style>
+</head>
+<body>
+
+<!-- gate pips doubling as page progress (enhancement-only chrome) -->
+<aside class="rail" aria-hidden="true">
+  <span class="label">gates</span>
+  <div class="pip lit"></div>
+  <div class="pip lit"></div>
+  <div class="pip lit"></div>
+  <div class="pip lit"></div>
+  <div class="pip lit"></div>
+  <span class="rail-count">5/5</span>
+</aside>
+
+<header class="cover">
+  <p class="kicker label">ideation · an illustrated walkthrough</p>
+  <h1>The Bookmark Garden</h1>
+  <div class="cover-row">
+    <svg class="plant" viewBox="0 0 120 140" width="110" height="128" aria-hidden="true">
+      <g class="sprout">
+        <path class="stem" d="M60,104 C61,88 58,70 60,50"/>
+        <path class="leaf leaf1" d="M60,86 C46,85 37,75 39,63 C52,65 59,74 60,86 Z"/>
+        <path class="leaf leaf2" d="M60,76 C74,75 83,65 81,53 C68,55 61,64 60,76 Z"/>
+        <g class="bloom">
+          <circle class="bloom-outer" cx="60" cy="46" r="9"/>
+          <circle class="bloom-inner" cx="60" cy="46" r="3.5"/>
+        </g>
+      </g>
+      <path class="pot" d="M32,104 h56 l-7,26 a4,4 0 0 1 -4,3 h-34 a4,4 0 0 1 -4,-3 Z"/>
+    </svg>
+    <p class="lede">One made-up feature — <strong>a garden where your bookmarks grow when you read them and wilt when you don't</strong> — walked through the entire ideation loop: brain dump, interview, critics, the fork, execution in waves, and the lesson the <em>next</em> project inherits.</p>
+  </div>
+  <p class="scrollhint">scroll to plant the seed <span class="arrow"></span></p>
+</header>
+
+<main>
+
+<!-- ══════════ CHAPTER 1 ══════════ -->
+<section class="vignette" id="ch1">
+  <p class="chapter">Chapter 01 · The mess</p>
+  <h2>It starts as a brain dump</h2>
+  <p class="intro">No structure required. You talk, <code>/ideation</code> listens — then takes a position instead of applauding.</p>
+
+  <div class="bubble st" style="--i:0">
+    <span class="label">you, thinking out loud</span>
+    okay so hear me out — a bookmark garden. you save a link and that plants a seed, and when you actually go back and <mark>read the thing it grows</mark>, and if you never do <mark>it wilts</mark>. your garden ends up being really honest about your reading habits. <mark>maybe seasons??</mark> also pruning, for the stuff you'll truthfully never read. and it should <mark>feel cozy</mark>, not like a productivity app yelling at you
+  </div>
+
+  <div class="term st" style="--i:1">
+    <div class="term-head"><span class="label">intake · position taken</span></div>
+    <div class="term-body">
+      <p class="tline"><span style="color:var(--go)">Strong:</span> a clear core loop — save → revisit → grow. That's a real feature.</p>
+      <p class="tline"><span style="color:var(--danger)">Weak:</span> "seasons" is a vibe, not a scope. And "cozy" can't be checked pass/fail — yet.</p>
+      <p class="tline"><span class="prompt">›</span> interviewing until all five gates are ready <span class="cursor"></span></p>
+    </div>
+  </div>
+
+  <p class="what st" style="--i:2">The one door accepts the dump exactly as spoken, names what's strong and what's weak up front, and starts the evidence-gated interview.</p>
+</section>
+
+<!-- ══════════ CHAPTER 2 ══════════ -->
+<section class="vignette" id="ch2">
+  <p class="chapter">Chapter 02 · The interview</p>
+  <h2>One question at a time, with a scoreboard</h2>
+  <p class="intro">Every question arrives with a recommendation. Every answer moves the gates. No batching, no question limit, no "that's an interesting approach."</p>
+
+  <div class="term">
+    <div class="term-head"><span class="label">interview loop</span><span class="label">5 evidence gates</span></div>
+    <div class="term-body">
+      <div class="q st" style="--i:0"><span class="tag">Q1</span><span class="txt">What makes a plant grow — visits, or reading time? <em>I'd recommend visits: the app has no reading-time signal, but every open is already logged.</em></span></div>
+      <div class="a st" style="--i:1"><span class="tag">you</span><span class="txt">visits. one visit, one growth stage.</span></div>
+      <p class="score st" style="--i:2"><span class="minipips"><i class="f"></i><i class="f"></i><i></i><i></i><i></i></span>Gates: 2/5 ready — open: Success Criteria, Scope Boundaries, Consistency</p>
+
+      <div class="q st" style="--i:3"><span class="tag">Q2</span><span class="txt">Is pruning deletion, or archiving? <em>I'd recommend archiving — gardeners compost, they don't incinerate.</em></span></div>
+      <div class="a st" style="--i:4"><span class="tag">you</span><span class="txt">archive. nothing is ever really gone.</span></div>
+      <p class="score st" style="--i:5"><span class="minipips"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i></span>Gates: 3/5 ready — open: Success Criteria, Consistency</p>
+
+      <div class="q st" style="--i:6"><span class="tag">Q3</span><span class="txt">Direct questions aren't converging here. Here's a strawman of my current best guess — want to react to it instead?</span></div>
+      <div class="opts st" style="--i:7">
+        <div class="opt rec picked">React to this strawman <span class="why">— say what to keep, change, or kill; the reaction becomes the gate's evidence</span></div>
+        <div class="opt">Keep asking questions</div>
+        <div class="opt">Flag the gate and move on</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="strawman st" style="--i:8">
+    <span class="label">strawman · wilting, v0 — wrong on purpose</span>
+    unvisited 30 days → leaves droop · 60 days → stem browns · <span class="wrong">90 days → auto-composts into the archive</span>
+    <br>
+    <span class="stamp">"no — more like this: droop all you want, but NOTHING auto-composts. I decide what leaves the garden."</span>
+  </div>
+  <p class="aside-note st" style="--i:9">› reaction folded into Success Criteria as evidence. The strawman is disposable; the reaction isn't.</p>
+
+  <div class="term st" style="--i:10">
+    <div class="term-body">
+      <p class="score allgo"><span class="minipips"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span>Gates: 5/5 ready</p>
+    </div>
+  </div>
+
+  <p class="what st" style="--i:11">The scoreboard prints after every answer. When a gate stalls on wording, the interview sketches a strawman to react to — one minute of "no, more like this" beats a fourth direct question.</p>
+</section>
+
+<!-- ══════════ CHAPTER 3 ══════════ -->
+<section class="vignette" id="ch3">
+  <p class="chapter">Chapter 03 · The critics</p>
+  <h2>The critics have OPINIONS</h2>
+  <p class="intro">Before the contract renders, four adversarial lenses descend on the draft in parallel — while a fix is still a one-line JSON edit, not a regenerate loop.</p>
+
+  <div class="critics">
+    <article class="critic">
+      <svg class="icon" width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="17" cy="17" r="9.5"/>
+        <line x1="24.5" y1="24.5" x2="33" y2="33"/>
+      </svg>
+      <h3>scope-creep</h3>
+      <p class="say"><q>'Seasons' is riding along in the Full tier doing nothing measurable. It's Stretch at best.</q></p>
+      <div class="chips"><span class="chip blocker">blocker</span><span class="chip fixed">re-tiered to stretch</span><span class="chip logged">decision logged</span></div>
+    </article>
+
+    <article class="critic">
+      <svg class="icon" width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path transform="translate(2 2) scale(1.5)" d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+      </svg>
+      <h3>over-engineering</h3>
+      <p class="say"><q>Seven growth stages, three distinct drawings. Four of those states exist only in the state machine.</q></p>
+      <div class="chips"><span class="chip blocker">blocker</span><span class="chip fixed">cut to 3 stages</span><span class="chip logged">decision logged</span></div>
+    </article>
+
+    <article class="critic">
+      <svg class="icon" width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+        <path d="M6 32 C10 20 16 26 20 18 C23 12 17 9 15 14 C13 19 24 22 28 14 M28 14 l5 -6 M28 14 l1.5 7"/>
+      </svg>
+      <h3>hidden-dependency</h3>
+      <p class="say"><q>Phase 2's wilt timer reads visit history that Phase 1 never delivers. Someone plant that first.</q></p>
+      <div class="chips"><span class="chip blocker">blocker</span><span class="chip fixed">prereq added</span><span class="chip logged">decision logged</span></div>
+    </article>
+
+    <article class="critic">
+      <svg class="icon" width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="8" y="9" width="12" height="7" rx="1.5" transform="rotate(-45 14 12.5)"/>
+        <line x1="17" y1="16" x2="24" y2="23"/>
+        <path d="M8 33 h14"/>
+        <path d="M25 30 l3.5 3.5 L35 26"/>
+      </svg>
+      <h3>success-criteria</h3>
+      <p class="say"><q>'Feels cozy' can't be checked pass/fail. Tag it a judgment call; give the wilt query a real check command.</q></p>
+      <div class="chips"><span class="chip notable">notable</span><span class="chip fixed">folded in</span></div>
+    </article>
+  </div>
+
+  <div class="term st" style="--i:1">
+    <div class="term-head"><span class="label">critic digest · shown at the approval gate</span></div>
+    <div class="term-body digest">
+      <p class="tline"><span class="lens">scope-creep</span> found 1 (1 blocker folded in)</p>
+      <p class="tline"><span class="lens">over-engineering</span> found 1 (1 blocker folded in)</p>
+      <p class="tline"><span class="lens">hidden-dependency</span> found 1 (1 blocker folded in)</p>
+      <p class="tline"><span class="lens">success-criteria</span> found 1 (1 notable — "cozy" tagged judgment call)</p>
+    </div>
+  </div>
+
+  <p class="what st" style="--i:2">Critics run once per contract, in parallel. Blockers are folded in before the contract ever renders, and every fold-in lands in the decision log so the "why" survives.</p>
+</section>
+
+<!-- ══════════ CHAPTER 4 ══════════ -->
+<section class="vignette" id="ch4">
+  <p class="chapter">Chapter 04 · The fork</p>
+  <h2>One question routes the finish</h2>
+  <p class="intro">The contract is generated and opened. Now the flow's centerpiece: approval and routing, asked together — with the recommendation's reasoning in plain sight.</p>
+
+  <figure class="fork-fig st" style="--i:0">
+    <svg viewBox="0 0 640 240" aria-hidden="true">
+      <path class="trunk" d="M24 120 H230"/>
+      <path class="path-express" d="M230 120 C320 120 360 62 448 62"/>
+      <path class="path-review" d="M230 120 C320 120 360 178 448 178"/>
+      <circle class="node hot" cx="230" cy="120" r="6"/>
+      <circle class="node hot" cx="448" cy="62" r="6"/>
+      <circle class="node" cx="448" cy="178" r="6"/>
+      <text x="24" y="102">contract.html</text>
+      <text x="24" y="142" class="small">approved · Full tier</text>
+      <text x="464" y="58" class="hot">express finish</text>
+      <text x="464" y="76" class="small">isolation branch · no more approval questions</text>
+      <text x="464" y="174">full review</text>
+      <text x="464" y="192" class="small">spec approval · handoff menu</text>
+    </svg>
+  </figure>
+
+  <div class="term st" style="--i:1">
+    <div class="term-head"><span class="label">approval &amp; routing · one AskUserQuestion, two questions</span></div>
+    <div class="term-body">
+      <p class="tline"><span class="prompt">›</span> Routing recommendation — <span style="color:var(--accent)">express</span>: all 5 gates went ready without an early stop, and 4 of 6 success criteria carry check commands.</p>
+
+      <p class="qhead st" style="--i:2">1 · Which scope tier should we target?</p>
+      <div class="opts st" style="--i:3">
+        <div class="opt rec picked">Full <span class="why">— build MVP + Full tiers</span></div>
+        <div class="opt">MVP <span class="why">— ship the minimum viable version first</span></div>
+        <div class="opt">Stretch <span class="why">— include the seasons, apparently</span></div>
+      </div>
+
+      <p class="qhead st" style="--i:4">2 · Approve the contract — and how should we finish?</p>
+      <div class="opts st" style="--i:5">
+        <div class="opt rec picked">Approve — express finish <span class="why">— specs generate with no further approval questions and execute immediately on an isolation branch</span></div>
+        <div class="opt">Approve — full review <span class="why">— interactive review continues: spec approval, then the handoff menu</span></div>
+        <div class="opt">Needs changes <span class="why">— some parts need revision before approving</span></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="what st" style="--i:6">Approval and routing are one consolidated question. Express deletes the remaining ceremony, never the artifacts — and it's only <em>recommended</em> when the interview's evidence earns it. An early-stopped interview doesn't even get the option.</p>
+</section>
+
+<!-- ══════════ CHAPTER 5 ══════════ -->
+<section class="vignette" id="ch5">
+  <p class="chapter">Chapter 05 · Execution</p>
+  <h2>Phases commit in waves</h2>
+  <p class="intro">Specs are generated (self-review hard-gated), and autopilot takes the isolation branch. Independent phases run in parallel; anything sharing a file is serialized. Every phase earns its commit.</p>
+
+  <div class="term st" style="--i:0">
+    <div class="term-body">
+      <p class="tline"><span class="prompt">$</span> git switch -c ideation/bookmark-garden</p>
+    </div>
+  </div>
+
+  <div class="waves">
+    <div class="wave st" style="--i:1">
+      <span class="wlabel label">wave 1</span>
+      <div class="phases">
+        <div class="phase" style="--w:0">
+          <p class="pname">Phase 1 — Soil <span class="label">schema + visit tracking</span></p>
+          <p class="pipeline"><span class="step">scout</span> › <span class="step">build</span> › <span class="step">verify</span> › <span class="step">review</span> › <span class="step">commit</span></p>
+          <span class="hash">✓ 5eedbed</span>
+        </div>
+      </div>
+    </div>
+    <div class="wave st" style="--i:2">
+      <span class="wlabel label">wave 2</span>
+      <div class="phases">
+        <div class="phase" style="--w:1">
+          <p class="pname">Phase 2 — Growth stages</p>
+          <p class="pipeline"><span class="step">scout</span> › <span class="step">build</span> › <span class="step">verify</span> › <span class="step">review</span> › <span class="step">commit</span></p>
+          <p class="cyc"><b>review, cycle 1:</b> high — wilt query misses never-visited seeds → fixed, cycle 2 PASS</p>
+          <span class="hash">✓ f01a9e5</span>
+        </div>
+        <div class="phase" style="--w:1">
+          <p class="pname">Phase 3 — Pruning shears</p>
+          <p class="pipeline"><span class="step">scout</span> › <span class="step">build</span> › <span class="step">verify</span> › <span class="step">review</span> › <span class="step">commit</span></p>
+          <span class="hash">✓ dead1ef</span>
+        </div>
+      </div>
+    </div>
+    <div class="wave st" style="--i:3">
+      <span class="wlabel label">wave 3</span>
+      <div class="phases">
+        <div class="phase" style="--w:2">
+          <p class="pname">Phase 4 — The garden view</p>
+          <p class="pipeline"><span class="step">scout</span> › <span class="step">build</span> › <span class="step">verify</span> › <span class="step">review</span> › <span class="step">commit</span></p>
+          <span class="hash">✓ 9a2eb00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="what st" style="--i:4">Each phase runs scout → build → verify-review-fix (three cycles max) before it may commit. Express runs are strict: a crashed reviewer <em>stops</em> the run — unreviewed code never lands silently.</p>
+</section>
+
+<!-- ══════════ CHAPTER 6 ══════════ -->
+<section class="vignette" id="ch6">
+  <p class="chapter">Chapter 06 · The harvest</p>
+  <h2>The run ends. The filter asks once.</h2>
+  <p class="intro">The finished run's implementation notes pass through the generalization filter. Trivia composts; patterns that would change the <em>next</em> spec survive. Two candidates made it.</p>
+
+  <div class="term st" style="--i:0">
+    <div class="term-head"><span class="label">completion</span></div>
+    <div class="term-body">
+      <p class="tline">Branch: ideation/bookmark-garden</p>
+      <p class="tline">Review: git diff main...ideation/bookmark-garden</p>
+    </div>
+  </div>
+
+  <div class="term st" style="--i:1">
+    <div class="term-head"><span class="label">learning capture · one question, accept/edit/dismiss</span></div>
+    <div class="term-body">
+      <p class="qhead">Keep any of these for future interviews? <span class="why" style="color:var(--faint)">(multi-select · "Other" edits the wording)</span></p>
+      <div class="opts">
+        <label class="cand selected"><span class="box">▣</span><span>Time-based behavior (wilting) never said where the clock lives — client, server, or cron. Phase 2 stalled on exactly that.<span class="fate">accepted → learnings.md</span></span></label>
+        <label class="cand"><span class="box">☐</span><span>The garden view needed empty-state art the spec never mentioned.<span class="fate">dismissed — didn't earn a future question</span></span></label>
+      </div>
+    </div>
+  </div>
+
+  <div class="mdentry st" style="--i:2">
+    <span class="file">docs/ideation/learnings.md</span>
+    <span class="h">## 2026-07-23 — bookmark-garden</span><br>
+    - <span class="k">Pattern</span>: Specs that schedule time-based behavior never said which process observes the clock.<br>
+    &nbsp;&nbsp;<span class="k">Evidence</span>: Phase 2 wilt-timer gap decision<br>
+    &nbsp;&nbsp;<span class="k">Spec/interview implication</span>: When a feature depends on elapsed time, ask "where does the clock live?" before phasing.
+  </div>
+
+  <p class="aside-note st" style="--i:3">› zero candidates would have meant zero prompts — a clean run stays silent.</p>
+
+  <p class="what st" style="--i:4">Capture is push-based and human-gated: at most three candidates, one accept/edit/dismiss question, nothing auto-appended. Unattended runs never write this file — their notes wait for the next interactive intake.</p>
+</section>
+
+<!-- ══════════ CHAPTER 7 ══════════ -->
+<section class="vignette" id="ch7">
+  <p class="chapter">Chapter 07 · The loop closes</p>
+  <h2>Weeks later, a new seed</h2>
+  <p class="intro">A different idea walks through the same door. Watch the first thing that happens.</p>
+
+  <div class="bubble echo st" style="--i:0">
+    <span class="label">you, thinking out loud (again)</span>
+    new idea — a reading-streak greenhouse. finish anything three days in a row and <mark>a flower blooms in the window</mark>, miss a day and the <mark>streak resets at midnight</mark>…
+  </div>
+
+  <div class="term st" style="--i:1">
+    <div class="term-head"><span class="label">intake</span></div>
+    <div class="term-body">
+      <p class="tline st" style="--i:2"><span class="apply">Applying learning from bookmark-garden (2026-07-23): "resets at midnight" is elapsed-time behavior — asking where the clock lives first.</span></p>
+      <div class="q st" style="--i:3"><span class="tag">Q1</span><span class="txt">Whose midnight — and which process notices it? <em>I'd recommend server-side, checked on the first open of the day: no cron to babysit, no timezone roulette.</em></span></div>
+    </div>
+  </div>
+
+  <p class="what st" style="--i:4">Intake reads <code>learnings.md</code> and says, out loud, when a lesson shapes a question. Last project's stumble is this project's first question. The garden remembers.</p>
+</section>
+
+</main>
+
+<!-- ══════════ RUN IT YOURSELF ══════════ -->
+<footer class="end">
+  <p class="chapter">Epilogue · Run it yourself</p>
+  <h2>One door, two ways through</h2>
+  <div class="cmds">
+    <div class="cmd">
+      <code>/ideation</code>
+      <p>The one door. Interview → critics → contract → the fork. You pick express or full review when the evidence is on the table.</p>
+    </div>
+    <div class="cmd">
+      <code>/ideation:express</code>
+      <p>The same door with the routing pre-answered: one consolidated confirmation, an isolation branch, straight to execution.</p>
+    </div>
+  </div>
+  <p class="colophon">This page is a single self-contained HTML file — no fonts, no CDNs, no images; everything is drawn with CSS and inline SVG. It respects your color-scheme and reduced-motion preferences. And yes: it was planned with <code>/ideation</code>.</p>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  if (!('IntersectionObserver' in window)) return; // base state is fully visible
+  document.documentElement.classList.add('js');
+
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('.vignette, .end').forEach(function (s) { io.observe(s); });
+
+  // gate pips double as page progress
+  var rail = document.querySelector('.rail');
+  if (!rail) return;
+  var pips = rail.querySelectorAll('.pip');
+  var count = rail.querySelector('.rail-count');
+  var ticking = false;
+  function paint() {
+    ticking = false;
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    var p = max > 0 ? window.scrollY / max : 1;
+    var lit = Math.max(0, Math.min(pips.length, Math.ceil(p * pips.length + 0.02)));
+    pips.forEach(function (pip, i) { pip.classList.toggle('lit', i < lit); });
+    if (count) count.textContent = lit + '/5';
+    rail.classList.toggle('done', lit === pips.length);
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(paint); }
+  }, { passive: true });
+  paint();
+})();
+</script>
+</body>
+</html>

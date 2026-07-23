@@ -241,6 +241,29 @@ Only after PASS or user acceptance: stage the phase's changed files by name (nev
 
 After the report, if implementation notes exist, open them: `open {project-directory}/implementation-notes-phase-{N}.html`.
 
+### Learning Capture (interactive runs only)
+
+**`--headless` runs skip this step entirely** — never prompt, never write
+`docs/ideation/learnings.md` unattended; their notes wait for the interview
+engine's unmined-notes surfacing at the next interactive intake.
+
+On an interactive run, after the completion report, if this run produced
+implementation notes or note-worthy gap decisions, apply the learning filter in
+`${CLAUDE_PLUGIN_ROOT}/references/learning-filter.md` to them — bounded to the
+just-finished project's `implementation-notes-phase-*.html` and this run's noted
+decisions, **never a repo-wide scan**. The filter yields **up to 3** candidates.
+
+- **Zero candidates → silence.** No prompt, no output, no "nothing to capture"
+  message — proceed as if this step didn't exist.
+- **Otherwise, ask ONE `AskUserQuestion`** offering accept/edit/dismiss per
+  candidate: a single `multiSelect` question with each candidate's text inline
+  (selected = accept; "Other" = edit the wording, then treat as accepted;
+  nothing selected = dismiss all).
+- Write accepted entries to `docs/ideation/learnings.md` per the lifecycle rules
+  in the filter reference: bootstrap header if the file is absent, "Also seen
+  in" dedupe amendments, verified retirement of stale entries, dated entry
+  format.
+
 ## Key Principles
 
 1. **Read before writing** — understand existing code and patterns before creating or modifying files.

@@ -24,7 +24,19 @@ While the sweep runs, acknowledge the brain dump and state what looks strong and
 
 ### Read accumulated learnings
 
-If `docs/ideation/learnings.md` exists, read it. It holds generalizable spec-gap and interview patterns mined from past projects by `/ideation:retro`. Where a recorded pattern is relevant to this project's scope, apply it — ask the question it implies, or carry its spec implication into artifact generation. Learnings inform questions; they never replace the evidence a gate requires, and entries are dated because codebases drift.
+If `docs/ideation/learnings.md` exists, read it. It holds generalizable spec-gap and interview patterns captured from completed ideation projects (lifecycle: `${CLAUDE_PLUGIN_ROOT}/references/learning-filter.md`). Where a recorded pattern is relevant to this project's scope, apply it — ask the question it implies, or carry its spec implication into artifact generation — and **say so visibly at that moment**, one line, no banner:
+
+```
+Applying learning from {project} ({date}): {one-clause why}
+```
+
+Print the line whenever a learning shapes a question you ask or a spec implication you carry forward. Learnings inform questions; they never replace the evidence a gate requires, and entries are dated because codebases drift.
+
+### Surface unmined notes
+
+Unattended runs leave implementation notes behind that no capture step reviewed. At intake, run one **bounded** scan: a single glob over `docs/ideation/*/implementation-notes-*.html`, compared against `learnings.md`'s mtime — notes newer than the file are **unmined**; if `learnings.md` is absent, all notes count as unmined. Do not read note contents during the scan (one glob, one stat comparison — the intake opener must stay fast).
+
+If unmined notes exist, offer **once** to mine them now: run them through the learning filter (`${CLAUDE_PLUGIN_ROOT}/references/learning-filter.md` — same accept/edit/dismiss review, up to 3 candidates), or skip. If the user skips, never re-offer within the session. Note contents are read only after the user accepts mining.
 
 ## Phase 2: Interview Loop
 
@@ -66,6 +78,8 @@ Track readiness internally across 5 evidence gates (each `ready` / `not-ready`, 
 | Consistency      | Are there contradictions I need resolved?                      |
 
 **When unsure whether the evidence is sufficient, the gate is `not-ready`.** One extra question costs seconds; a bad contract costs hours.
+
+**Scoreboard:** after each answered question, print one line from the gate state tracked above — `Gates: {n}/5 ready — open: {labels}` (e.g. `Gates: 3/5 ready — open: Success Criteria, Consistency`; when everything is ready, `Gates: 5/5 ready`). The scoreboard instruction lives only here in the engine — calling skills must not duplicate it.
 
 When all 5 gates are `ready`, stop interviewing and generate the contract. There is no fixed question limit — keep asking until every gate is ready. The user can say "stop", "wrap up", or "that's enough" to end the interview early; any gates still `not-ready` are recorded as such in the contract.
 
