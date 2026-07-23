@@ -3,79 +3,126 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark light">
-<title>The Bookmark Garden — an ideation walkthrough</title>
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="ideation is a Claude Code plugin that turns messy brain dumps into evidence-gated contracts, implementation specs, and reviewed, committed phases — stress-tested by adversarial plan critics, executed in parallel waves, remembered by a learning loop.">
+<meta property="og:title" content="ideation — brain dump in, reviewed commits out">
+<meta property="og:description" content="A Claude Code plugin: an evidence-gated interview, four adversarial plan critics, spec-driven execution in parallel waves, and a push-based learning loop. Includes an animated walkthrough.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nicknisi.github.io/ideation/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='26' y='26' width='48' height='48' rx='9' transform='rotate(45 50 50)' fill='%232b46c7'/%3E%3C/svg%3E">
+<title>ideation — brain dump in, reviewed commits out</title>
 <style>
 /* ================================================================
-   The Bookmark Garden — one fictional feature, walked through the
-   whole ideation loop. Command Deck family: dark-first, cyan-teal
-   accent, go/caution/danger trio, mono structure + sans prose.
+   ideation — the plugin's home page: pitch, features, install, and
+   The Bookmark Garden (one fictional feature walked through the
+   whole loop). Art direction: an editorial field guide — paper
+   white, ink, one cobalt accent, serif display, letterpress chips,
+   leaf-shaped pips. Dark mode is neutral graphite, not navy.
    Self-contained: no fonts, no CDNs, no images. CSS + inline SVG.
    ================================================================ */
 
 :root {
-  color-scheme: dark;
-  --bg: #0a0f16;
-  --surface-1: #101723;
-  --surface-2: #161f2e;
-  --line: #243140;
-  --line-strong: #38485a;
-  --ink: #e6edf3;
-  --muted: #a2b2c2;
-  --faint: #8295a8;
-  --accent: #56c8ea;
-  --accent-tint: #11313f;
-  --go: #46d49c;
-  --go-tint: #0d2b21;
-  --caution: #e9b65a;
-  --caution-tint: #2e2410;
-  --danger: #f5839b;
-  --danger-tint: #331620;
+  color-scheme: light;
+  --bg: #f7f7f3;
+  --surface-1: #fcfcfa;
+  --surface-2: #ffffff;
+  --wash: #ebebe4;
+  --line: #dededf;
+  --line-strong: #a6a6a0;
+  --ink: #191b1d;
+  --muted: #50555a;
+  --faint: #75797d;
+  --accent: #2b46c7;         /* cobalt — brand & annotation */
+  --accent-tint: #e6eafb;
+  --go: #187a48;             /* success only: hashes, picks, PASS */
+  --go-tint: #e0f0e7;
+  --caution: #94660a;
+  --caution-tint: #f5ecd2;
+  --danger: #bb3a2c;         /* the stamp, blockers */
+  --danger-tint: #f8e2de;
+  --font-serif: 'Iowan Old Style', 'Palatino Nova', Palatino, 'Book Antiqua', Georgia, 'Times New Roman', serif;
   --font-mono: 'Berkeley Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, Consolas, monospace;
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-  --radius: 6px;
-  --radius-lg: 10px;
+  --radius: 3px;
+  --radius-lg: 4px;
+  --press: 3px 3px 0 0 var(--line);
+  --press-strong: 4px 4px 0 0 var(--wash);
 }
-@media (prefers-color-scheme: light) {
-  :root {
-    color-scheme: light;
-    --bg: #eef1f4;
-    --surface-1: #f9fafb;
-    --surface-2: #ffffff;
-    --line: #d4dce3;
-    --line-strong: #aab8c4;
-    --ink: #16202b;
-    --muted: #46545f;
-    --faint: #5b6b7a;
-    --accent: #0a6d89;
-    --accent-tint: #ddeef4;
-    --go: #137455;
-    --go-tint: #dff3ea;
-    --caution: #8c6000;
-    --caution-tint: #f6ecd4;
-    --danger: #b62b50;
-    --danger-tint: #fae3e9;
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #131417;
+    --surface-1: #1a1c20;
+    --surface-2: #202329;
+    --wash: #0c0d0f;
+    --line: #2d3036;
+    --line-strong: #4c505a;
+    --ink: #e9e9e4;
+    --muted: #a8aaa6;
+    --faint: #82858a;
+    --accent: #93a7ff;
+    --accent-tint: #1e2542;
+    --go: #63bf8d;
+    --go-tint: #15291e;
+    --caution: #d2ad55;
+    --caution-tint: #2b2513;
+    --danger: #e0796e;
+    --danger-tint: #331714;
+    --press: 3px 3px 0 0 var(--wash);
+    --press-strong: 4px 4px 0 0 var(--wash);
   }
+}
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #131417;
+    --surface-1: #1a1c20;
+    --surface-2: #202329;
+    --wash: #0c0d0f;
+    --line: #2d3036;
+    --line-strong: #4c505a;
+    --ink: #e9e9e4;
+    --muted: #a8aaa6;
+    --faint: #82858a;
+    --accent: #93a7ff;
+    --accent-tint: #1e2542;
+    --go: #63bf8d;
+    --go-tint: #15291e;
+    --caution: #d2ad55;
+    --caution-tint: #2b2513;
+    --danger: #e0796e;
+    --danger-tint: #331714;
+    --press: 3px 3px 0 0 var(--wash);
+    --press-strong: 4px 4px 0 0 var(--wash);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 html { overflow-x: clip; }
 body {
-  font-family: var(--font-sans);
-  font-size: 1rem;
-  line-height: 1.65;
-  letter-spacing: 0.011em;
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
+  line-height: 1.7;
   color: var(--ink);
   background: var(--bg);
   overflow-x: clip;
   -webkit-font-smoothing: antialiased;
 }
+/* paper grain — one inline SVG turbulence tile, no requests */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+}
 main, .cover, .end {
-  max-width: 780px;
+  max-width: 800px;
   margin: 0 auto;
   padding: 0 20px;
 }
+::selection { background: var(--accent-tint); }
 
 /* ── shared voices ─────────────────────────────── */
 .label {
@@ -86,19 +133,45 @@ main, .cover, .end {
   text-transform: uppercase;
   color: var(--faint);
 }
-h1, h2, h3 { line-height: 1.2; margin: 0; }
+h1, h2, h3 { line-height: 1.15; margin: 0; font-weight: 700; letter-spacing: -0.008em; text-wrap: balance; }
 p { margin: 0; }
-a { color: var(--accent); }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
 code {
   font-family: var(--font-mono);
-  font-size: 0.85em;
+  font-size: 0.8em;
   background: var(--surface-2);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--radius);
   padding: 0.08em 0.35em;
 }
 
-/* ── progress rail: the five gate pips ─────────── */
+/* ── theme toggle (enhancement-only) ───────────── */
+.theme {
+  position: fixed;
+  top: 18px;
+  right: 22px;
+  z-index: 20;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--faint);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--press);
+  cursor: pointer;
+}
+html.js .theme { display: inline-flex; }
+.theme:hover { color: var(--accent); border-color: var(--accent); }
+.theme svg { display: none; width: 16px; height: 16px; }
+.theme[data-mode="auto"] .i-auto,
+.theme[data-mode="light"] .i-sun,
+.theme[data-mode="dark"] .i-moon { display: block; }
+
+/* ── progress rail: five leaves, greening as you go ── */
 .rail {
   position: fixed;
   right: 22px;
@@ -107,28 +180,28 @@ code {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 13px;
   z-index: 10;
 }
 .rail .label { writing-mode: vertical-rl; letter-spacing: 0.22em; }
 .rail .pip {
-  width: 11px;
-  height: 11px;
+  width: 12px;
+  height: 12px;
   rotate: 45deg;
   border: 1.5px solid var(--line-strong);
-  border-radius: 2px;
+  border-radius: 0 62% 0 62%;   /* a leaf */
   background: transparent;
 }
 .rail .pip.lit {
-  background: var(--go);
-  border-color: var(--go);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 .rail .rail-count {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
   color: var(--faint);
 }
-.rail.done .rail-count { color: var(--go); }
+.rail.done .rail-count { color: var(--accent); }
 @media (max-width: 999px) { .rail { display: none; } }
 
 /* ── cover ─────────────────────────────────────── */
@@ -138,36 +211,55 @@ code {
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  gap: 22px;
+  gap: 24px;
   padding-top: 48px;
   padding-bottom: 24px;
   position: relative;
 }
-.cover .kicker { color: var(--accent); }
+.cover .kicker {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--accent);
+}
 .cover h1 {
-  font-size: clamp(2.4rem, 7vw, 3.6rem);
-  font-weight: 750;
+  font-size: clamp(3.4rem, 10vw, 5.5rem);
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 .cover .lede {
-  font-size: 1.125rem;
+  font-size: 1.1875rem;
   color: var(--muted);
-  max-width: 34em;
+  max-width: 30em;
 }
-.cover .lede strong { color: var(--ink); font-weight: 600; }
+.cover .lede strong { color: var(--ink); font-weight: 700; }
 .cover-row {
   display: flex;
   align-items: flex-end;
-  gap: 28px;
+  gap: 30px;
   flex-wrap: wrap;
+}
+.fig { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0; flex: none; }
+.fig figcaption {
+  font-style: italic;
+  font-size: 0.8125rem;
+  color: var(--faint);
+  border-top: 1px solid var(--line);
+  padding-top: 4px;
+  max-width: 128px;
+  text-align: center;
 }
 .scrollhint {
   margin-top: 10px;
   display: flex;
   align-items: center;
   gap: 10px;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.9375rem;
   color: var(--faint);
 }
 .scrollhint .arrow {
@@ -187,37 +279,36 @@ code {
 .plant .bloom-outer { fill: var(--accent); }
 .plant .bloom-inner { fill: var(--caution); }
 
-/* ── vignettes ─────────────────────────────────── */
+/* ── vignettes: botanical plates ───────────────── */
 .vignette {
-  padding: 96px 0 40px;
-  border-top: 1px solid var(--line);
+  padding: 88px 0 44px;
+  border-top: 3px double var(--line-strong);
 }
 .vignette > * + * { margin-top: 20px; }
 .chapter {
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   color: var(--accent);
 }
 .chapter::before {
   content: '';
   display: inline-block;
-  width: 22px;
+  width: 26px;
   height: 1px;
   background: var(--accent);
   vertical-align: middle;
   margin-right: 10px;
 }
 .vignette h2 {
-  font-size: clamp(1.5rem, 4vw, 2rem);
-  font-weight: 700;
-  letter-spacing: -0.015em;
+  font-size: clamp(1.7rem, 4.5vw, 2.35rem);
 }
-.vignette .intro { color: var(--muted); max-width: 38em; }
+.vignette .intro { color: var(--muted); max-width: 36em; font-size: 1.0625rem; }
+.intro strong { color: var(--ink); font-weight: 700; }
 
-/* the one-line "what happened in the flow" caption */
+/* the one-line "what happened in the flow" caption — a margin note */
 .what {
   border-left: 3px solid var(--accent);
   background: var(--surface-1);
@@ -230,41 +321,44 @@ code {
 .what::before {
   content: 'In the flow';
   display: block;
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.8125rem;
   font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  letter-spacing: 0.03em;
   color: var(--accent);
   margin-bottom: 2px;
 }
 
-/* ── the brain-dump bubble ─────────────────────── */
+/* ── the brain-dump bubble: a pressed note ─────── */
 .bubble {
   background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: 14px 14px 14px 3px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--press);
   padding: 22px 26px;
   font-size: 1.0625rem;
+  font-style: italic;
   color: var(--ink);
   max-width: 40em;
   rotate: -0.4deg;
   position: relative;
 }
-.bubble .label { display: block; margin-bottom: 8px; }
+.bubble .label { display: block; margin-bottom: 8px; font-style: normal; }
 .bubble mark {
   background: var(--accent-tint);
   color: var(--accent);
-  border-radius: 3px;
+  border-radius: 2px;
   padding: 0 3px;
 }
-.bubble.echo { rotate: 0.4deg; border-radius: 14px 14px 3px 14px; }
+.bubble.echo { rotate: 0.4deg; }
 
-/* ── terminal panels ───────────────────────────── */
+/* ── terminal panels: typewritten notes ────────── */
 .term {
   background: var(--surface-1);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
+  box-shadow: var(--press);
   overflow: hidden;
 }
 .term-head {
@@ -272,7 +366,7 @@ code {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 14px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line-strong);
   background: var(--surface-2);
 }
 .term-body {
@@ -300,7 +394,7 @@ code {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-align: center;
-  border-radius: 4px;
+  border-radius: var(--radius);
   padding: 1px 0;
 }
 .q .tag { color: var(--accent); background: var(--accent-tint); }
@@ -318,11 +412,12 @@ code {
 }
 .score .minipips { display: inline-flex; gap: 5px; }
 .score .minipips i {
-  width: 8px; height: 8px; rotate: 45deg; border-radius: 1.5px;
+  width: 9px; height: 9px; rotate: 45deg;
+  border-radius: 0 62% 0 62%;
   border: 1.2px solid var(--line-strong);
 }
-.score .minipips i.f { background: var(--go); border-color: var(--go); }
-.score.allgo { color: var(--go); }
+.score .minipips i.f { background: var(--accent); border-color: var(--accent); }
+.score.allgo { color: var(--accent); }
 
 /* strawman sketch */
 .strawman {
@@ -343,14 +438,14 @@ code {
   display: inline-block;
   margin-top: 12px;
   rotate: -1.6deg;
-  border: 1.5px solid var(--danger);
+  border: 2px solid var(--danger);
   color: var(--danger);
   background: var(--danger-tint);
   border-radius: var(--radius);
   padding: 6px 12px;
-  font-family: var(--font-sans);
+  font-family: var(--font-serif);
   font-size: 0.9375rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 .aside-note { color: var(--faint); font-size: 0.8125rem; font-family: var(--font-mono); }
 
@@ -383,19 +478,20 @@ code {
   color: var(--ink);
 }
 .opt.picked::before { content: '❯ '; color: var(--go); }
-.qhead { color: var(--ink); font-weight: 600; }
+.qhead { color: var(--ink); font-weight: 700; font-family: var(--font-serif); font-size: 0.9375rem; }
 
 /* ── critics ───────────────────────────────────── */
 .critics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 16px;
 }
 @media (max-width: 639px) { .critics { grid-template-columns: 1fr; } }
 .critic {
   background: var(--surface-1);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
+  box-shadow: var(--press);
   padding: 18px;
   display: flex;
   flex-direction: column;
@@ -418,7 +514,7 @@ code {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  border-radius: 999px;
+  border-radius: var(--radius);
   padding: 2px 10px;
   border: 1px solid transparent;
 }
@@ -430,7 +526,7 @@ code {
 /* digest table-ish lines */
 .digest .lens { color: var(--accent); display: inline-block; min-width: 17ch; }
 
-/* ── the fork ──────────────────────────────────── */
+/* ── the fork: a branching vine ────────────────── */
 .fork-fig { width: 100%; max-width: 640px; }
 .fork-fig svg { width: 100%; height: auto; display: block; overflow: visible; }
 .fork-fig .trunk, .fork-fig .path-express { stroke: var(--accent); stroke-width: 3; fill: none; stroke-linecap: round; }
@@ -453,7 +549,7 @@ code {
 /* ── execution waves ───────────────────────────── */
 .waves { display: flex; flex-direction: column; gap: 0; }
 .wave { display: grid; grid-template-columns: 84px 1fr; gap: 14px; padding: 14px 0; }
-.wave + .wave { border-top: 1px dashed var(--line); }
+.wave + .wave { border-top: 1px dashed var(--line-strong); }
 .wave .wlabel { padding-top: 14px; }
 @media (max-width: 559px) {
   .wave { grid-template-columns: 1fr; gap: 8px; }
@@ -463,13 +559,14 @@ code {
 .phase {
   flex: 1 1 240px;
   background: var(--surface-1);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-left: 3px solid var(--go);
   border-radius: var(--radius);
+  box-shadow: var(--press);
   padding: 12px 14px;
   min-width: 0;
 }
-.phase .pname { font-weight: 600; font-size: 0.9375rem; }
+.phase .pname { font-weight: 700; font-size: 1rem; }
 .phase .pipeline {
   display: flex;
   align-items: center;
@@ -484,7 +581,9 @@ code {
 .phase .step { display: inline-flex; align-items: center; gap: 4px; }
 .phase .step::before {
   content: '';
-  width: 6px; height: 6px; border-radius: 50%;
+  width: 6px; height: 6px;
+  rotate: 45deg;
+  border-radius: 0 62% 0 62%;
   background: var(--go);
   flex: none;
 }
@@ -494,7 +593,7 @@ code {
   font-size: 0.75rem;
   color: var(--go);
   background: var(--go-tint);
-  border-radius: 4px;
+  border-radius: var(--radius);
   padding: 1px 8px;
   margin-top: 10px;
   display: inline-block;
@@ -506,7 +605,7 @@ code {
   border-left: 2px solid var(--caution);
   padding-left: 8px;
 }
-.phase .cyc b { color: var(--caution); font-weight: 600; }
+.phase .cyc b { color: var(--caution); font-weight: 700; }
 
 /* ── learning capture ──────────────────────────── */
 .cand {
@@ -520,6 +619,7 @@ code {
   background: var(--surface-2);
   color: var(--muted);
   font-size: 0.9375rem;
+  font-family: var(--font-serif);
   max-width: 46em;
 }
 .cand .box {
@@ -542,8 +642,9 @@ code {
 /* rendered markdown entry */
 .mdentry {
   background: var(--surface-1);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
+  box-shadow: var(--press);
   padding: 16px 20px;
   font-family: var(--font-mono);
   font-size: 0.8125rem;
@@ -576,20 +677,21 @@ code {
 
 /* ── footer ────────────────────────────────────── */
 .end {
-  padding-top: 96px;
+  padding-top: 88px;
   padding-bottom: 96px;
-  border-top: 1px solid var(--line);
-  margin-top: 40px;
+  border-top: 3px double var(--line-strong);
+  margin-top: 44px;
   display: flex;
   flex-direction: column;
   gap: 22px;
 }
-.cmds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.cmds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 @media (max-width: 639px) { .cmds { grid-template-columns: 1fr; } }
 .cmd {
   background: var(--surface-1);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
+  box-shadow: var(--press);
   padding: 18px;
 }
 .cmd code {
@@ -600,7 +702,102 @@ code {
   padding: 0;
 }
 .cmd p { color: var(--muted); font-size: 0.9375rem; margin-top: 8px; }
-.colophon { color: var(--faint); font-size: 0.8125rem; max-width: 46em; }
+.colophon { color: var(--faint); font-size: 0.875rem; font-style: italic; max-width: 46em; }
+
+/* ── hero actions ──────────────────────────────── */
+.hero-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.jump {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.9375rem;
+  color: var(--ink);
+  text-decoration: none;
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--press);
+  padding: 7px 16px;
+  white-space: nowrap;
+}
+.jump:hover { translate: 1px 1px; box-shadow: 2px 2px 0 0 var(--line); color: var(--accent); }
+
+/* copyable command chip */
+.chipcmd {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--press);
+  padding: 8px 12px;
+  max-width: 100%;
+}
+.chipcmd.stack { flex-direction: column; align-items: stretch; gap: 5px; }
+.chipcmd .cline { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+.copy {
+  display: none; /* enhancement-only: shown once JS confirms clipboard access */
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+  background: var(--surface-1);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 2px 8px;
+  cursor: pointer;
+}
+html.clip .copy { display: inline-block; }
+.copy:hover { color: var(--accent); border-color: var(--accent); }
+.copy.did { color: var(--go); border-color: var(--go); }
+
+/* ── feature grid: catalog cards ───────────────── */
+.features {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+@media (max-width: 899px) { .features { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 559px) { .features { grid-template-columns: 1fr; } }
+.feature {
+  background: var(--surface-1);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--press);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.feature .icon { color: var(--accent); }
+.feature h3 { font-size: 1.125rem; font-weight: 700; }
+.feature p { color: var(--muted); font-size: 0.9375rem; flex: 1; }
+.feature .icon .lit { fill: var(--accent); stroke: var(--accent); }
+
+/* ── the loop at a glance ──────────────────────── */
+.flowmap { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 4px; }
+.hop {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--ink);
+  text-decoration: none;
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--press);
+  padding: 6px 14px;
+  white-space: nowrap;
+}
+.hop:hover { translate: 1px 1px; box-shadow: 2px 2px 0 0 var(--line); color: var(--accent); }
+.hop .n { color: var(--faint); margin-right: 6px; font-size: 0.6875rem; }
+.hop-arrow { color: var(--faint); font-family: var(--font-mono); padding: 0 4px; user-select: none; }
+.hop.loopback { border-style: dashed; border-color: var(--accent); color: var(--accent); box-shadow: none; }
+.hop.loopback:hover { background: var(--accent-tint); translate: none; }
 
 /* ================================================================
    Motion. Everything below collapses to a static, fully readable
@@ -610,12 +807,21 @@ code {
 @media (prefers-reduced-motion: no-preference) {
 
   /* scroll-reveal: hidden only when JS confirmed the observer exists */
-  html.js .vignette, html.js .end {
+  html.js .cover, html.js .vignette, html.js .end {
     opacity: 0;
     transform: translateY(26px);
     transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
   }
-  html.js .vignette.on, html.js .end.on { opacity: 1; transform: none; }
+  html.js .cover.on, html.js .vignette.on, html.js .end.on { opacity: 1; transform: none; }
+
+  /* feature cards rise like the critics do */
+  html.js .on .feature { animation: rise 0.55s ease forwards; opacity: 0; }
+  html.js .on .feature:nth-child(1) { animation-delay: 0.2s; }
+  html.js .on .feature:nth-child(2) { animation-delay: 0.32s; }
+  html.js .on .feature:nth-child(3) { animation-delay: 0.44s; }
+  html.js .on .feature:nth-child(4) { animation-delay: 0.56s; }
+  html.js .on .feature:nth-child(5) { animation-delay: 0.68s; }
+  html.js .on .feature:nth-child(6) { animation-delay: 0.8s; }
 
   /* staggered children inside a revealed vignette */
   html.js .on .st { opacity: 0; animation: rise 0.55s ease forwards; animation-delay: calc(var(--i, 0) * 140ms + 0.25s); }
@@ -686,8 +892,15 @@ code {
   @keyframes nudge   { 0%, 100% { transform: rotate(45deg) translate(0, 0); } 50% { transform: rotate(45deg) translate(3px, 3px); } }
 }
 </style>
+<script>try{var t=localStorage.getItem('ideation-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;}catch(e){}</script>
 </head>
 <body>
+
+<button class="theme" type="button" data-mode="auto" aria-label="Color theme: auto (click to change)">
+  <svg class="i-auto" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M10 3.5 a6.5 6.5 0 0 0 0 13 Z" fill="currentColor" stroke="none"/></svg>
+  <svg class="i-sun" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 1.6 v2.2 M10 16.2 v2.2 M1.6 10 h2.2 M16.2 10 h2.2 M4.06 4.06 l1.56 1.56 M14.38 14.38 l1.56 1.56 M15.94 4.06 l-1.56 1.56 M5.62 14.38 l-1.56 1.56"/></svg>
+  <svg class="i-moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16.7 12.2 A7.5 7.5 0 1 1 7.8 3.3 a6 6 0 0 0 8.9 8.9 Z" fill="currentColor"/></svg>
+</button>
 
 <!-- gate pips doubling as page progress (enhancement-only chrome) -->
 <aside class="rail" aria-hidden="true">
@@ -701,10 +914,10 @@ code {
 </aside>
 
 <header class="cover">
-  <p class="kicker label">ideation · an illustrated walkthrough</p>
-  <h1>The Bookmark Garden</h1>
-  <div class="cover-row">
-    <svg class="plant" viewBox="0 0 120 140" width="110" height="128" aria-hidden="true">
+  <p class="kicker label st" style="--i:0">a claude code plugin</p>
+  <h1 class="st" style="--i:1">ideation</h1>
+  <div class="cover-row st" style="--i:2">
+    <figure class="fig"><svg class="plant" viewBox="0 0 120 140" width="110" height="128" aria-hidden="true">
       <g class="sprout">
         <path class="stem" d="M60,104 C61,88 58,70 60,50"/>
         <path class="leaf leaf1" d="M60,86 C46,85 37,75 39,63 C52,65 59,74 60,86 Z"/>
@@ -715,17 +928,141 @@ code {
         </g>
       </g>
       <path class="pot" d="M32,104 h56 l-7,26 a4,4 0 0 1 -4,3 h-34 a4,4 0 0 1 -4,-3 Z"/>
-    </svg>
-    <p class="lede">One made-up feature — <strong>a garden where your bookmarks grow when you read them and wilt when you don't</strong> — walked through the entire ideation loop: brain dump, interview, critics, the fork, execution in waves, and the lesson the <em>next</em> project inherits.</p>
+    </svg><figcaption>Fig. 1 — an idea, potted</figcaption></figure>
+    <p class="lede"><strong>Brain dump in. Reviewed, tested commits out.</strong> An evidence-gated interview turns your messiest thinking into a contract, implementation specs, and executed phases — stress-tested by adversarial critics before you commit to the plan, reviewed before the plan commits code, and remembered by the next project.</p>
   </div>
-  <p class="scrollhint">scroll to plant the seed <span class="arrow"></span></p>
+  <div class="hero-actions st" style="--i:3">
+    <span class="chipcmd stack">
+      <span class="cline"><span><span class="prompt">&gt;</span> /plugin marketplace add nicknisi/ideation</span> <button class="copy" type="button" data-copy="/plugin marketplace add nicknisi/ideation">copy</button></span>
+      <span class="cline"><span><span class="prompt">&gt;</span> /plugin install ideation@ideation</span> <button class="copy" type="button" data-copy="/plugin install ideation@ideation">copy</button></span>
+    </span>
+    <a class="jump" href="#story">watch it run ↓</a>
+    <a class="jump" href="https://github.com/nicknisi/ideation">GitHub ↗</a>
+  </div>
+  <p class="scrollhint st" style="--i:4">scroll to plant the seed <span class="arrow"></span></p>
 </header>
 
 <main>
 
+<!-- ══════════ WHAT'S INSIDE ══════════ -->
+<section class="vignette" id="what">
+  <p class="chapter">The pitch · What's inside</p>
+  <h2>Six things a spec template won't do for you</h2>
+  <p class="intro">One command accepts your mess and walks it to reviewed, committed code. Every gate along the way requires evidence, not enthusiasm.</p>
+
+  <div class="features">
+    <article class="feature">
+      <svg class="icon" width="60" height="40" viewBox="0 0 64 40" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <rect class="lit" x="4.5" y="16.5" width="7" height="7" rx="1" transform="rotate(45 8 20)"/>
+        <rect class="lit" x="16.5" y="16.5" width="7" height="7" rx="1" transform="rotate(45 20 20)"/>
+        <rect class="lit" x="28.5" y="16.5" width="7" height="7" rx="1" transform="rotate(45 32 20)"/>
+        <rect x="40.5" y="16.5" width="7" height="7" rx="1" transform="rotate(45 44 20)"/>
+        <rect x="52.5" y="16.5" width="7" height="7" rx="1" transform="rotate(45 56 20)"/>
+      </svg>
+      <h3>Five gates, zero vibes</h3>
+      <p>Problem, goals, success criteria, scope, consistency. Each gate needs a concrete artifact — a pass/fail goal, an explicit boundary — before anything gets written.</p>
+    </article>
+
+    <article class="feature">
+      <svg class="icon" width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M11 7 h18 a4 4 0 0 1 4 4 v10 a4 4 0 0 1 -4 4 h-11 l-7 7 v-7 a4 4 0 0 1 -4 -4 v-10 a4 4 0 0 1 4 -4 z"/>
+        <line x1="13" y1="14" x2="27" y2="14"/>
+        <line x1="13" y1="19" x2="22" y2="19"/>
+      </svg>
+      <h3>An interview that pushes back</h3>
+      <p>One question at a time, each with a recommended answer. It reads your codebase instead of asking you — and it will not tell you your idea is interesting.</p>
+    </article>
+
+    <article class="feature">
+      <svg class="icon" width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="17" cy="17" r="9.5"/>
+        <line x1="24.5" y1="24.5" x2="33" y2="33"/>
+      </svg>
+      <h3>Critics with OPINIONS</h3>
+      <p>Four adversarial lenses — scope-creep, over-engineering, hidden-dependency, success-criteria — maul the draft plan while a fix is still a one-line edit.</p>
+    </article>
+
+    <article class="feature">
+      <svg class="icon" width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M10 5 h13 l7 7 v23 h-20 z"/>
+        <path d="M23 5 v7 h7"/>
+        <path d="M15 23 l3.5 3.5 L25 20"/>
+      </svg>
+      <h3>A contract you can hold</h3>
+      <p>The Mission Brief: gate evidence, nested scope tiers, copyable run commands, and a decision log so rejected approaches stay rejected.</p>
+    </article>
+
+    <article class="feature">
+      <svg class="icon" width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <circle cx="8" cy="20" r="3.2"/>
+        <circle cx="20" cy="9" r="3.2"/>
+        <circle cx="20" cy="31" r="3.2"/>
+        <circle cx="32" cy="20" r="3.2"/>
+        <path d="M10.5 17.7 L17.5 11.3 M10.5 22.3 L17.5 28.7 M22.5 11.3 L29.5 17.7 M22.5 28.7 L29.5 22.3"/>
+      </svg>
+      <h3>Execution that reviews itself</h3>
+      <p>Every phase runs scout → build → verify-review-fix before it may commit. Autopilot plans dependency waves and runs independent phases in parallel.</p>
+    </article>
+
+    <article class="feature">
+      <svg class="icon" width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M32.5 22 a12.7 12.7 0 1 1 -3.2 -11.6"/>
+        <path d="M33 4.5 v7 h-7"/>
+        <path class="lit" d="M20 26 c-5 -0.5 -8 -3.8 -7.4 -8.2 c4.6 0.6 7.6 3.7 7.4 8.2 z" stroke-width="1.4"/>
+      </svg>
+      <h3>A loop that remembers</h3>
+      <p>Finished runs propose learnings; you accept or dismiss. The next interview applies them out loud — last project's stumble becomes this project's first question.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ══════════ THE LOOP AT A GLANCE ══════════ -->
+<section class="vignette" id="how">
+  <p class="chapter">The shape · The loop at a glance</p>
+  <h2>Seven moves, one loop</h2>
+  <p class="intro">This is the whole flow. Each step jumps into the illustrated story below, where it happens to a real (fake) feature.</p>
+
+  <nav class="flowmap st" style="--i:0" aria-label="The ideation loop">
+    <a class="hop" href="#ch1"><span class="n">01</span>brain dump</a><span class="hop-arrow">→</span>
+    <a class="hop" href="#ch2"><span class="n">02</span>interview</a><span class="hop-arrow">→</span>
+    <a class="hop" href="#ch3"><span class="n">03</span>critics</a><span class="hop-arrow">→</span>
+    <a class="hop" href="#ch4"><span class="n">04</span>contract &amp; the fork</a><span class="hop-arrow">→</span>
+    <a class="hop" href="#ch5"><span class="n">05</span>execution waves</a><span class="hop-arrow">→</span>
+    <a class="hop" href="#ch6"><span class="n">06</span>learnings</a><span class="hop-arrow">→</span>
+    <a class="hop loopback" href="#ch7"><span class="n">07</span>the next idea ↺</a>
+  </nav>
+
+  <p class="what st" style="--i:1">Planning artifacts are HTML — built for deciding. Specs are Markdown — built for executing. The routing between an express finish and full review is recommended <em>after</em> the interview, when the evidence to choose actually exists.</p>
+</section>
+
+<!-- ══════════ INSTALL ══════════ -->
+<section class="vignette" id="install">
+  <p class="chapter">Setup · Install</p>
+  <h2>Two commands, then talk</h2>
+  <p class="intro">Runs inside <a href="https://claude.com/claude-code">Claude Code</a> — CLI, desktop, or IDE. Add the marketplace, install the plugin, bring a messy idea.</p>
+
+  <div class="term">
+    <div class="term-head"><span class="label">claude code</span><span class="label">any project</span></div>
+    <div class="term-body">
+      <p class="tline st" style="--i:0"><span class="prompt">&gt;</span> /plugin marketplace add nicknisi/ideation <button class="copy" type="button" data-copy="/plugin marketplace add nicknisi/ideation">copy</button></p>
+      <p class="tline st" style="--i:1"><span class="prompt">&gt;</span> /plugin install ideation@ideation <button class="copy" type="button" data-copy="/plugin install ideation@ideation">copy</button></p>
+      <p class="tline st" style="--i:2"><span class="prompt">&gt;</span> /ideation <span class="cursor"></span></p>
+    </div>
+  </div>
+
+  <p class="what st" style="--i:3">That's the whole setup. There's nothing to configure and no template to fill in — the interview meets whatever level of mess you bring. Speaking of which…</p>
+</section>
+
+<!-- ══════════ THE STORY ══════════ -->
+<section class="vignette" id="story">
+  <p class="chapter">The story · An illustrated walkthrough</p>
+  <h2>The Bookmark Garden</h2>
+  <p class="intro">One made-up feature — <strong>a garden where your bookmarks grow when you read them and wilt when you don't</strong> — walked through the entire ideation loop: brain dump, interview, critics, the fork, execution in waves, and the lesson the <em>next</em> project inherits.</p>
+</section>
+
 <!-- ══════════ CHAPTER 1 ══════════ -->
 <section class="vignette" id="ch1">
-  <p class="chapter">Chapter 01 · The mess</p>
+  <p class="chapter">Plate I · The mess</p>
   <h2>It starts as a brain dump</h2>
   <p class="intro">No structure required. You talk, <code>/ideation</code> listens — then takes a position instead of applauding.</p>
 
@@ -748,7 +1085,7 @@ code {
 
 <!-- ══════════ CHAPTER 2 ══════════ -->
 <section class="vignette" id="ch2">
-  <p class="chapter">Chapter 02 · The interview</p>
+  <p class="chapter">Plate II · The interview</p>
   <h2>One question at a time, with a scoreboard</h2>
   <p class="intro">Every question arrives with a recommendation. Every answer moves the gates. No batching, no question limit, no "that's an interesting approach."</p>
 
@@ -791,7 +1128,7 @@ code {
 
 <!-- ══════════ CHAPTER 3 ══════════ -->
 <section class="vignette" id="ch3">
-  <p class="chapter">Chapter 03 · The critics</p>
+  <p class="chapter">Plate III · The critics</p>
   <h2>The critics have OPINIONS</h2>
   <p class="intro">Before the contract renders, four adversarial lenses descend on the draft in parallel — while a fix is still a one-line JSON edit, not a regenerate loop.</p>
 
@@ -852,7 +1189,7 @@ code {
 
 <!-- ══════════ CHAPTER 4 ══════════ -->
 <section class="vignette" id="ch4">
-  <p class="chapter">Chapter 04 · The fork</p>
+  <p class="chapter">Plate IV · The fork</p>
   <h2>One question routes the finish</h2>
   <p class="intro">The contract is generated and opened. Now the flow's centerpiece: approval and routing, asked together — with the recommendation's reasoning in plain sight.</p>
 
@@ -899,7 +1236,7 @@ code {
 
 <!-- ══════════ CHAPTER 5 ══════════ -->
 <section class="vignette" id="ch5">
-  <p class="chapter">Chapter 05 · Execution</p>
+  <p class="chapter">Plate V · Execution</p>
   <h2>Phases commit in waves</h2>
   <p class="intro">Specs are generated (self-review hard-gated), and autopilot takes the isolation branch. Independent phases run in parallel; anything sharing a file is serialized. Every phase earns its commit.</p>
 
@@ -953,7 +1290,7 @@ code {
 
 <!-- ══════════ CHAPTER 6 ══════════ -->
 <section class="vignette" id="ch6">
-  <p class="chapter">Chapter 06 · The harvest</p>
+  <p class="chapter">Plate VI · The harvest</p>
   <h2>The run ends. The filter asks once.</h2>
   <p class="intro">The finished run's implementation notes pass through the generalization filter. Trivia composts; patterns that would change the <em>next</em> spec survive. Two candidates made it.</p>
 
@@ -991,7 +1328,7 @@ code {
 
 <!-- ══════════ CHAPTER 7 ══════════ -->
 <section class="vignette" id="ch7">
-  <p class="chapter">Chapter 07 · The loop closes</p>
+  <p class="chapter">Plate VII · The loop closes</p>
   <h2>Weeks later, a new seed</h2>
   <p class="intro">A different idea walks through the same door. Watch the first thing that happens.</p>
 
@@ -1027,7 +1364,7 @@ code {
       <p>The same door with the routing pre-answered: one consolidated confirmation, an isolation branch, straight to execution.</p>
     </div>
   </div>
-  <p class="colophon">This page is a single self-contained HTML file — no fonts, no CDNs, no images; everything is drawn with CSS and inline SVG. It respects your color-scheme and reduced-motion preferences. And yes: it was planned with <code>/ideation</code>.</p>
+  <p class="colophon">Made by <a href="https://nicknisi.com">Nick Nisi</a> · <a href="https://github.com/nicknisi/ideation">source, README &amp; releases on GitHub</a>.<br>This page is a single self-contained HTML file — no fonts, no CDNs, no images; everything is drawn with CSS and inline SVG. It respects your color-scheme and reduced-motion preferences. And yes: it was planned with <code>/ideation</code>.</p>
 </footer>
 
 <script>
@@ -1036,12 +1373,49 @@ code {
   if (!('IntersectionObserver' in window)) return; // base state is fully visible
   document.documentElement.classList.add('js');
 
+  // theme toggle: auto -> light -> dark
+  var themeBtn = document.querySelector('.theme');
+  if (themeBtn) {
+    var modes = ['auto', 'light', 'dark'];
+    var cur = document.documentElement.dataset.theme || 'auto';
+    var paintTheme = function () {
+      themeBtn.dataset.mode = cur;
+      themeBtn.setAttribute('aria-label', 'Color theme: ' + cur + ' (click to change)');
+    };
+    paintTheme();
+    themeBtn.addEventListener('click', function () {
+      cur = modes[(modes.indexOf(cur) + 1) % 3];
+      if (cur === 'auto') {
+        delete document.documentElement.dataset.theme;
+        try { localStorage.removeItem('ideation-theme'); } catch (e) {}
+      } else {
+        document.documentElement.dataset.theme = cur;
+        try { localStorage.setItem('ideation-theme', cur); } catch (e) {}
+      }
+      paintTheme();
+    });
+  }
+
   var io = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {
       if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); }
     });
   }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
-  document.querySelectorAll('.vignette, .end').forEach(function (s) { io.observe(s); });
+  document.querySelectorAll('.cover, .vignette, .end').forEach(function (s) { io.observe(s); });
+
+  // copy buttons: shown only when the clipboard API is actually there
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    document.documentElement.classList.add('clip');
+    document.querySelectorAll('.copy[data-copy]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        navigator.clipboard.writeText(btn.getAttribute('data-copy')).then(function () {
+          btn.classList.add('did');
+          btn.textContent = 'copied';
+          setTimeout(function () { btn.classList.remove('did'); btn.textContent = 'copy'; }, 1600);
+        });
+      });
+    });
+  }
 
   // gate pips double as page progress
   var rail = document.querySelector('.rail');
