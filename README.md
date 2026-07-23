@@ -258,6 +258,8 @@ search too...
 
 **Result:** Mission Brief HTML contract for reviewing the plan, plus Markdown specs ready for `/ideation:execute-spec`.
 
+**Prefer to watch it happen?** [`docs/workflow-example.html`](docs/workflow-example.html) walks one fictional feature — a bookmark garden — through the whole loop as an animated, self-contained page: the interview scoreboard, the plan critics, the routing fork, execution waves, and the learning the next interview inherits. After cloning: `open docs/workflow-example.html`.
+
 ## Full Workflow Diagram
 
 ```mermaid
