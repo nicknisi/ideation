@@ -1,5 +1,7 @@
 # Ideation Plugin
 
+> 🌱 **[nicknisi.github.io/ideation](https://nicknisi.github.io/ideation/)** — the pitch, install, and an animated walkthrough of the whole loop, on one self-contained page.
+
 Transform brain dumps into structured implementation artifacts through a conversational interview. HTML is used for interactive decision-making (the Mission Brief contract with evidence-gate readiness, visual comparisons during the interview). Markdown is used for reference documents (specs, PRDs) consumed directly by `/ideation:execute-spec`. Includes an execution workflow for implementing specs in fresh sessions with per-component feedback loops, adversarial plan critics, a Scout/Reviewer agent pipeline, and a push-based learning loop that captures lessons at completion and applies them visibly at future intakes.
 
 ## What's New (0.17.0)
@@ -258,7 +260,7 @@ search too...
 
 **Result:** Mission Brief HTML contract for reviewing the plan, plus Markdown specs ready for `/ideation:execute-spec`.
 
-**Prefer to watch it happen?** [`docs/workflow-example.html`](docs/workflow-example.html) walks one fictional feature — a bookmark garden — through the whole loop as an animated, self-contained page: the interview scoreboard, the plan critics, the routing fork, execution waves, and the learning the next interview inherits. After cloning: `open docs/workflow-example.html`.
+**Prefer to watch it happen?** The [ideation site](https://nicknisi.github.io/ideation/) walks one fictional feature — a bookmark garden — through the whole loop as an animated, self-contained page: the interview scoreboard, the plan critics, the routing fork, execution waves, and the learning the next interview inherits. After cloning: `open docs/index.html`.
 
 ## Full Workflow Diagram
 
