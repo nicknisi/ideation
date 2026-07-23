@@ -3,86 +3,126 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark light">
+<meta name="color-scheme" content="light dark">
 <meta name="description" content="ideation is a Claude Code plugin that turns messy brain dumps into evidence-gated contracts, implementation specs, and reviewed, committed phases — stress-tested by adversarial plan critics, executed in parallel waves, remembered by a learning loop.">
 <meta property="og:title" content="ideation — brain dump in, reviewed commits out">
 <meta property="og:description" content="A Claude Code plugin: an evidence-gated interview, four adversarial plan critics, spec-driven execution in parallel waves, and a push-based learning loop. Includes an animated walkthrough.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://nicknisi.github.io/ideation/">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='26' y='26' width='48' height='48' rx='9' transform='rotate(45 50 50)' fill='%2346d49c'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 6 C18 30 10 64 50 94 C90 64 82 30 50 6 Z' fill='%234e8a3c'/%3E%3C/svg%3E">
 <title>ideation — brain dump in, reviewed commits out</title>
 <style>
 /* ================================================================
    ideation — the plugin's home page: pitch, features, install, and
    The Bookmark Garden (one fictional feature walked through the
-   whole loop). Command Deck family: dark-first, cyan-teal accent,
-   go/caution/danger trio, mono structure + sans prose.
+   whole loop). Art direction: a botanist's field guide — cream
+   paper, ink, chlorophyll and marigold, serif display, letterpress
+   chips, leaf-shaped pips. Dark mode is the greenhouse at night.
    Self-contained: no fonts, no CDNs, no images. CSS + inline SVG.
    ================================================================ */
 
 :root {
-  color-scheme: dark;
-  --bg: #0a0f16;
-  --surface-1: #101723;
-  --surface-2: #161f2e;
-  --line: #243140;
-  --line-strong: #38485a;
-  --ink: #e6edf3;
-  --muted: #a2b2c2;
-  --faint: #8295a8;
-  --accent: #56c8ea;
-  --accent-tint: #11313f;
-  --go: #46d49c;
-  --go-tint: #0d2b21;
-  --caution: #e9b65a;
-  --caution-tint: #2e2410;
-  --danger: #f5839b;
-  --danger-tint: #331620;
+  color-scheme: light;
+  --bg: #f2ecdd;
+  --surface-1: #f8f4e8;
+  --surface-2: #fdfaf1;
+  --wash: #eae2cd;
+  --line: #d9cfb2;
+  --line-strong: #a29672;
+  --ink: #2c3122;
+  --muted: #5d6049;
+  --faint: #83836a;
+  --accent: #96591b;         /* marigold ochre — brand & annotation */
+  --accent-tint: #f2e3c6;
+  --go: #40702f;             /* chlorophyll — growth & success */
+  --go-tint: #e2ead2;
+  --caution: #8f6b0a;
+  --caution-tint: #f1e6c0;
+  --danger: #a53c28;         /* clay — the stamp, blockers */
+  --danger-tint: #f2dcd2;
+  --font-serif: 'Iowan Old Style', 'Palatino Nova', Palatino, 'Book Antiqua', Georgia, 'Times New Roman', serif;
   --font-mono: 'Berkeley Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, Consolas, monospace;
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-  --radius: 6px;
-  --radius-lg: 10px;
+  --radius: 3px;
+  --radius-lg: 4px;
+  --press: 3px 3px 0 0 var(--line);
+  --press-strong: 4px 4px 0 0 var(--wash);
 }
-@media (prefers-color-scheme: light) {
-  :root {
-    color-scheme: light;
-    --bg: #eef1f4;
-    --surface-1: #f9fafb;
-    --surface-2: #ffffff;
-    --line: #d4dce3;
-    --line-strong: #aab8c4;
-    --ink: #16202b;
-    --muted: #46545f;
-    --faint: #5b6b7a;
-    --accent: #0a6d89;
-    --accent-tint: #ddeef4;
-    --go: #137455;
-    --go-tint: #dff3ea;
-    --caution: #8c6000;
-    --caution-tint: #f6ecd4;
-    --danger: #b62b50;
-    --danger-tint: #fae3e9;
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #171b12;
+    --surface-1: #1d2317;
+    --surface-2: #222a1b;
+    --wash: #12160e;
+    --line: #333b26;
+    --line-strong: #55603c;
+    --ink: #eae3ca;
+    --muted: #b2ae91;
+    --faint: #8e8b70;
+    --accent: #d69a4d;       /* lantern light */
+    --accent-tint: #33270f;
+    --go: #92c06d;
+    --go-tint: #202c15;
+    --caution: #d3b153;
+    --caution-tint: #2d2610;
+    --danger: #d97e5f;
+    --danger-tint: #33190f;
+    --press: 3px 3px 0 0 var(--wash);
+    --press-strong: 4px 4px 0 0 var(--wash);
   }
+}
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #171b12;
+    --surface-1: #1d2317;
+    --surface-2: #222a1b;
+    --wash: #12160e;
+    --line: #333b26;
+    --line-strong: #55603c;
+    --ink: #eae3ca;
+    --muted: #b2ae91;
+    --faint: #8e8b70;
+    --accent: #d69a4d;       /* lantern light */
+    --accent-tint: #33270f;
+    --go: #92c06d;
+    --go-tint: #202c15;
+    --caution: #d3b153;
+    --caution-tint: #2d2610;
+    --danger: #d97e5f;
+    --danger-tint: #33190f;
+    --press: 3px 3px 0 0 var(--wash);
+    --press-strong: 4px 4px 0 0 var(--wash);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 html { overflow-x: clip; }
 body {
-  font-family: var(--font-sans);
-  font-size: 1rem;
-  line-height: 1.65;
-  letter-spacing: 0.011em;
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
+  line-height: 1.7;
   color: var(--ink);
   background: var(--bg);
   overflow-x: clip;
   -webkit-font-smoothing: antialiased;
 }
+/* paper grain — one inline SVG turbulence tile, no requests */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+}
 main, .cover, .end {
-  max-width: 780px;
+  max-width: 800px;
   margin: 0 auto;
   padding: 0 20px;
 }
+::selection { background: var(--accent-tint); }
 
 /* ── shared voices ─────────────────────────────── */
 .label {
@@ -93,19 +133,42 @@ main, .cover, .end {
   text-transform: uppercase;
   color: var(--faint);
 }
-h1, h2, h3 { line-height: 1.2; margin: 0; }
+h1, h2, h3 { line-height: 1.15; margin: 0; font-weight: 700; letter-spacing: -0.008em; text-wrap: balance; }
 p { margin: 0; }
-a { color: var(--accent); }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
 code {
   font-family: var(--font-mono);
-  font-size: 0.85em;
+  font-size: 0.8em;
   background: var(--surface-2);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--radius);
   padding: 0.08em 0.35em;
 }
 
-/* ── progress rail: the five gate pips ─────────── */
+/* ── theme toggle (enhancement-only) ───────────── */
+.theme {
+  position: fixed;
+  top: 18px;
+  right: 22px;
+  z-index: 20;
+  display: none;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--press);
+  padding: 4px 10px;
+  cursor: pointer;
+}
+html.js .theme { display: inline-block; }
+.theme:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ── progress rail: five leaves, greening as you go ── */
 .rail {
   position: fixed;
   right: 22px;
@@ -114,16 +177,16 @@ code {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 13px;
   z-index: 10;
 }
 .rail .label { writing-mode: vertical-rl; letter-spacing: 0.22em; }
 .rail .pip {
-  width: 11px;
-  height: 11px;
+  width: 12px;
+  height: 12px;
   rotate: 45deg;
   border: 1.5px solid var(--line-strong);
-  border-radius: 2px;
+  border-radius: 0 62% 0 62%;   /* a leaf */
   background: transparent;
 }
 .rail .pip.lit {
@@ -145,36 +208,55 @@ code {
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  gap: 22px;
+  gap: 24px;
   padding-top: 48px;
   padding-bottom: 24px;
   position: relative;
 }
-.cover .kicker { color: var(--accent); }
+.cover .kicker {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--accent);
+}
 .cover h1 {
-  font-size: clamp(2.4rem, 7vw, 3.6rem);
-  font-weight: 750;
+  font-size: clamp(3.4rem, 10vw, 5.5rem);
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 .cover .lede {
-  font-size: 1.125rem;
+  font-size: 1.1875rem;
   color: var(--muted);
-  max-width: 34em;
+  max-width: 30em;
 }
-.cover .lede strong { color: var(--ink); font-weight: 600; }
+.cover .lede strong { color: var(--ink); font-weight: 700; }
 .cover-row {
   display: flex;
   align-items: flex-end;
-  gap: 28px;
+  gap: 30px;
   flex-wrap: wrap;
+}
+.fig { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0; flex: none; }
+.fig figcaption {
+  font-style: italic;
+  font-size: 0.8125rem;
+  color: var(--faint);
+  border-top: 1px solid var(--line);
+  padding-top: 4px;
+  max-width: 128px;
+  text-align: center;
 }
 .scrollhint {
   margin-top: 10px;
   display: flex;
   align-items: center;
   gap: 10px;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.9375rem;
   color: var(--faint);
 }
 .scrollhint .arrow {
@@ -194,37 +276,36 @@ code {
 .plant .bloom-outer { fill: var(--accent); }
 .plant .bloom-inner { fill: var(--caution); }
 
-/* ── vignettes ─────────────────────────────────── */
+/* ── vignettes: botanical plates ───────────────── */
 .vignette {
-  padding: 96px 0 40px;
-  border-top: 1px solid var(--line);
+  padding: 88px 0 44px;
+  border-top: 3px double var(--line-strong);
 }
 .vignette > * + * { margin-top: 20px; }
 .chapter {
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   color: var(--accent);
 }
 .chapter::before {
   content: '';
   display: inline-block;
-  width: 22px;
+  width: 26px;
   height: 1px;
   background: var(--accent);
   vertical-align: middle;
   margin-right: 10px;
 }
 .vignette h2 {
-  font-size: clamp(1.5rem, 4vw, 2rem);
-  font-weight: 700;
-  letter-spacing: -0.015em;
+  font-size: clamp(1.7rem, 4.5vw, 2.35rem);
 }
-.vignette .intro { color: var(--muted); max-width: 38em; }
+.vignette .intro { color: var(--muted); max-width: 36em; font-size: 1.0625rem; }
+.intro strong { color: var(--ink); font-weight: 700; }
 
-/* the one-line "what happened in the flow" caption */
+/* the one-line "what happened in the flow" caption — a margin note */
 .what {
   border-left: 3px solid var(--accent);
   background: var(--surface-1);
@@ -237,41 +318,44 @@ code {
 .what::before {
   content: 'In the flow';
   display: block;
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.8125rem;
   font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  letter-spacing: 0.03em;
   color: var(--accent);
   margin-bottom: 2px;
 }
 
-/* ── the brain-dump bubble ─────────────────────── */
+/* ── the brain-dump bubble: a pressed note ─────── */
 .bubble {
   background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: 14px 14px 14px 3px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--press);
   padding: 22px 26px;
   font-size: 1.0625rem;
+  font-style: italic;
   color: var(--ink);
   max-width: 40em;
   rotate: -0.4deg;
   position: relative;
 }
-.bubble .label { display: block; margin-bottom: 8px; }
+.bubble .label { display: block; margin-bottom: 8px; font-style: normal; }
 .bubble mark {
   background: var(--accent-tint);
   color: var(--accent);
-  border-radius: 3px;
+  border-radius: 2px;
   padding: 0 3px;
 }
-.bubble.echo { rotate: 0.4deg; border-radius: 14px 14px 3px 14px; }
+.bubble.echo { rotate: 0.4deg; }
 
-/* ── terminal panels ───────────────────────────── */
+/* ── terminal panels: typewritten notes ────────── */
 .term {
   background: var(--surface-1);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
+  box-shadow: var(--press);
   overflow: hidden;
 }
 .term-head {
@@ -279,7 +363,7 @@ code {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 14px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line-strong);
   background: var(--surface-2);
 }
 .term-body {
@@ -307,10 +391,10 @@ code {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-align: center;
-  border-radius: 4px;
+  border-radius: var(--radius);
   padding: 1px 0;
 }
-.q .tag { color: var(--accent); background: var(--accent-tint); }
+.q .tag { color: var(--go); background: var(--go-tint); }
 .a .tag { color: var(--caution); background: var(--caution-tint); }
 .q .txt { color: var(--ink); }
 .q .txt em { color: var(--muted); font-style: normal; }
@@ -325,7 +409,8 @@ code {
 }
 .score .minipips { display: inline-flex; gap: 5px; }
 .score .minipips i {
-  width: 8px; height: 8px; rotate: 45deg; border-radius: 1.5px;
+  width: 9px; height: 9px; rotate: 45deg;
+  border-radius: 0 62% 0 62%;
   border: 1.2px solid var(--line-strong);
 }
 .score .minipips i.f { background: var(--go); border-color: var(--go); }
@@ -350,14 +435,14 @@ code {
   display: inline-block;
   margin-top: 12px;
   rotate: -1.6deg;
-  border: 1.5px solid var(--danger);
+  border: 2px solid var(--danger);
   color: var(--danger);
   background: var(--danger-tint);
   border-radius: var(--radius);
   padding: 6px 12px;
-  font-family: var(--font-sans);
+  font-family: var(--font-serif);
   font-size: 0.9375rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 .aside-note { color: var(--faint); font-size: 0.8125rem; font-family: var(--font-mono); }
 
@@ -390,19 +475,20 @@ code {
   color: var(--ink);
 }
 .opt.picked::before { content: '❯ '; color: var(--go); }
-.qhead { color: var(--ink); font-weight: 600; }
+.qhead { color: var(--ink); font-weight: 700; font-family: var(--font-serif); font-size: 0.9375rem; }
 
 /* ── critics ───────────────────────────────────── */
 .critics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 16px;
 }
 @media (max-width: 639px) { .critics { grid-template-columns: 1fr; } }
 .critic {
   background: var(--surface-1);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
+  box-shadow: var(--press);
   padding: 18px;
   display: flex;
   flex-direction: column;
@@ -425,7 +511,7 @@ code {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  border-radius: 999px;
+  border-radius: var(--radius);
   padding: 2px 10px;
   border: 1px solid transparent;
 }
@@ -437,19 +523,19 @@ code {
 /* digest table-ish lines */
 .digest .lens { color: var(--accent); display: inline-block; min-width: 17ch; }
 
-/* ── the fork ──────────────────────────────────── */
+/* ── the fork: a branching vine ────────────────── */
 .fork-fig { width: 100%; max-width: 640px; }
 .fork-fig svg { width: 100%; height: auto; display: block; overflow: visible; }
-.fork-fig .trunk, .fork-fig .path-express { stroke: var(--accent); stroke-width: 3; fill: none; stroke-linecap: round; }
+.fork-fig .trunk, .fork-fig .path-express { stroke: var(--go); stroke-width: 3; fill: none; stroke-linecap: round; }
 .fork-fig .path-review { stroke: var(--line-strong); stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-dasharray: 2 7; }
 .fork-fig .node { fill: var(--surface-2); stroke: var(--line-strong); stroke-width: 1.5; }
-.fork-fig .node.hot { stroke: var(--accent); }
+.fork-fig .node.hot { stroke: var(--go); }
 .fork-fig text {
   font-family: var(--font-mono);
   font-size: 12px;
   fill: var(--muted);
 }
-.fork-fig text.hot { fill: var(--accent); font-weight: 600; }
+.fork-fig text.hot { fill: var(--go); font-weight: 600; }
 .fork-fig text.small { font-size: 10.5px; fill: var(--faint); }
 @media (max-width: 679px) {
   /* the subtitle labels overhang the viewBox on narrow screens;
@@ -460,7 +546,7 @@ code {
 /* ── execution waves ───────────────────────────── */
 .waves { display: flex; flex-direction: column; gap: 0; }
 .wave { display: grid; grid-template-columns: 84px 1fr; gap: 14px; padding: 14px 0; }
-.wave + .wave { border-top: 1px dashed var(--line); }
+.wave + .wave { border-top: 1px dashed var(--line-strong); }
 .wave .wlabel { padding-top: 14px; }
 @media (max-width: 559px) {
   .wave { grid-template-columns: 1fr; gap: 8px; }
@@ -470,13 +556,14 @@ code {
 .phase {
   flex: 1 1 240px;
   background: var(--surface-1);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-left: 3px solid var(--go);
   border-radius: var(--radius);
+  box-shadow: var(--press);
   padding: 12px 14px;
   min-width: 0;
 }
-.phase .pname { font-weight: 600; font-size: 0.9375rem; }
+.phase .pname { font-weight: 700; font-size: 1rem; }
 .phase .pipeline {
   display: flex;
   align-items: center;
@@ -491,7 +578,9 @@ code {
 .phase .step { display: inline-flex; align-items: center; gap: 4px; }
 .phase .step::before {
   content: '';
-  width: 6px; height: 6px; border-radius: 50%;
+  width: 6px; height: 6px;
+  rotate: 45deg;
+  border-radius: 0 62% 0 62%;
   background: var(--go);
   flex: none;
 }
@@ -501,7 +590,7 @@ code {
   font-size: 0.75rem;
   color: var(--go);
   background: var(--go-tint);
-  border-radius: 4px;
+  border-radius: var(--radius);
   padding: 1px 8px;
   margin-top: 10px;
   display: inline-block;
@@ -513,7 +602,7 @@ code {
   border-left: 2px solid var(--caution);
   padding-left: 8px;
 }
-.phase .cyc b { color: var(--caution); font-weight: 600; }
+.phase .cyc b { color: var(--caution); font-weight: 700; }
 
 /* ── learning capture ──────────────────────────── */
 .cand {
@@ -527,6 +616,7 @@ code {
   background: var(--surface-2);
   color: var(--muted);
   font-size: 0.9375rem;
+  font-family: var(--font-serif);
   max-width: 46em;
 }
 .cand .box {
@@ -549,8 +639,9 @@ code {
 /* rendered markdown entry */
 .mdentry {
   background: var(--surface-1);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
+  box-shadow: var(--press);
   padding: 16px 20px;
   font-family: var(--font-mono);
   font-size: 0.8125rem;
@@ -583,20 +674,21 @@ code {
 
 /* ── footer ────────────────────────────────────── */
 .end {
-  padding-top: 96px;
+  padding-top: 88px;
   padding-bottom: 96px;
-  border-top: 1px solid var(--line);
-  margin-top: 40px;
+  border-top: 3px double var(--line-strong);
+  margin-top: 44px;
   display: flex;
   flex-direction: column;
   gap: 22px;
 }
-.cmds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.cmds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 @media (max-width: 639px) { .cmds { grid-template-columns: 1fr; } }
 .cmd {
   background: var(--surface-1);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
+  box-shadow: var(--press);
   padding: 18px;
 }
 .cmd code {
@@ -607,21 +699,24 @@ code {
   padding: 0;
 }
 .cmd p { color: var(--muted); font-size: 0.9375rem; margin-top: 8px; }
-.colophon { color: var(--faint); font-size: 0.8125rem; max-width: 46em; }
+.colophon { color: var(--faint); font-size: 0.875rem; font-style: italic; max-width: 46em; }
 
 /* ── hero actions ──────────────────────────────── */
 .hero-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .jump {
-  font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  color: var(--accent);
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.9375rem;
+  color: var(--ink);
   text-decoration: none;
+  background: var(--surface-2);
   border: 1px solid var(--line-strong);
-  border-radius: 999px;
+  border-radius: var(--radius);
+  box-shadow: var(--press);
   padding: 7px 16px;
   white-space: nowrap;
 }
-.jump:hover { border-color: var(--accent); background: var(--accent-tint); }
+.jump:hover { translate: 1px 1px; box-shadow: 2px 2px 0 0 var(--line); color: var(--accent); }
 
 /* copyable command chip */
 .chipcmd {
@@ -631,10 +726,11 @@ code {
   font-family: var(--font-mono);
   font-size: 0.8125rem;
   color: var(--ink);
-  background: var(--surface-1);
-  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
-  padding: 7px 12px;
+  box-shadow: var(--press);
+  padding: 8px 12px;
   max-width: 100%;
 }
 .copy {
@@ -645,9 +741,9 @@ code {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--faint);
-  background: var(--surface-2);
+  background: var(--surface-1);
   border: 1px solid var(--line-strong);
-  border-radius: 4px;
+  border-radius: var(--radius);
   padding: 2px 8px;
   cursor: pointer;
 }
@@ -655,48 +751,48 @@ html.clip .copy { display: inline-block; }
 .copy:hover { color: var(--accent); border-color: var(--accent); }
 .copy.did { color: var(--go); border-color: var(--go); }
 
-/* ── feature grid ──────────────────────────────── */
+/* ── feature grid: catalog cards ───────────────── */
 .features {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: 16px;
 }
 @media (max-width: 899px) { .features { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 559px) { .features { grid-template-columns: 1fr; } }
 .feature {
   background: var(--surface-1);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
+  box-shadow: var(--press);
   padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 .feature .icon { color: var(--accent); }
-.feature h3 { font-size: 1rem; font-weight: 650; letter-spacing: -0.01em; }
+.feature h3 { font-size: 1.125rem; font-weight: 700; }
 .feature p { color: var(--muted); font-size: 0.9375rem; flex: 1; }
 .feature .icon .lit { fill: var(--go); stroke: var(--go); }
 
 /* ── the loop at a glance ──────────────────────── */
-.flowmap { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 4px; }
+.flowmap { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 4px; }
 .hop {
   font-family: var(--font-mono);
   font-size: 0.8125rem;
   color: var(--ink);
   text-decoration: none;
-  background: var(--surface-1);
+  background: var(--surface-2);
   border: 1px solid var(--line-strong);
-  border-radius: 999px;
+  border-radius: var(--radius);
+  box-shadow: var(--press);
   padding: 6px 14px;
   white-space: nowrap;
 }
-.hop:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-tint); }
+.hop:hover { translate: 1px 1px; box-shadow: 2px 2px 0 0 var(--line); color: var(--accent); }
 .hop .n { color: var(--faint); margin-right: 6px; font-size: 0.6875rem; }
 .hop-arrow { color: var(--faint); font-family: var(--font-mono); padding: 0 4px; user-select: none; }
-.hop.loopback { border-style: dashed; border-color: var(--go); color: var(--go); background: transparent; }
-.hop.loopback:hover { background: var(--go-tint); }
-
-.intro strong { color: var(--ink); font-weight: 600; }
+.hop.loopback { border-style: dashed; border-color: var(--go); color: var(--go); box-shadow: none; }
+.hop.loopback:hover { background: var(--go-tint); translate: none; }
 
 /* ================================================================
    Motion. Everything below collapses to a static, fully readable
@@ -791,8 +887,11 @@ html.clip .copy { display: inline-block; }
   @keyframes nudge   { 0%, 100% { transform: rotate(45deg) translate(0, 0); } 50% { transform: rotate(45deg) translate(3px, 3px); } }
 }
 </style>
+<script>try{var t=localStorage.getItem('ideation-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;}catch(e){}</script>
 </head>
 <body>
+
+<button class="theme" type="button" aria-label="Color theme: cycles auto, light, dark">auto</button>
 
 <!-- gate pips doubling as page progress (enhancement-only chrome) -->
 <aside class="rail" aria-hidden="true">
@@ -809,7 +908,7 @@ html.clip .copy { display: inline-block; }
   <p class="kicker label st" style="--i:0">a claude code plugin</p>
   <h1 class="st" style="--i:1">ideation</h1>
   <div class="cover-row st" style="--i:2">
-    <svg class="plant" viewBox="0 0 120 140" width="110" height="128" aria-hidden="true">
+    <figure class="fig"><svg class="plant" viewBox="0 0 120 140" width="110" height="128" aria-hidden="true">
       <g class="sprout">
         <path class="stem" d="M60,104 C61,88 58,70 60,50"/>
         <path class="leaf leaf1" d="M60,86 C46,85 37,75 39,63 C52,65 59,74 60,86 Z"/>
@@ -820,7 +919,7 @@ html.clip .copy { display: inline-block; }
         </g>
       </g>
       <path class="pot" d="M32,104 h56 l-7,26 a4,4 0 0 1 -4,3 h-34 a4,4 0 0 1 -4,-3 Z"/>
-    </svg>
+    </svg><figcaption>Fig. 1 — an idea, potted</figcaption></figure>
     <p class="lede"><strong>Brain dump in. Reviewed, tested commits out.</strong> An evidence-gated interview turns your messiest thinking into a contract, implementation specs, and executed phases — stress-tested by adversarial critics before you commit to the plan, reviewed before the plan commits code, and remembered by the next project.</p>
   </div>
   <div class="hero-actions st" style="--i:3">
@@ -841,12 +940,12 @@ html.clip .copy { display: inline-block; }
 
   <div class="features">
     <article class="feature">
-      <svg class="icon" width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-        <rect class="lit" x="4" y="17" width="6" height="6" rx="1" transform="rotate(45 7 20)"/>
-        <rect class="lit" x="10.5" y="17" width="6" height="6" rx="1" transform="rotate(45 13.5 20)"/>
-        <rect class="lit" x="17" y="17" width="6" height="6" rx="1" transform="rotate(45 20 20)"/>
-        <rect x="23.5" y="17" width="6" height="6" rx="1" transform="rotate(45 26.5 20)"/>
-        <rect x="30" y="17" width="6" height="6" rx="1" transform="rotate(45 33 20)"/>
+      <svg class="icon" width="60" height="40" viewBox="0 0 64 40" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <rect class="lit" x="4.5" y="16.5" width="7" height="7" rx="1" transform="rotate(45 8 20)"/>
+        <rect class="lit" x="16.5" y="16.5" width="7" height="7" rx="1" transform="rotate(45 20 20)"/>
+        <rect class="lit" x="28.5" y="16.5" width="7" height="7" rx="1" transform="rotate(45 32 20)"/>
+        <rect x="40.5" y="16.5" width="7" height="7" rx="1" transform="rotate(45 44 20)"/>
+        <rect x="52.5" y="16.5" width="7" height="7" rx="1" transform="rotate(45 56 20)"/>
       </svg>
       <h3>Five gates, zero vibes</h3>
       <p>Problem, goals, success criteria, scope, consistency. Each gate needs a concrete artifact — a pass/fail goal, an explicit boundary — before anything gets written.</p>
@@ -951,7 +1050,7 @@ html.clip .copy { display: inline-block; }
 
 <!-- ══════════ CHAPTER 1 ══════════ -->
 <section class="vignette" id="ch1">
-  <p class="chapter">Chapter 01 · The mess</p>
+  <p class="chapter">Plate I · The mess</p>
   <h2>It starts as a brain dump</h2>
   <p class="intro">No structure required. You talk, <code>/ideation</code> listens — then takes a position instead of applauding.</p>
 
@@ -974,7 +1073,7 @@ html.clip .copy { display: inline-block; }
 
 <!-- ══════════ CHAPTER 2 ══════════ -->
 <section class="vignette" id="ch2">
-  <p class="chapter">Chapter 02 · The interview</p>
+  <p class="chapter">Plate II · The interview</p>
   <h2>One question at a time, with a scoreboard</h2>
   <p class="intro">Every question arrives with a recommendation. Every answer moves the gates. No batching, no question limit, no "that's an interesting approach."</p>
 
@@ -1017,7 +1116,7 @@ html.clip .copy { display: inline-block; }
 
 <!-- ══════════ CHAPTER 3 ══════════ -->
 <section class="vignette" id="ch3">
-  <p class="chapter">Chapter 03 · The critics</p>
+  <p class="chapter">Plate III · The critics</p>
   <h2>The critics have OPINIONS</h2>
   <p class="intro">Before the contract renders, four adversarial lenses descend on the draft in parallel — while a fix is still a one-line JSON edit, not a regenerate loop.</p>
 
@@ -1078,7 +1177,7 @@ html.clip .copy { display: inline-block; }
 
 <!-- ══════════ CHAPTER 4 ══════════ -->
 <section class="vignette" id="ch4">
-  <p class="chapter">Chapter 04 · The fork</p>
+  <p class="chapter">Plate IV · The fork</p>
   <h2>One question routes the finish</h2>
   <p class="intro">The contract is generated and opened. Now the flow's centerpiece: approval and routing, asked together — with the recommendation's reasoning in plain sight.</p>
 
@@ -1125,7 +1224,7 @@ html.clip .copy { display: inline-block; }
 
 <!-- ══════════ CHAPTER 5 ══════════ -->
 <section class="vignette" id="ch5">
-  <p class="chapter">Chapter 05 · Execution</p>
+  <p class="chapter">Plate V · Execution</p>
   <h2>Phases commit in waves</h2>
   <p class="intro">Specs are generated (self-review hard-gated), and autopilot takes the isolation branch. Independent phases run in parallel; anything sharing a file is serialized. Every phase earns its commit.</p>
 
@@ -1179,7 +1278,7 @@ html.clip .copy { display: inline-block; }
 
 <!-- ══════════ CHAPTER 6 ══════════ -->
 <section class="vignette" id="ch6">
-  <p class="chapter">Chapter 06 · The harvest</p>
+  <p class="chapter">Plate VI · The harvest</p>
   <h2>The run ends. The filter asks once.</h2>
   <p class="intro">The finished run's implementation notes pass through the generalization filter. Trivia composts; patterns that would change the <em>next</em> spec survive. Two candidates made it.</p>
 
@@ -1217,7 +1316,7 @@ html.clip .copy { display: inline-block; }
 
 <!-- ══════════ CHAPTER 7 ══════════ -->
 <section class="vignette" id="ch7">
-  <p class="chapter">Chapter 07 · The loop closes</p>
+  <p class="chapter">Plate VII · The loop closes</p>
   <h2>Weeks later, a new seed</h2>
   <p class="intro">A different idea walks through the same door. Watch the first thing that happens.</p>
 
@@ -1261,6 +1360,25 @@ html.clip .copy { display: inline-block; }
   'use strict';
   if (!('IntersectionObserver' in window)) return; // base state is fully visible
   document.documentElement.classList.add('js');
+
+  // theme toggle: auto -> light -> dark
+  var themeBtn = document.querySelector('.theme');
+  if (themeBtn) {
+    var modes = ['auto', 'light', 'dark'];
+    var cur = document.documentElement.dataset.theme || 'auto';
+    themeBtn.textContent = cur;
+    themeBtn.addEventListener('click', function () {
+      cur = modes[(modes.indexOf(cur) + 1) % 3];
+      if (cur === 'auto') {
+        delete document.documentElement.dataset.theme;
+        try { localStorage.removeItem('ideation-theme'); } catch (e) {}
+      } else {
+        document.documentElement.dataset.theme = cur;
+        try { localStorage.setItem('ideation-theme', cur); } catch (e) {}
+      }
+      themeBtn.textContent = cur;
+    });
+  }
 
   var io = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {
