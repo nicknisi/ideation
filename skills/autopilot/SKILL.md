@@ -160,12 +160,24 @@ If all phases completed:
 
 ```
 All {N} phases complete. Run `git log --oneline -{N}` to see the commits.
-
-Next: run /ideation:retro {projectDir} to mine implementation notes for lessons.
 ```
 
-(autopilot does not run retro itself — pointing to it keeps the engine/skill
-division clean and the report fast.)
+### Learning Capture (watched runs only)
+
+**Unattended runs explicitly skip this step** (a `/goal` wrapper, or any run
+with no interactive user) — never prompt, never write
+`docs/ideation/learnings.md`; the run's notes wait for the interview engine's
+unmined-notes surfacing at the next interactive intake.
+
+On a watched run, after the Completion Report, aggregate this run's phase notes
+— every `{projectDir}/implementation-notes-phase-*.html` the run produced — and
+apply the learning filter in
+`${CLAUDE_PLUGIN_ROOT}/references/learning-filter.md`, bounded to this project.
+The filter yields **up to 3** candidates. Zero candidates → silence (no prompt,
+no output). Otherwise ask ONE `AskUserQuestion` offering accept/edit/dismiss per
+candidate (a single `multiSelect` question: selected = accept, "Other" = edit,
+none = dismiss), and write accepted entries to `docs/ideation/learnings.md` per
+the lifecycle rules in the filter reference.
 
 ## Key Principles
 

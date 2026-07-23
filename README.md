@@ -1,6 +1,6 @@
 # Ideation Plugin
 
-Transform brain dumps into structured implementation artifacts through a conversational interview. HTML is used for interactive decision-making (the Mission Brief contract with evidence-gate readiness, visual comparisons during the interview). Markdown is used for reference documents (specs, PRDs) consumed directly by `/ideation:execute-spec`. Includes an execution workflow for implementing specs in fresh sessions with per-component feedback loops, adversarial plan critics, a Scout/Reviewer agent pipeline, and a retro loop that feeds learnings back into future runs.
+Transform brain dumps into structured implementation artifacts through a conversational interview. HTML is used for interactive decision-making (the Mission Brief contract with evidence-gate readiness, visual comparisons during the interview). Markdown is used for reference documents (specs, PRDs) consumed directly by `/ideation:execute-spec`. Includes an execution workflow for implementing specs in fresh sessions with per-component feedback loops, adversarial plan critics, a Scout/Reviewer agent pipeline, and a push-based learning loop that captures lessons at completion and applies them visibly at future intakes.
 
 ## What's New (0.17.0)
 
@@ -26,7 +26,7 @@ This release ships the full Fable 5 upgrade. Six behavior changes, plus one brea
 - **Intake exploration sweep.** When the work touches an existing codebase, the interview fires 2–3 parallel `Explore` agents at intake so the first question is already informed. Skipped for greenfield work.
 - **Previews-first decision aids.** Comparisons default to inline `AskUserQuestion` previews (monospace, side-by-side) and escalate to ephemeral HTML only when the decision hinges on real visual rendering.
 - **Overlap-serialized parallel waves.** `/ideation:autopilot` and `--parallel` execution plan waves with a tested CLI that serializes any phases declaring overlapping `files`, so two phases never race the same file. See [Orchestration](#ideationautopilot).
-- **Retro loop.** `/ideation:retro` mines a completed project's implementation notes for generalizable spec-gap patterns and appends them to a repo-level `docs/ideation/learnings.md` that future interviews read. See [Retro](#retro).
+- **Retro loop.** A retro command mined a completed project's implementation notes for generalizable spec-gap patterns and appended them to a repo-level `docs/ideation/learnings.md` that future interviews read. (Replaced in 0.19.0 by push-based inline capture — see [Learning Loop](#learning-loop).)
 - **Command Deck contract design.** The contract HTML is redesigned as an instrument panel — dark-first with a co-equal light theme and an explicit theme toggle — surfacing the execution plan as an operational dashboard (run bar, phase table, copyable commands) rather than a static document. The artifact is still titled "Mission Brief".
 
 > **Breaking change — `contract-data.json` schema.** The contract now uses a `gates` object instead of the old `confidence` object. Regenerating an old contract fails fast:
@@ -206,9 +206,9 @@ Before the contract renders, four adversarial critics review the plan in paralle
 
 Each critic returns `blocker` / `notable` / `nit` findings. Blockers are folded into the contract before it renders; notables are folded in if clearly right, otherwise dismissed with a reason; nits are mentioned only. A **Critic digest** appears at the approval gate so you can see the plan was stress-tested. Critics run **once** per contract and never block it — a failed or unregistered critic logs a warning and proceeds without that lens.
 
-## Retro
+## Learning Loop
 
-`/ideation:retro [project-dir]` closes the learning loop. It mines a completed project's `implementation-notes-phase-*.html` for generalizable spec-gap patterns — gaps that would change how future specs or interviews are written — and appends them to a repo-level `docs/ideation/learnings.md` that future interviews read. It dedupes against existing entries; a phase that followed its spec cleanly produces zero learnings, and that is correct.
+The learning loop is push-based — it comes to you; there is no command to remember. When a watched run completes, the just-finished project's implementation notes pass through the generalization filter in `references/learning-filter.md`; up to 3 candidates survive, and one accept/edit/dismiss question decides what lands in the repo-level `docs/ideation/learnings.md`. Zero candidates means zero prompts — a clean run stays silent. Unattended runs never write learnings; the next interactive interview intake spots their unmined notes with a bounded scan and offers once to mine them. When a recorded learning shapes an interview question or a spec implication, the interview says so visibly: `Applying learning from {project} ({date}): {why}`.
 
 ## Feedback Loops
 

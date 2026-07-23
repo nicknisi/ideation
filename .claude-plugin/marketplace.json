@@ -9,7 +9,7 @@
     {
       "name": "ideation",
       "source": "./",
-      "description": "Transform brain dumps into implementation specs through an evidence-gated interview stress-tested by adversarial plan critics. Interactive HTML contract for planning decisions, Markdown specs for execution. /ideation:autopilot runs all phases on a deterministic workflow engine with overlap-serialized parallel waves; /ideation:express skips artifact review for one-pass interview-to-execution on an isolation branch; /ideation:retro mines implementation notes into learnings future interviews read.",
+      "description": "Transform brain dumps into implementation specs through an evidence-gated interview stress-tested by adversarial plan critics. Interactive HTML contract for planning decisions, Markdown specs for execution. One door in: the interview routes to full artifact review or an express finish on an isolation branch; /ideation:autopilot runs all phases on a deterministic workflow engine with overlap-serialized parallel waves; completed watched runs capture learnings inline that future interviews read and apply visibly.",
       "author": {
         "name": "Nick Nisi",
         "email": "nick@nisi.org"
