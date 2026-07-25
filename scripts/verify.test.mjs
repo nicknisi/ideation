@@ -2,6 +2,7 @@
 // Run: node --test scripts/verify.test.mjs   (from the repo root)
 
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -53,6 +54,38 @@ function contract(successCriteria, phases = []) {
     }),
   );
   return path;
+}
+
+/**
+ * A throwaway git repo containing one commit whose body carries `specPath`.
+ *
+ * The commit-matching tests used to assert against THIS repo's history (a spec
+ * path in db0fb41's body). That passed locally and failed on CI, where
+ * actions/checkout does a shallow clone and the commit does not exist. A unit
+ * test should not depend on the history of the repo it lives in — so build the
+ * history the test needs.
+ */
+function repoWithCommitFor(specPath) {
+  const dir = mkdtempSync(join(tmpdir(), 'verify-repo-'));
+  const git = (...a) => spawnSync('git', a, { cwd: dir, encoding: 'utf8' });
+  git('init', '-q', '-b', 'main');
+  git('config', 'user.email', 'test@example.invalid');
+  git('config', 'user.name', 'Verify Test');
+  writeFileSync(join(dir, 'placeholder.txt'), 'x\n');
+  git('add', '-A');
+  git('commit', '-q', '-m', `feat: a phase\n\nPhase 1 of ${specPath}`);
+  return dir;
+}
+
+/** Run the CLI with cwd inside `dir`, since repoRoot() derives from cwd. */
+function runIn(dir, args) {
+  const prev = process.cwd();
+  process.chdir(dir);
+  try {
+    return run(args);
+  } finally {
+    process.chdir(prev);
+  }
 }
 
 describe('legacy string normalization', () => {
@@ -169,29 +202,34 @@ describe('judgment criteria are never counted as pass or fail', () => {
 });
 
 describe('exit code', () => {
+  const SPEC = 'docs/ideation/ux-dejank/spec-phase-1.md';
+
   it('is 0 when every cmd passes and every phase has a commit', () => {
+    const repo = repoWithCommitFor(SPEC);
     const path = contract(
       [{ criterion: 'ok', check: { cmd: 'true', expect: 'exits 0' } }],
-      // A spec path this repo really committed (squash-merge db0fb41).
-      [{ title: 'P1', specPath: 'docs/ideation/ux-dejank/spec-phase-1.md' }],
+      [{ title: 'P1', specPath: SPEC }],
     );
-    const { code, out } = run([path]);
+    const { code, out } = runIn(repo, [path]);
     assert.match(out, /commits=1\/1 pass=1 fail=0 judgment=0/);
     assert.equal(code, 0);
+    rmSync(repo, { recursive: true, force: true });
   });
 
   it('is 1 when a cmd fails, even with commits complete', () => {
+    const repo = repoWithCommitFor(SPEC);
     const path = contract(
       [
         { criterion: 'ok', check: { cmd: 'true', expect: '' } },
         { criterion: 'nope', check: { cmd: 'exit 3', expect: 'exits 0' } },
       ],
-      [{ title: 'P1', specPath: 'docs/ideation/ux-dejank/spec-phase-1.md' }],
+      [{ title: 'P1', specPath: SPEC }],
     );
-    const { code, out } = run([path]);
+    const { code, out } = runIn(repo, [path]);
     assert.match(out, /commits=1\/1 pass=1 fail=1 judgment=0/);
     assert.match(out, /exit 3 after/);
     assert.equal(code, 1);
+    rmSync(repo, { recursive: true, force: true });
   });
 
   it('is 1 when checks pass but a phase has no commit', () => {
