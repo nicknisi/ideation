@@ -1,0 +1,79 @@
+<!doctype html>
+<!--
+  Implementation-notes shell — copied VERBATIM by execute-spec on the first logged entry.
+  This file is the single owner of the implementation-notes format. Do not restate its
+  structure or styles elsewhere; change the format here and every future phase inherits it.
+  Copier substitutes: {N} (phase number, twice), {PROJECT}, {DATE}, {PHASE DESCRIPTION} —
+  then deletes the example entry and appends real ones inside <main class="doc-content">.
+-->
+<html lang="en" data-theme="auto">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Implementation Notes — Phase {N}</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #ffffff;
+        --fg: #1a1a2e;
+        --muted: #5a5a72;
+        --border: #d8d8e4;
+        --accent: #0f3460;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #12121c;
+          --fg: #e8e8f0;
+          --muted: #9a9ab0;
+          --border: #2e2e42;
+          --accent: #7fb3ff;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0 auto;
+        max-width: 46rem;
+        padding: 2rem 1.25rem 4rem;
+        background: var(--bg);
+        color: var(--fg);
+        font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      .doc-header { border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 2rem; }
+      .doc-header h1 { margin: 0 0 0.25rem; font-size: 1.5rem; }
+      .doc-meta { margin: 0; color: var(--muted); font-size: 0.875rem; }
+      .note-entry { border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+      .note-entry h3 { margin: 0 0 0.75rem; font-size: 1.05rem; color: var(--accent); }
+      .note-entry dl { margin: 0; }
+      .note-entry dt { font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-top: 0.75rem; }
+      .note-entry dt:first-child { margin-top: 0; }
+      .note-entry dd { margin: 0.15rem 0 0; }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.9em;
+        background: color-mix(in srgb, var(--fg) 8%, transparent);
+        padding: 0.1em 0.3em;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="doc-header">
+      <h1>Implementation Notes — Phase {N}</h1>
+      <p class="doc-meta">{PROJECT} · {DATE} · {PHASE DESCRIPTION}</p>
+    </header>
+    <main class="doc-content">
+      <!-- EXAMPLE ENTRY — template placeholder. Delete it when logging your first real entry. -->
+      <section class="note-entry">
+        <h3>{Component Name} — {short decision title}</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>{what the spec said, or didn't say}</dd>
+          <dt>Decision</dt>
+          <dd>{what you chose and why}</dd>
+          <dt>Alternative</dt>
+          <dd>{what you considered but rejected}</dd>
+        </dl>
+      </section>
+    </main>
+  </body>
+</html>
