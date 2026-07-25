@@ -12,6 +12,8 @@
  * @typedef {{ title: string, prereqs?: string[], files?: string[] }} PlannerPhase
  */
 
+import { realpathSync } from 'node:fs';
+import { resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
@@ -252,6 +254,20 @@ function runCli(argv) {
   }
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  runCli(process.argv.slice(2));
+// Real paths on both sides. `import.meta.url` is symlink-resolved by Node while
+// argv[1] is whatever the caller typed — and it may be relative, which this
+// comparison used not to handle at all. A plugin installed under a symlinked
+// `~/.claude` made the two disagree, so the CLI silently did nothing and exited
+// 0; execute-spec's --parallel path would then read an empty plan as "no waves".
+if (process.argv[1]) {
+  const real = p => {
+    try {
+      return realpathSync(p);
+    } catch {
+      return resolve(p);
+    }
+  };
+  if (real(resolve(process.argv[1])) === real(fileURLToPath(import.meta.url))) {
+    runCli(process.argv.slice(2));
+  }
 }

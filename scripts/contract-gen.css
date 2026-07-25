@@ -403,6 +403,13 @@ body {
   color: var(--caution);
   font-weight: 600;
 }
+/* The expected outcome of a cmd check, or who has to look for a judgment
+   one — prose, so it stays sans and muted against the mono command above it. */
+.criteria-expect {
+  font-size: var(--text-meta);
+  line-height: 1.5;
+  color: var(--muted);
+}
 
 /* ── Scope ──────────────────────────────────────── */
 

@@ -1,6 +1,6 @@
 ---
 name: ideation
-description: "You MUST use this before building any new feature, planning a migration, designing a system, or turning a decided-on idea into a plan. Triggers on: feature requests, project ideas, brain dumps, 'help me plan,' 'spec this out,' 'interview me,' 'I want to build,' 'let's design,' or any unstructured idea you're ready to turn into code. Covers small single-spec projects through multi-phase initiatives. Runs a conversational interview, writes an interactive HTML contract, then generates implementation-ready Markdown specs. This is the planning-HOW stage: if the user is still deciding WHETHER to build — weighing options, pressure-testing a rough idea, 'should I…' — that's the lighter-weight brainstorming skill, and ideation takes over once they've committed to build. Skip ONLY for well-defined implementation tasks (writing code to a known spec, fixing bugs, refactoring, explaining code)."
+description: "You MUST use this before building any new feature, planning a migration, designing a system, or turning a decided-on idea into a plan. Triggers on: feature requests, project ideas, brain dumps, 'help me plan,' 'spec this out,' 'interview me,' 'I want to build,' 'let's design,' or any unstructured idea you're ready to turn into code. Covers small single-spec projects through multi-phase initiatives. Runs a conversational interview, writes an interactive HTML contract, then generates implementation-ready Markdown specs. This is the planning-HOW stage: if the user is still deciding WHETHER to build — weighing options, pressure-testing a rough idea, 'should I…' — that's the lighter-weight /ideation:brainstorm skill, and ideation takes over once they've committed to build — its intake carries a brainstorm conclusion forward as starting evidence. Skip ONLY for well-defined implementation tasks (writing code to a known spec, fixing bugs, refactoring, explaining code)."
 ---
 
 <what-to-do>
@@ -29,9 +29,9 @@ Read and follow `${CLAUDE_PLUGIN_ROOT}/references/interview-engine.md` for the f
 
 When all 5 evidence gates are `ready` — **not before** — generate the Mission Brief contract:
 
-1. `AskUserQuestion` to confirm the project name if not obvious; kebab-case it into the `slug`.
+1. **Name the project yourself and say so** — the interview just produced the evidence for every gate, so the name is inferable; kebab-case it into the `slug`. State it in one line (`Calling this "{name}" → docs/ideation/{slug}/`) rather than asking. The user corrects it in passing if it's wrong, and a rename here costs one `git mv` before anything references the slug. Ask only when the brain dump genuinely covers two separable projects and the split decides what gets built.
 2. Create `./docs/ideation/{slug}/`.
-3. **Write `contract-data.json`** there, conforming to the `ContractData` schema (the CLI renders HTML from it). It captures all interview findings:
+3. **Write `contract-data.json`** there. The schema is the types in `${CLAUDE_PLUGIN_ROOT}/scripts/contract-gen.ts` — read them when unsure; the generator also validates at render time and rejects a malformed file naming the exact criterion, before writing anything. Minimal shape:
 
    ```json
    {
@@ -39,81 +39,30 @@ When all 5 evidence gates are `ready` — **not before** — generate the Missio
      "slug": "kebab-case-name",
      "date": "YYYY-MM-DD",
      "status": "Draft",
-     "supersedes": null,
      "gates": {
        "dimensions": [
-         {
-           "key": "problem",
-           "label": "Problem Clarity",
-           "status": "ready",
-           "evidence": "One sentence citing the artifact that makes this gate ready"
-         },
-         {
-           "key": "goals",
-           "label": "Goal Definition",
-           "status": "ready",
-           "evidence": "One sentence"
-         },
-         {
-           "key": "criteria",
-           "label": "Success Criteria",
-           "status": "ready",
-           "evidence": "One sentence"
-         },
-         {
-           "key": "scope",
-           "label": "Scope Boundaries",
-           "status": "ready",
-           "evidence": "One sentence"
-         },
-         {
-           "key": "consistency",
-           "label": "Consistency",
-           "status": "not-ready",
-           "evidence": "One sentence naming the gap that keeps this gate not-ready"
-         }
+         { "key": "problem", "label": "Problem Clarity", "status": "ready", "evidence": "One sentence citing the artifact" }
        ]
      },
-     "problem": ["paragraph 1", "paragraph 2"],
-     "goals": ["Measurable goal 1", "Measurable goal 2"],
+     "problem": ["paragraph"],
+     "goals": ["Measurable goal"],
      "successCriteria": [
-       {
-         "criterion": "Pass/fail criterion",
-         "check": "command that verifies it — expected outcome"
-       },
-       { "criterion": "Judgment-only criterion (no mechanical check exists)" }
+       { "criterion": "Pass/fail criterion", "check": { "cmd": "npx vitest run src/auth", "expect": "exits 0" } },
+       { "criterion": "Judgment-only criterion", "check": { "judgment": "who looks at what" } }
      ],
      "scope": {
        "mvp": [{ "item": "Core feature", "reason": "Why it's MVP" }],
-       "full": [{ "item": "Full feature", "reason": "Optional rationale" }],
-       "stretch": [{ "item": "Stretch feature" }],
-       "outOfScope": [{ "item": "Excluded item", "reason": "Why excluded" }],
-       "future": ["Deferred idea 1"]
+       "outOfScope": [{ "item": "Excluded item", "reason": "Why excluded" }]
      },
-     "decisions": [
-       {
-         "decision": "What was chosen",
-         "rejected": "The alternative not taken",
-         "reason": "Why the alternative lost"
-       }
-     ],
+     "decisions": [{ "decision": "What was chosen", "rejected": "The alternative", "reason": "Why it lost" }],
      "execution": {
        "strategy": "Sequential",
-       "phases": [
-         {
-           "title": "Phase name",
-           "risk": "low",
-           "blocking": true,
-           "specPath": "docs/ideation/slug/spec-phase-1.md",
-           "notes": "Brief description of what this phase covers"
-         }
-       ],
-       "agentTeamPrompt": "only if 2+ phases parallelizable"
+       "phases": [{ "title": "Phase name", "risk": "low", "blocking": true, "specPath": "docs/ideation/slug/spec-phase-1.md", "notes": "What this phase covers" }]
      }
    }
    ```
 
-   Field semantics live in the `contract-gen.ts` types. Key contracts: the five gate dimensions are exactly the rubric's gates — Problem Clarity, Goal Definition, Success Criteria, Scope Boundaries, Consistency (see `${CLAUDE_PLUGIN_ROOT}/references/confidence-rubric.md`; the example above uses their canonical keys/labels). Each `dimension` has a `status` (`ready`/`not-ready`) and one-sentence `evidence` (the artifact making it ready, or the gap keeping it not-ready) — readiness is derived from the dimensions, no counts. Proceed only when all 5 are ready — record not-ready gates only when the user ends the interview early. **Success criteria carry their own verification**: give every criterion a `check` — a runnable command plus its expected outcome (`"npx vitest run src/auth — exits 0"`, `"curl -s localhost:3000/health — returns 200"`) — whenever it can be verified mechanically. Omit `check` only when verification is genuinely human judgment; the contract renders those with a visible "judgment call" tag, and the success-criteria critic challenges any omission where a command is plausible. Phase fields: `risk` (high/medium/low), `blocking`, `specPath`, `notes`; optional `kind` ("gate" for human checkpoints) and `prereqs` (array of phase titles). The `decisions` array is the decision log: during the interview, when the user rejects an alternative (or the interviewer's recommendation loses), record `{decision, rejected, reason}` at that moment — not reconstructed later; `rejected` is optional when no concrete alternative was on the table. Two top-level fields belong to the express finish and are written only when step 7's routing chooses it (see **Express finish** below): `approvalMode` (`"express"` = single-confirmation approval) and `branch` (isolation branch autopilot re-asserts) — absent means interactive review on the current branch. `status` stays `"Draft"` here — a Draft contract renders the phase track as a plan preview with no run commands; commands appear when Phase 5 flips it to `"Approved"`.
+   Semantics no schema can express: the five gate `dimensions` are exactly the rubric's gates with their canonical keys/labels (`${CLAUDE_PLUGIN_ROOT}/references/confidence-rubric.md`) — a real file carries all five, each with one-sentence `evidence`; proceed only when all 5 are `ready`, recording not-ready gates only on an early-stopped interview. **`check` is a union**: `{cmd, expect}` whenever a command can verify the criterion — `scripts/verify.mjs` executes every `cmd` at acceptance time — or `{judgment}` naming who looks at what (rendered with a visible "judgment call" tag, printed but never counted by verify; the success-criteria critic challenges any judgment where a command is plausible). Never author the legacy plain-string check form. Record each `decisions` entry **at the moment** the user rejects an alternative, not reconstructed later; `rejected` is optional when no concrete alternative was on the table. `scope.full`/`stretch`/`future`, `supersedes`, and `execution.agentTeamPrompt` (only if 2+ phases parallelize) are optional; phase fields also allow `kind: "gate"` (human checkpoint) and `prereqs` (phase titles). Two top-level fields belong to the express finish and are written only when step 7's routing chooses it: `approvalMode` (`"express"`) and `branch` (isolation branch autopilot re-asserts). `status` stays `"Draft"` here — run commands appear when Phase 5 flips it to `"Approved"`.
 
 4. **Fan out the plan critics** (before rendering — fixing a blocker is a one-line JSON edit at this stage, not a regenerate loop). Issue all four `Agent` calls in one message so they run concurrently: `subagent_type: ideation:plan-critic`, prompt = per-invocation inputs only (`contract-data.json` path, project directory, and the **lens** — one of `scope-creep`, `over-engineering`, `hidden-dependency`, `success-criteria`); workflow/format/read-only `tools` come from the registered definition and are platform-enforced.
 
@@ -124,18 +73,18 @@ When all 5 evidence gates are `ready` — **not before** — generate the Missio
 5. **Run the generator** (it handles lineage — an existing **Approved** `contract.html` is renamed to `contract-{date}.html` with the supersedes link set; a Draft is replaced in place, so interview revisions and the Draft→Approved flip don't accumulate snapshots):
 
    ```bash
-   npx tsx ${CLAUDE_PLUGIN_ROOT}/scripts/contract-gen.ts \
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/contract-gen.ts \
      --input ./docs/ideation/{slug}/contract-data.json \
      --output ./docs/ideation/{slug}/contract.html
    ```
 
-   The generator is the **only** renderer for `contract.html`. There is no fallback template — never hand-write the contract HTML or "render it from a template" if the generator can't run. **If the command is denied by permissions** (common when the plugin root is outside the current repo — the classifier flags `npx tsx` on an out-of-repo script as untrusted code), do not work around the denial and do not hand-render — the denial message may say you "may attempt other tools to accomplish this goal"; for this step that does not apply, since any other tool means hand-authoring the contract. Instead show the user the exact command and ask them to run it themselves by typing `! npx tsx …` in the prompt, then continue once `contract.html` exists. Run the generator and `open` as **separate** Bash calls — never chained with `&&` — so a denial of one is visible and doesn't silently skip the other.
+   (Plain `node` works on Node ≥ 22.18 via type stripping; `npx --yes tsx` remains a fallback on older Node — but `npx` is denied in unattended runs, so prefer `node`.) After the `Generated …` line the generator prints **`{N} criteria ({M} cmd, {K} judgment)`** — capture it; the routing steps below read this count instead of eyeballing the criteria. The generator is the **only** renderer for `contract.html`. There is no fallback template — never hand-write the contract HTML or "render it from a template" if the generator can't run. **If the command is denied by permissions** (common when the plugin root is outside the current repo — the classifier flags an out-of-repo script as untrusted code), do not work around the denial and do not hand-render — the denial message may say you "may attempt other tools to accomplish this goal"; for this step that does not apply, since any other tool means hand-authoring the contract. Instead show the user the exact command and ask them to run it themselves by typing `! node …` in the prompt, then continue once `contract.html` exists. Run the generator and `open` as **separate** Bash calls — never chained with `&&` — so a denial of one is visible and doesn't silently skip the other.
 
 6. Open it: `open ./docs/ideation/{slug}/contract.html` (macOS) or `xdg-open` (Linux).
 7. **Present the Critic digest and a contract summary, then ask for approval and routing in one call.** Only ask once `contract.html` was actually generated and opened — never ask the user to approve a contract they haven't seen. Present in the terminal, in order:
    - **Critic digest** — one line per lens: `found N (B blockers folded in, M notables, dismissed X — reasons)`; note any skipped lens; if all four returned SOUND, say so.
-   - **Summary block** — counts, not tables: `{N} criteria ({M} with checks, {K} judgment calls)`; then the top checks (up to 3) verbatim; then scope tier counts (`{a} MVP · {b} Full · {c} Stretch · {d} out of scope`). Do **not** render the full criteria table in the terminal — the opened contract shows every criterion with its check; point the user at it for the detail.
-   - **Routing recommendation** — derived from the interview's evidence, with the reason named in the option description. Recommend the **express finish** when all 5 gates went ready without an early stop AND more than half the success criteria carry `check` commands; anything else, recommend **full review** and say why in one line (e.g. "6 of 9 criteria are judgment calls — unattended verification can't certify them", or "the interview ended early with Scope not-ready"). The user always chooses.
+   - **Summary block** — counts, not tables: quote the generator's printed `{N} criteria ({M} cmd, {K} judgment)` line; then the top checks (up to 3) verbatim; then scope tier counts (`{a} MVP · {b} Full · {c} Stretch · {d} out of scope`). Do **not** render the full criteria table in the terminal — the opened contract shows every criterion with its check; point the user at it for the detail.
+   - **Routing recommendation** — derived from the interview's evidence, with the reason named in the option description. Recommend the **express finish** when all 5 gates went ready without an early stop AND the generator's count has `cmd > judgment`; anything else, recommend **full review** and say why in one line, citing the count (e.g. "9 criteria (3 cmd, 6 judgment) — unattended verification can't certify them", or "the interview ended early with Scope not-ready"). The user always chooses.
 
    Then ONE `AskUserQuestion` call carrying two independent questions (when the routing answer was pre-committed by the `/ideation:express` alias, ask the Express finish path's run-mode question in its place, keeping the one consolidated confirmation):
 
@@ -163,19 +112,19 @@ The fast path chosen at step 7 (or pre-committed by the `/ideation:express` alia
 
 1. **Clean-tree check — at routing time, not before the interview.** Run `git status --porcelain`. The user's uncommitted changes would otherwise ride along on phase commits. Dirty tree → ask via `AskUserQuestion`: they stash/commit first, they accept the risk, or they abort. A clean tree proceeds silently. (The `/ideation:express` alias runs this check at intake instead — don't repeat it here.)
 2. **Mark the contract express.** In `contract-data.json`, set `"approvalMode": "express"` and `"branch": "ideation/{slug}"` (autopilot re-asserts this checkout on every entry, so the isolation guarantee survives fresh sessions), and apply the chosen tier.
-3. **Run mode** — one `AskUserQuestion` (skip if it was already folded into step 7's call by the alias):
-   - "Watch it run (Recommended)" — execute now; execution-time gates stay interactive.
-   - "Start it and walk away" — emits a `/goal` wrapper to paste. **Omit** this option when a majority of success criteria are judgment calls — a walk-away run can only trust what it verifies mechanically (5.4's verifiability rule), and would complete phases nothing mechanical verified.
+3. **Run mode** — one `AskUserQuestion` (skip if it was already folded into step 7's call by the alias). Which option carries `(Recommended)` comes from the advisor, never from this file — run `node ${CLAUDE_PLUGIN_ROOT}/scripts/verify.mjs ./docs/ideation/{slug}/contract-data.json --advise` and follow § 5.4's rule for reading it, including the two session-level overlays it can't see:
+   - "Watch it run" — execute now; execution-time gates stay interactive.
+   - "Start it and walk away" — emits a `/goal` wrapper to paste. **Omit** this option when the advisor reports `watch` for a verifiability reason (judgment-dominant criteria, or mostly file-inspecting checks) — a walk-away run can only trust what `scripts/verify.mjs` mechanically verifies, and would complete phases nothing checked. A `watch` caused by a high-risk phase is a recommendation, not an exclusion: keep the option, and say which phase drove it.
    - "Just generate the artifacts" — full generation, then no branch and no execution: hand off exactly per 5.4. The contract keeps `approvalMode: "express"` and `branch`, so a later `/ideation:autopilot` run still gets the isolation branch and strict semantics.
-4. **Generate everything (no loops).** Run 4.2's phasing (small-project shortcut, template + delta for repeatable phases; skip PRDs entirely), then 4.4's specs — same templates and disciplines. The Spec Feedback Quality self-review (4.5) is a **hard gate** here, not a presentation note: Weak → fix before proceeding; there is **no spec approval question** — no human reviews these specs before execution. Then 5.1/5.2: orchestration analysis, `"status": "Approved"` (keep `approvalMode` and `branch` — provenance and isolation: no per-artifact human review happened), execution plan populated, and the 5.2 re-render emitting `contract.html` and `contract.md` together. **Permission denial does not block the express finish:** print the exact `! npx tsx …` command so the user can render the record whenever they like, note the skipped render, and continue — execution consumes `contract-data.json` and `contract.md`, not the HTML. If it did render, open it for ambient visibility, not approval. Skip 5.4's menu. **"Just generate the artifacts" stops here:** hand off per 5.4 (echo the per-phase and autopilot commands); the remaining steps do not run.
-5. **Isolation branch.** Re-check the tree: changes **outside** `docs/ideation/{slug}/` are foreign (the artifacts just written are expected, and untracked files travel with `git switch`) — foreign changes mean the user worked mid-flow: stop and ask, same options as the clean-tree check above. Then create or switch (**watch routes**; on walk-away the switch is owned by the `/goal` — get-goal-prompt prepends it — so running it here too is a harmless re-assert):
+4. **Generate everything (no loops).** Run 4.2's phasing (small-project shortcut, template + delta for repeatable phases; skip PRDs entirely), then 4.4's specs — same templates and disciplines. The Spec Feedback Quality self-review (4.5) is a **hard gate** here, not a presentation note: Weak → fix before proceeding; there is **no spec approval question** — no human reviews these specs before execution. Then 5.1/5.2: orchestration analysis, `"status": "Approved"` (keep `approvalMode` and `branch` — provenance and isolation: no per-artifact human review happened), execution plan populated, and the 5.2 re-render emitting `contract.html` and `contract.md` together. **Permission denial does not block the express finish:** print the exact `! node …` command so the user can render the record whenever they like, note the skipped render, and continue — execution consumes `contract-data.json` and `contract.md`, not the HTML. If it did render, open it for ambient visibility, not approval. Skip 5.4's menu. **"Just generate the artifacts" stops here:** hand off per 5.4 (echo the per-phase and autopilot commands); the remaining steps do not run.
+5. **Isolation branch.** Re-check the tree: changes **outside** `docs/ideation/{slug}/` are foreign (the artifacts just written are expected, and untracked files travel with `git switch`) — foreign changes mean the user worked mid-flow: stop and ask, same options as the clean-tree check above. Then create or switch (**watch routes**; on walk-away the `/goal` carries the branch clause itself — `contract-gen`'s `buildGoal` includes it when the contract has `branch` — so running the switch here too is a harmless re-assert):
    - **Branch doesn't exist:** `git switch -c ideation/{slug}`.
-   - **Branch exists:** check it for prior phase commits (`git log --oneline ideation/{slug} --grep="{slug}"`). None → switch and proceed. Some → this is either a resume or a stale run; ask (`AskUserQuestion`): "Resume" (switch; autopilot's pre-pass skips committed phases), "Fresh run" (`git branch -D ideation/{slug}`, then create anew), or "Abort". A walk-away re-entry (no interactive user) defaults to Resume — that path's intended semantics.
+   - **Branch exists:** check it for prior phase commits (`git log --oneline ideation/{slug} -F --grep="docs/ideation/{slug}/"` — phase commit bodies carry the slug-qualified spec path, so this fixed-string match doesn't false-positive on commits that merely mention the project). None → switch and proceed. Some → this is either a resume or a stale run; ask (`AskUserQuestion`): "Resume" (switch; autopilot's pre-pass skips committed phases), "Fresh run" (`git branch -D ideation/{slug}`, then create anew), or "Abort". A walk-away re-entry (no interactive user) defaults to Resume — that path's intended semantics.
    - Every phase commits here. Post-run review is the branch diff; a bad run is **deleted, not reverted** — autopilot's git-log skip pre-pass matches commit messages, so _reverted_ phase commits still register as complete on a re-run.
 6. **Dispatch** by phase count and run mode:
    - **Single phase, watch:** orchestration adds nothing (5.4) — read and follow `${CLAUDE_PLUGIN_ROOT}/skills/execute-spec/SKILL.md` with the single spec path `docs/ideation/{slug}/spec.md` (the small-project shortcut emits a bare `spec.md`, no phase number), interactively, with **one override**: on reviewer failure/empty/no verdict, do NOT use the validation-only fallback — escalate via `AskUserQuestion` ("Retry review" / "Commit with validation only" / "Abort, leave unstaged"). That fallback is calibrated for human-reviewed specs; this spec had none.
-   - **Multi-phase, watch:** read `${CLAUDE_PLUGIN_ROOT}/skills/autopilot/SKILL.md` and execute it from its Step 1 with `docs/ideation/{slug}/contract.md` as the argument. (Its `disable-model-invocation` blocks Skill-tool triggering, not following its instructions.) Autopilot reads `approvalMode: "express"` and `branch` from `contract-data.json`, re-asserts the checkout, and sets `strict: true` in the engine args, so phases dispatch as `/ideation:execute-spec --headless --strict` — a scout HOLD stops instead of proceeding, and a crashed reviewer stops instead of committing validation-only. Unreviewed code never commits silently.
-   - **Walk away (any phase count):** follow `${CLAUDE_PLUGIN_ROOT}/skills/get-goal-prompt/SKILL.md` to build and copy the `/goal` (it prepends the branch switch when the contract carries `branch`), print the completion lines below, then stop — the user pastes it. The run resumes past committed phases automatically on every re-entry.
+   - **Multi-phase, watch:** read `${CLAUDE_PLUGIN_ROOT}/skills/autopilot/SKILL.md` and execute it from its Step 1 with `docs/ideation/{slug}/contract.md` as the argument. (Its `disable-model-invocation` blocks Skill-tool triggering, not following its instructions.) Autopilot reads `approvalMode: "express"` and `branch` from `contract-data.json`, re-asserts the checkout, and sets `strict: true` in the engine args, so phases run fail-closed per execute-spec's headless/strict resolution matrix — a scout HOLD or a crashed reviewer stops the phase; nothing commits without review. Unreviewed code never commits silently: strict stops it, and even non-strict runs mark it `reviewStatus: "validation-only"` with a warning autopilot's report must lead with.
+   - **Walk away (any phase count):** follow `${CLAUDE_PLUGIN_ROOT}/skills/get-goal-prompt/SKILL.md` to build and copy the `/goal` (the string comes from `contract-gen --print-goal`, which includes the branch clause when the contract carries `branch` and judges completion by `scripts/verify.mjs`'s VERIFY line), print the completion lines below, then stop — the user pastes it. The run resumes past committed phases automatically on every re-entry.
 7. **Completion lines** — two lines, delivered where the run ends (appended to autopilot's completion report on multi-phase watch, to execute-spec's on single-phase watch, or printed alongside the copied `/goal` on walk-away — that session ends before execution does; watch routes then run their own learning-capture step, and walk-away notes surface at the next interactive intake):
    1. Branch: `ideation/{slug}`
    2. Review: `git diff {default-branch}...ideation/{slug}`
@@ -190,14 +139,7 @@ After approval, determine phases and generate Markdown specs. PRDs are optional.
 
 ### 4.1 Choose Workflow
 
-`AskUserQuestion`:
-
-```
-Question: "How should we proceed from the contract?"
-Options:
-- "Straight to specs (Recommended)" — Contract defines what, specs define how. Faster.
-- "PRDs then specs" — Adds a requirements layer for stakeholder alignment.
-```
+**Default to specs; don't ask.** The contract defines what, the specs define how, and a PRD layer between them only earns its place when someone outside this conversation has to sign off. Generate PRDs (§ 4.3) only when the interview actually surfaced that need — a named stakeholder, an approval step, a handoff to a team that won't read specs. When it did, say you're adding the layer and why, in one line; you are not asking permission for a step the evidence already called for.
 
 ### 4.2 Determine Phases
 
@@ -209,7 +151,7 @@ Break scope into logical implementation phases.
 
 **Detect repeatable patterns:** 3+ phases with the same structure but different inputs (e.g., "add SDK support for {language}") change how specs are generated (see 4.4).
 
-### 4.3 Generate PRDs (only if "PRDs then specs")
+### 4.3 Generate PRDs (only when § 4.1's stakeholder need appeared)
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/ideation/references/prd-template.md`, then generate `prd-phase-{n}.md` per phase: overview/rationale, user stories, functional requirements (grouped), non-functional requirements, dependencies (prerequisites and outputs), acceptance criteria. Review via `AskUserQuestion`, iterating until approved:
 
@@ -275,7 +217,7 @@ Update `contract-data.json` with the final plan and re-run `contract-gen.ts` so 
 Re-render with both outputs — one invocation emits `contract.html` and `contract.md` together (same rules as Phase 3 step 5: the generator is the only renderer, and its permission-denial handling applies):
 
 ```bash
-npx tsx ${CLAUDE_PLUGIN_ROOT}/scripts/contract-gen.ts \
+node ${CLAUDE_PLUGIN_ROOT}/scripts/contract-gen.ts \
   --input ./docs/ideation/{slug}/contract-data.json \
   --output ./docs/ideation/{slug}/contract.html \
   --md-output ./docs/ideation/{slug}/contract.md
@@ -285,7 +227,7 @@ npx tsx ${CLAUDE_PLUGIN_ROOT}/scripts/contract-gen.ts \
 
 ### 5.3 Generate Contract Markdown
 
-`contract.md` is generator output — the `--md-output` flag in 5.2's invocation already emitted it alongside the HTML, rendered from `contract-data.json`. **Never hand-author it.** The generated structure is what autopilot's fallback parser (when `contract-data.json` is absent) and get-goal-prompt consume: the `**Approval**` header line, the Dependency Graph's `(blocked by …)` annotations, and the per-phase `/ideation:execute-spec` lines. Specs and PRDs are already Markdown.
+`contract.md` is generator output — the `--md-output` flag in 5.2's invocation already emitted it alongside the HTML, rendered from `contract-data.json`. **Never hand-author it.** The generated structure is what autopilot's fallback parser (when `contract-data.json` is absent) consumes: the `**Approval**` header line, the Dependency Graph's `(blocked by …)` annotations, and the per-phase `/ideation:execute-spec` lines. Specs and PRDs are already Markdown.
 
 ### 5.4 Present Handoff Summary
 
@@ -306,12 +248,25 @@ Then apply the decision rule:
   ```
   Question: "How do you want to run this?"
   Options:
-  - "Watch it run now (Recommended)" — /ideation:autopilot runs the phases on its Workflow engine while you watch.
+  - "Watch it run now" — /ideation:autopilot runs the phases on its Workflow engine while you watch.
   - "Start it and walk away" — get a /goal that drives autopilot to completion unattended, recovering from failures.
   - "I'll run phases myself" — run each /ideation:execute-spec manually.
   ```
 
-  **Recommend by verifiability:** the unattended path can only trust what it can check. If most `successCriteria` carry a `check` command, keep "Watch it run now" or "Start it and walk away" as viable recommendations. If most criteria are judgment calls, do **not** recommend the walk-away option — say why in one line: a `/goal` run would complete phases nothing mechanical verified.
+  **Do not hardcode which option is recommended — ask the advisor.** Run:
+
+  ```bash
+  node ${CLAUDE_PLUGIN_ROOT}/scripts/verify.mjs ./docs/ideation/{slug}/contract-data.json --advise
+  ```
+
+  It runs nothing and writes nothing. It prints `RUNMODE {slug}: {mode} …` — `watch`, `walk-away`, or `run-spec` — followed by the reasons. Mark **that** option `(Recommended)`, and quote the advisor's deciding reason verbatim in its description so the user can disagree with the actual argument. `run-spec` means the orchestration question shouldn't be asked at all (single phase — recommend the one spec, per the rule above).
+
+  The advisor weighs what a script can see: phase count, `risk: high` phases, the cmd-vs-judgment split, and how many `cmd` checks only inspect files rather than running anything. **Two facts it cannot see are yours to overlay**, and both only ever *remove* the walk-away option, never add it:
+
+  - **The `Workflow` tool is unavailable** in this Claude Code → autopilot's engine can't run. Recommend "I'll run phases myself".
+  - **This session can't start a `/goal`** — it needs a trusted workspace and refuses when hooks are restricted. Discovering that at paste time, after the interview and the approval, is the worst moment for it. Signals: `/goal` errored earlier this session, or the user has said the workspace is untrusted. Then drop walk-away and say so in one line. **This is a caveat, not a verified mechanism** — it came from Claude Code binary strings and could not be confirmed from this repo, so never block on a negative check; when in doubt keep the option and let the paste fail with an explanation.
+
+  If the advisor can't run (permission denial), say so and fall back to recommending "Watch it run now" — the conservative choice, and name it as a fallback rather than a recommendation.
 
   Then echo the exact command for their choice:
   - Watch now → `/ideation:autopilot docs/ideation/{project-name}/contract.md`
@@ -330,7 +285,7 @@ All written to `./docs/ideation/{project-name}/`:
 _comparison.html                   # Ephemeral decision aid (deleted after choice is made)
 contract-data.json                 # Machine-readable contract (source of truth; consumed by autopilot)
 contract.html                      # Mission Brief contract (for review)
-contract.md                        # Plain contract (autopilot fallback + get-goal-prompt)
+contract.md                        # Plain contract (autopilot fallback when contract-data.json is absent)
 prd-phase-1.md                     # Phase 1 requirements (only if PRDs chosen)
 ...
 spec-phase-1.md                    # Implementation spec (for execute-spec)

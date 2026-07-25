@@ -6,9 +6,19 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+// scripts/verify.mjs owns what a `check` is — the thing that runs the checks
+// decides what is runnable, and importing keeps the renderer and the executor
+// from ever disagreeing about a criterion's kind.
+import {
+  committablePhases,
+  isJudgment,
+  normalizeCriterion,
+  summarizeCriteria,
+  validateCheck,
+} from './verify.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CSS = readFileSync(join(__dirname, 'contract-gen.css'), 'utf8');
@@ -46,10 +56,39 @@ interface Phase {
   notes?: string;
 }
 
+/** A runnable command plus the outcome that means it passed. */
+interface CmdCheck {
+  cmd: string;
+  expect: string;
+}
+/** No command exists — say who has to look at what, in one sentence. */
+interface JudgmentCheck {
+  judgment: string;
+}
+type Check = CmdCheck | JudgmentCheck;
+
 interface SuccessCriterion {
   criterion: string;
-  /** Runnable command + expected outcome that verifies the criterion; absent = human judgment */
-  check?: string;
+  /** How the criterion is verified. `string` is the legacy shape ("cmd — expected
+      outcome") and still renders: normalizeCriterion splits it on the em-dash,
+      or coerces it to a judgment when it plainly isn't shell. Absent = judgment,
+      unstated. */
+  check?: Check | string;
+}
+
+/** Post-normalization shape — what every builder below actually sees. */
+interface NormalizedCriterion {
+  criterion: string;
+  check?: Check;
+}
+
+/** verify.mjs owns the runtime rule; these restate it as type predicates so
+    the renderer narrows properly (the imported helper is plain JS). */
+function isCmd(check: Check | undefined): check is CmdCheck {
+  return check !== undefined && !isJudgment(check);
+}
+function isJudge(check: Check | undefined): check is JudgmentCheck {
+  return check !== undefined && isJudgment(check);
 }
 
 interface ContractData {
@@ -121,8 +160,8 @@ function riskMeta(risk: string): { color: string; label: string } {
   }
 }
 
-function asCriterion(c: string | SuccessCriterion): SuccessCriterion {
-  return typeof c === 'string' ? { criterion: c } : c;
+function asCriterion(c: string | SuccessCriterion): NormalizedCriterion {
+  return normalizeCriterion(c) as NormalizedCriterion;
 }
 
 function phaseCommand(phase: Phase, slug: string, index: number): string {
@@ -137,6 +176,91 @@ function cmdField(id: string, cmd: string, wide = false): string {
             <span class="cmd-field-text" id="${id}">${esc(cmd)}</span>
             <button type="button" class="copy-btn" data-copy="${id}">copy</button>
           </div>`;
+}
+
+interface ContractPaths {
+  /** Repo-relative contract-data.json — what verify.mjs is pointed at */
+  dataPath: string;
+  /** Repo-relative contract.md — what autopilot is pointed at */
+  contractPath: string;
+  /** How to invoke verify.mjs from the project being executed */
+  verifyBin: string;
+}
+
+/** Where the run commands should point. Derived from --input when it sits
+    inside the cwd, otherwise from the slug convention. `verifyBin` is relative
+    when the generator lives inside the project it is rendering (this repo
+    dogfooding itself) and ${CLAUDE_PLUGIN_ROOT}-qualified when it is an
+    installed plugin acting on someone else's repo — never an absolute path,
+    which would bake this machine into a committed contract. */
+function contractPaths(d: ContractData, inputPath?: string): ContractPaths {
+  let dataPath = `docs/ideation/${d.slug}/contract-data.json`;
+  if (inputPath) {
+    const rel = relative(process.cwd(), resolve(inputPath));
+    if (rel && !rel.startsWith('..')) dataPath = rel;
+  }
+  const scriptRel = relative(process.cwd(), join(__dirname, 'verify.mjs'));
+  const verifyBin =
+    scriptRel && !scriptRel.startsWith('..')
+      ? scriptRel
+      : '${CLAUDE_PLUGIN_ROOT}/scripts/verify.mjs';
+  return {
+    dataPath,
+    contractPath: join(dirname(dataPath), 'contract.md'),
+    verifyBin,
+  };
+}
+
+/** The one owner of the `/goal` string. Rendered into contract.html's copy
+    field, into contract.md, and printed by `--print-goal`.
+
+    `/goal` is "set a goal Claude checks before stopping" — the argument is a
+    CONDITION evaluated against the transcript, not a procedure. So this reads
+    as a state of the world, and every imperative in it exists only because the
+    condition can't be true unless it happened.
+
+    Three things it must carry:
+      1. Autopilot dispatches a BACKGROUND workflow — wait for the completion
+         notification, and never start a second run while one is in flight.
+         (Without this the Stop hook fires mid-run and re-injects the goal as a
+         directive, launching a concurrent engine run.)
+      2. verify.mjs after every run, VERIFY line left in the transcript — the
+         evaluator reads the transcript and nothing else, so evidence that
+         isn't in the conversation does not exist.
+      3. A DISJUNCTIVE done-when. A rotted contract can never reach fail=0, and
+         a purely conjunctive goal would loop on it forever; two consecutive
+         identical failing VERIFY lines is the escape hatch. */
+function buildGoal(d: ContractData, paths: ContractPaths): string {
+  // Single owner: verify.mjs decides which phases are expected to leave a commit,
+  // and it is what produces the VERIFY line this goal is judged on. Re-deriving
+  // the filter here once made the two disagree, which produced a goal whose
+  // commits=N/N could never be reached — a trap the escape hatch does not cover.
+  const phases = committablePhases(d).length;
+  const branch = d.branch
+    ? ` All commits belong on branch ${d.branch} — switch to it before any run.`
+    : '';
+  // Numbered lines, not a paragraph. /goal takes free text, so structure is free —
+  // and the person pasting this has to be able to skim it and confirm it says what
+  // they meant before they walk away. The done-when goes last, on its own line,
+  // because it is the only part that decides when the run is allowed to stop.
+  // ${CLAUDE_PLUGIN_ROOT} is a plugin-markdown substitution, not a shell variable —
+  // bash expands it to nothing. The artifact must stay portable (an absolute path
+  // bakes in this machine and the plugin version), so the goal names it as a
+  // placeholder to resolve rather than handing over a command that fails verbatim.
+  const verifyStep = paths.verifyBin.startsWith('${')
+    ? `Then run the ideation plugin's \`scripts/verify.mjs\` against \`${paths.dataPath}\` and leave its VERIFY line in the conversation. Resolve the plugin's install directory first — \`${paths.verifyBin}\` is a placeholder, not a shell variable, and bash will not expand it.`
+    : `Then run \`node ${paths.verifyBin} ${paths.dataPath}\` and leave its VERIFY line in the conversation.`;
+
+  return [
+    `/goal Drive the ${d.projectName} contract (${d.slug}) to completion with /ideation:autopilot.`,
+    ``,
+    `1. Run \`/ideation:autopilot ${paths.contractPath}\`.${branch}`,
+    `2. It dispatches a BACKGROUND workflow. Wait for the completion notification — never start a second autopilot run while one is in flight.`,
+    `3. ${verifyStep} That line is the only evidence this goal is judged on.`,
+    `4. If anything failed, fix the spec or the implementation and go back to step 1. Autopilot skips phases that already have commits.`,
+    ``,
+    `Done when the most recent VERIFY line reads fail=0 and commits=${phases}/${phases} — or when two consecutive VERIFY lines are identical and still failing, in which case name the failing checks and stop, because a contract whose checks have rotted must not trap the run.`,
+  ].join('\n');
 }
 
 function sectionHdr(title: string, count?: string): string {
@@ -357,11 +481,29 @@ ${d.goals
 
 function buildSuccess(d: ContractData): string {
   const criteria = d.successCriteria.map(asCriterion);
-  const checked = criteria.filter(c => c.check).length;
+  const checked = criteria.filter(c => isCmd(c.check)).length;
   const countLabel =
     checked === criteria.length
       ? `${criteria.length} signals · all mechanically checked`
       : `${criteria.length} signals · ${checked} mechanically checked`;
+  const body = (c: NormalizedCriterion): string => {
+    if (isCmd(c.check)) {
+      const { cmd, expect } = c.check;
+      return [
+        `<code class="criteria-check">${esc(cmd)}</code>`,
+        expect ? `<span class="criteria-expect">expect: ${esc(expect)}</span>` : '',
+      ]
+        .filter(Boolean)
+        .join('\n            ');
+    }
+    const note = isJudge(c.check) ? c.check.judgment : '';
+    return [
+      `<span class="criteria-judgment">judgment call${note ? '' : ' — no mechanical check'}</span>`,
+      note ? `<span class="criteria-expect">${esc(note)}</span>` : '',
+    ]
+      .filter(Boolean)
+      .join('\n            ');
+  };
   return `
     <section class="section">
 ${sectionHdr('Done when', countLabel)}
@@ -372,11 +514,7 @@ ${criteria
           <span class="line-num">${pad2(i + 1)}</span>
           <div class="criteria-body">
             <span>${esc(c.criterion)}</span>
-            ${
-              c.check
-                ? `<code class="criteria-check">${esc(c.check)}</code>`
-                : `<span class="criteria-judgment">judgment call — no mechanical check</span>`
-            }
+            ${body(c)}
           </div>
         </li>`,
   )
@@ -466,7 +604,7 @@ ${items
     </section>`;
 }
 
-function buildExecution(d: ContractData): string {
+function buildExecution(d: ContractData, paths: ContractPaths): string {
   const phases = d.execution.phases;
   const isDraft = d.status === 'Draft';
 
@@ -535,8 +673,16 @@ ${table}
           <div class="run-bar-headline">Autopilot.</div>
           <div class="run-bar-desc">Reads the contract, walks the dependency graph, and dispatches phases automatically.</div>
         </div>
-        ${cmdField('cmd-autopilot', '/ideation:autopilot')}
+        ${cmdField('cmd-autopilot', `/ideation:autopilot ${paths.contractPath}`)}
       </div>
+
+      <details class="disclosure">
+        <summary>Run it unattended (/goal)</summary>
+        <div class="disclosure-body">
+          <p class="run-bar-desc">A durability wrapper around autopilot: Claude re-checks this condition before it is allowed to stop, so a failed phase gets repaired and re-run instead of ending the session. Verified by <code>verify.mjs</code>, which reports on this contract only.</p>
+          ${cmdField('cmd-goal', buildGoal(d, paths), true)}
+        </div>
+      </details>
 
       <details class="disclosure">
         <summary>Run phases individually (${phases.length})</summary>
@@ -647,8 +793,12 @@ function mdCriteria(d: ContractData): string {
     '## Success Criteria',
     '',
     ...d.successCriteria.map(asCriterion).map(c => {
-      const suffix = c.check ? `— check: \`${c.check}\`` : '— judgment call';
-      return `- [ ] ${c.criterion} ${suffix}`;
+      if (isCmd(c.check)) {
+        const expect = c.check.expect ? ` → ${c.check.expect}` : '';
+        return `- [ ] ${c.criterion} — check: \`${c.check.cmd}\`${expect}`;
+      }
+      const note = isJudge(c.check) ? c.check.judgment : '';
+      return `- [ ] ${c.criterion} — judgment call${note ? `: ${note}` : ''}`;
     }),
   ].join('\n');
 }
@@ -735,7 +885,7 @@ function mdDependencyGraph(phases: Phase[]): string {
   return ['### Dependency Graph', '', '```', ...lines, '```'].join('\n');
 }
 
-function mdExecutionSteps(d: ContractData): string {
+function mdExecutionSteps(d: ContractData, paths: ContractPaths): string {
   const phaseLines = d.execution.phases.flatMap((p, i) => {
     const marker = p.blocking
       ? ' _(blocking)_'
@@ -757,7 +907,13 @@ function mdExecutionSteps(d: ContractData): string {
     '**Run the project** (recommended) — autopilot reads this contract, plans dependency waves, runs independent phases in parallel, and gates on failure:',
     '',
     '```bash',
-    `/ideation:autopilot docs/ideation/${d.slug}/contract.md`,
+    `/ideation:autopilot ${paths.contractPath}`,
+    '```',
+    '',
+    '**Or run it unattended** — a `/goal` is a durability wrapper around the same autopilot run: Claude re-checks the condition before it is allowed to stop, so failures get repaired and re-run. Generated by `contract-gen --print-goal`; this is the only copy of that string:',
+    '',
+    '```',
+    buildGoal(d, paths),
     '```',
     '',
     '**Or run phases manually** in dependency order:',
@@ -770,7 +926,7 @@ function mdExecutionSteps(d: ContractData): string {
     .replace(/\n+$/, '');
 }
 
-function mdExecutionPlan(d: ContractData): string {
+function mdExecutionPlan(d: ContractData, paths: ContractPaths): string {
   const parts = [
     '## Execution Plan',
     '',
@@ -784,7 +940,7 @@ function mdExecutionPlan(d: ContractData): string {
     '',
     mdDependencyGraph(d.execution.phases),
     '',
-    mdExecutionSteps(d),
+    mdExecutionSteps(d, paths),
   );
   if (d.execution.agentTeamPrompt) {
     parts.push(
@@ -799,7 +955,7 @@ function mdExecutionPlan(d: ContractData): string {
   return parts.join('\n');
 }
 
-function buildMarkdown(d: ContractData): string {
+function buildMarkdown(d: ContractData, paths: ContractPaths): string {
   const sections = [
     mdHeader(d),
     mdProblem(d),
@@ -807,7 +963,7 @@ function buildMarkdown(d: ContractData): string {
     mdCriteria(d),
     mdScope(d),
     mdDecisions(d),
-    mdExecutionPlan(d),
+    mdExecutionPlan(d, paths),
     '---',
     '_This contract was generated from brain dump input. Review and approve before proceeding to specification._',
   ];
@@ -816,7 +972,7 @@ function buildMarkdown(d: ContractData): string {
 
 // --- Main Template ---
 
-function generate(data: ContractData): string {
+function generate(data: ContractData, paths: ContractPaths): string {
   const d = data;
 
   return `<!doctype html>
@@ -845,7 +1001,7 @@ ${buildProblemGoals(d)}
 ${buildSuccess(d)}
 ${buildScope(d)}
 ${buildDecisionLog(d)}
-${buildExecution(d)}
+${buildExecution(d, paths)}
 ${buildClose(d)}
     </main>
 
@@ -903,6 +1059,7 @@ const { values } = parseArgs({
     input: { type: 'string', short: 'i' },
     output: { type: 'string', short: 'o' },
     'md-output': { type: 'string' },
+    'print-goal': { type: 'boolean' },
   },
 });
 
@@ -911,7 +1068,9 @@ if (!values.input) {
     'Usage: contract-gen.ts --input <data.json> --output <contract.html> [--md-output <contract.md>]\n' +
       '  --md-output also emits the Markdown contract and declares generator\n' +
       '  ownership of both representations: lineage then archives the html+md\n' +
-      '  pair together — including a pre-existing hand-authored sibling md.',
+      '  pair together — including a pre-existing hand-authored sibling md.\n' +
+      '  --print-goal prints the /goal command for this contract and exits,\n' +
+      '  writing nothing.',
   );
   process.exit(1);
 }
@@ -927,6 +1086,48 @@ if (!('gates' in parsed) && 'confidence' in parsed) {
 }
 
 const data = parsed as unknown as ContractData;
+const paths = contractPaths(data, values.input);
+
+// Render-time rejection of prose in the executable slot. Errors are collected
+// and reported together — one fix pass, not one per run — and name the
+// criterion index so the field is findable in contract-data.json.
+// This runs BEFORE the --print-goal exit: the goal's done-when delegates to
+// verify.mjs, so handing out a goal for a contract whose cmd slot holds prose
+// promises that prose will be executed unattended.
+const normalized = (data.successCriteria ?? []).map(asCriterion);
+const checkErrors = normalized
+  .map((c, i) => {
+    const err = validateCheck(c.check);
+    return err ? `  successCriteria[${i}] (${c.criterion}): ${err}` : '';
+  })
+  .filter(Boolean);
+
+// EARLY EXIT, and it must stay above everything below it: mkdir, the lineage
+// rename, and the writes are all side effects. Merely asking for the goal
+// string must never rewrite the user's contract.
+if (values['print-goal']) {
+  if (checkErrors.length) {
+    console.error(
+      `Refusing to print a /goal: ${checkErrors.length} unrunnable check${checkErrors.length === 1 ? '' : 's'}.\n` +
+        `${checkErrors.join('\n')}\n` +
+        '  This goal is judged by scripts/verify.mjs, which would execute these.',
+    );
+    process.exit(1);
+  }
+  console.log(buildGoal(data, paths));
+  process.exit(0);
+}
+
+if (checkErrors.length) {
+  console.error(
+    `contract-data.json has ${checkErrors.length} unrunnable check${checkErrors.length === 1 ? '' : 's'}:\n` +
+      `${checkErrors.join('\n')}\n` +
+      '  A check is either { "cmd": "…", "expect": "…" } that a shell can run\n' +
+      '  unattended, or { "judgment": "who looks at what" }. Prose in the cmd\n' +
+      '  slot gets executed by scripts/verify.mjs.',
+  );
+  process.exit(1);
+}
 
 const outputPath = values.output ?? `contract.html`;
 const outputDir = dirname(outputPath);
@@ -1005,9 +1206,13 @@ if (existsSync(outputPath)) {
   }
 }
 
-const html = generate(data);
+const html = generate(data, paths);
 writeFileSync(outputPath, html, 'utf8');
 console.log(`Generated ${outputPath} (${html.length} bytes)`);
+
+// The verifiability count, printed rather than eyeballed. Routing decisions
+// that used to read "most criteria are checkable" have a number to read.
+console.log(summarizeCriteria(normalized).line);
 
 // After the lineage pass on purpose: `data.supersedes` may have been set
 // above, and the md must record the same lineage the html does.
@@ -1016,7 +1221,7 @@ if (values['md-output']) {
   if (mdOutputDir && !existsSync(mdOutputDir)) {
     mkdirSync(mdOutputDir, { recursive: true });
   }
-  const md = buildMarkdown(data);
+  const md = buildMarkdown(data, paths);
   writeFileSync(values['md-output'], md, 'utf8');
   console.log(`Generated ${values['md-output']} (${md.length} bytes)`);
 }

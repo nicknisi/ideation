@@ -61,13 +61,14 @@ What unstated assumption, file, system, or sequencing does the plan depend on? S
 
 #### Lens: success-criteria
 
-Would these criteria actually detect failure? Are they pass/fail checkable as written? Each entry in `successCriteria` is `{ criterion, check? }` (legacy contracts may use plain strings) — `check` is the runnable command plus expected outcome that verifies the criterion. Specifically:
+Would these criteria actually detect failure? Are they pass/fail checkable as written? Each entry in `successCriteria` is `{ criterion, check? }` where `check` is a typed union: `{ "cmd": "shell command", "expect": "outcome" }` for mechanical verification, or `{ "judgment": "who looks at what" }` when only a human can tell (legacy plain-string checks still normalize — `scripts/verify.mjs` owns the rule). `scripts/verify.mjs` executes every `cmd` at acceptance time; `judgment` entries are printed, never counted. Specifically:
 
 - Criteria that are vague or subjective ("works well", "is fast") — not mechanically checkable.
-- Criteria that would pass even if the feature were broken (false-negative blind spots).
+- Criteria that would pass even if the feature were broken (false-negative blind spots) — including **tautological cmds** that cannot fail (e.g. `! find … -name '*.html'` always passes: `find` exits 0 even with no matches).
+- **Prose in the `cmd` slot** — a `cmd` must be runnable shell, not a description ("start the server & then curl it" is prose; contract-gen rejects it at render time, so catch it here where it's a one-line fix).
 - Goals with no corresponding criterion — unverifiable promises.
-- **Criteria missing a `check` where one is plausible** — if a test command, grep, curl, or build step could verify it, the omission is a finding; propose the exact command as the suggested change. A criterion verifiable only by human judgment is acceptable, but verify that's genuinely the case rather than a dodge.
-- Criteria whose `check` names a command, file, or count — confirm the wording is concrete enough to run, and that the command can actually exist in this repo (e.g., the named test runner or script is real).
+- **Criteria missing a `cmd` check where one is plausible** — if a test command, grep, curl, or build step could verify it, the omission is a finding; propose the exact command as the suggested change. A `judgment` check is acceptable, but verify that's genuinely the case rather than a dodge.
+- Criteria whose `cmd` names a command, file, or count — confirm it can actually run in this repo (the named test runner or script is real), and that it exits non-zero when the criterion fails.
 
 #### Lens: over-engineering
 
