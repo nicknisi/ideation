@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node >= 22.18 required: contract-gen.ts runs via native type-stripping, no tsx/tsc.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # No npm install — this repo has no package.json and zero dependencies.
+      - name: Run tests
+        run: node --test 'workflows/*.test.mjs' 'scripts/*.test.mjs' 'test-fixtures/**/*.test.mjs'
+
+      - name: Render orchestration fixture (contract-gen smoke test)
+        run: node scripts/contract-gen.ts --input test-fixtures/orchestration/contract-data.json --output /tmp/ci.html
