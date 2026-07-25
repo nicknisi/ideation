@@ -8,6 +8,8 @@ tools: ['Read', 'Grep', 'Bash']
 
 Review implementation quality by comparing the git diff against the original spec. Produce structured findings that the builder can act on. You cannot edit files.
 
+**If `Grep` is unavailable** (workflow-dispatched contexts strip it): use read-only Bash instead — `rg`, `git grep`, `ls`. `git diff HEAD`, your primary input, works either way.
+
 ## Input
 
 You receive:
@@ -117,6 +119,8 @@ On subsequent review cycles:
   - **If the refutation does not hold** (the evidence is irrelevant, misread, or the defect is real): restate the finding prefixed `Maintained despite refutation —`, with severity unchanged or escalated. A maintained finding is a normal blocking finding; the builder may not refute it again.
 
 ## Output Format
+
+**If a structured-output schema is attached to your invocation** (the workflow engine attaches one): return `verdict` ("PASS"/"FAIL"), `findings` (an array of strings, each in the `severity/category file:line — description → action` form below), `blocking` (the count of critical + high findings), and `summary`. The finding format is unchanged — it travels in fields instead of markdown.
 
 ```markdown
 ## Review: Cycle {N}

@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
   computeWaves,
@@ -244,5 +247,68 @@ describe('planExecutionWaves', () => {
       { title: 'B', prereqs: ['A'] },
     ];
     assert.throws(() => planExecutionWaves(phases), /cycle/i);
+  });
+});
+
+/**
+ * execute-contract.mjs inlines these functions because the Workflow sandbox may
+ * not support relative imports, so the "KEEP IN SYNC" comment in both files is
+ * the only thing standing between this tested source and a silently divergent
+ * copy running in production. It has already failed once: `computeWaves` drifted
+ * to a brace-less `if (cycle) throw …`. This test is the enforcement.
+ */
+describe('engine mirror drift', () => {
+  const dir = dirname(fileURLToPath(import.meta.url));
+  const PLANNER = readFileSync(join(dir, 'wave-planner.mjs'), 'utf8');
+  const ENGINE = readFileSync(join(dir, 'execute-contract.mjs'), 'utf8');
+
+  /** The functions execute-contract.mjs is contracted to mirror verbatim. */
+  const MIRRORED = [
+    'detectCycle',
+    'computeWaves',
+    'propagateSkips',
+    'splitWavesByFileOverlap',
+  ];
+
+  /** Source of `function name(…) { … }`, from the keyword to its column-0 `}`. */
+  function extract(src, name) {
+    const m = new RegExp(`^(?:export )?function ${name}\\(`, 'm').exec(src);
+    if (!m) return null;
+    const end = src.indexOf('\n}\n', m.index);
+    if (end === -1) return null;
+    return src.slice(m.index, end + 2).replace(/^export /, '');
+  }
+
+  /** Strip comments and collapse whitespace — formatting may differ, code may not. */
+  const normalize = s =>
+    s
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  for (const name of MIRRORED) {
+    it(`${name} is identical in execute-contract.mjs`, () => {
+      const source = extract(PLANNER, name);
+      const mirror = extract(ENGINE, name);
+      assert.ok(source, `could not extract ${name} from wave-planner.mjs`);
+      assert.ok(mirror, `could not extract ${name} from execute-contract.mjs`);
+      assert.equal(
+        normalize(mirror),
+        normalize(source),
+        `${name} has drifted from wave-planner.mjs — copy it back verbatim`,
+      );
+    });
+  }
+
+  it('the engine mirrors these four and nothing else', () => {
+    const exported = [...PLANNER.matchAll(/^export function (\w+)\(/gm)].map(
+      m => m[1],
+    );
+    assert.deepEqual(
+      exported.filter(n => extract(ENGINE, n) !== null).sort(),
+      [...MIRRORED].sort(),
+      'the engine inlines a planner function it does not use (or dropped one it does)',
+    );
   });
 });
