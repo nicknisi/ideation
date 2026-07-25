@@ -8,4 +8,8 @@ node_modules/
 PRODUCT.md
 DESIGN.md
 test-fixtures/**/out/
-docs/ideation/
+# Ideation working artifacts stay local — but the learning store is meant to be
+# committed and shared, so it is explicitly un-ignored. (`docs/ideation/*` not
+# `docs/ideation/`: git cannot re-include a file under an ignored directory.)
+docs/ideation/*
+!docs/ideation/learnings.md

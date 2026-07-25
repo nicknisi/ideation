@@ -4,6 +4,11 @@
 
 Transform brain dumps into structured implementation artifacts through a conversational interview. HTML is used for interactive decision-making (the Mission Brief contract with evidence-gate readiness, visual comparisons during the interview). Markdown is used for reference documents (specs, PRDs) consumed directly by `/ideation:execute-spec`. Includes an execution workflow for implementing specs in fresh sessions with per-component feedback loops, adversarial plan critics, a Scout/Reviewer agent pipeline, and a push-based learning loop that captures lessons at completion and applies them visibly at future intakes.
 
+## What's New (0.20.0)
+
+- **`/ideation:brainstorm` — the stage before the interview.** A lightweight thinking partner for deciding _whether_ an idea is worth building — pure conversation, no files, no spec. When the conclusion is "yes, build it," it hands what you settled to the ideation interview as a running start: rejected alternatives arrive as `decisions` entries, exclusions as `scope.outOfScope`, and the interview opens on the gates that are still actually open. It never pre-seeds Success Criteria — a conversation about _whether_ produces no runnable checks. Moved in from the essentials plugin; **remove that copy**, or two skills compete for the same triggers. See [brainstorm](#brainstorm).
+- **A deliberate exception to 0.19.0's surface reduction.** That release collapsed the _planning_ fork — express stopped being a separate entry point and became a routing answer inside the interview — under the rule "reduce surface, never add." This adds a skill, which is in tension with that. The case for the exception: whether-vs-how is a different axis from full-review-vs-express, the new door writes nothing and owns no artifacts, and it hands to the same single planning door rather than reopening a second one. Net instruction surface still shrank.
+
 ## What's New (0.17.0)
 
 - **`/ideation:express` — one-pass planning-to-execution.** The exact same evidence-gated interview, then ONE consolidated confirmation (scope tier + run mode, led by the success-criteria check commands), then contract + specs generated without per-artifact approval loops and executed immediately via autopilot on an isolation branch (`ideation/{slug}`). The design follows the pattern every mature spec-driven tool converged on (Kiro Quick Plan, BMAD quick-dev, Claude Code plan mode): express modes delete the review _gates_, never the artifacts or the upfront elicitation. See [express](#express).
@@ -40,6 +45,22 @@ This release ships the full Fable 5 upgrade. Six behavior changes, plus one brea
 > Re-run ideation on the project to produce a `gates`-shaped `contract-data.json`. Specs also gained an optional per-phase `files` manifest field (the paths a phase touches), used by the autopilot/parallel engine to serialize file-overlapping phases.
 
 ## Skills
+
+The arc runs **whether → how → shipped**: brainstorm decides whether the idea is worth building, ideation plans how, and the execution commands below ship it.
+
+### brainstorm
+
+Pressure-test whether an idea is worth building at all — "should I do X," "which of these approaches," "am I overthinking this." Runs entirely in conversation: no files, no gates, no spec. When the answer is "yes, build it," it hands off to the ideation interview with what you settled as the starting point.
+
+**How to invoke:**
+
+```
+/ideation:brainstorm
+
+[the idea or decision you're weighing]
+```
+
+Full behavior lives in [skills/brainstorm/SKILL.md](skills/brainstorm/SKILL.md). Already decided to build? Skip straight to ideation.
 
 ### ideation
 
@@ -83,7 +104,7 @@ All artifacts are written to `./docs/ideation/{project-name}/`:
 _comparison.html               # Ephemeral decision aid (deleted after choice is made)
 contract-data.json             # Machine-readable contract (source of truth; consumed by autopilot)
 contract.html                  # Mission Brief contract (for review)
-contract.md                    # Plain contract (autopilot fallback + get-goal-prompt)
+contract.md                    # Plain contract (autopilot fallback when contract-data.json is absent)
 contract-{date}.html / .md     # Superseded revisions (lineage chain)
 prd-phase-1.md                 # Phase 1 requirements (only if PRDs chosen)
 spec-phase-1.md                # Implementation spec (for execute-spec)
@@ -97,7 +118,7 @@ HTML artifacts (contract, implementation notes, ephemeral visualizations) are se
 
 - **Command Deck layout** — a single instrument-panel page: deck header, run bar, and sectioned panels (no tabs, no JS framework)
 - **Readiness gate checklist** — a ✓/✗ per dimension with its one-sentence evidence citation in the hero (no score; readiness is binary)
-- **Success criteria with checks** — each criterion renders its verifying command; criteria with no mechanical check carry a visible "judgment call" tag
+- **Success criteria with checks** — each criterion carries a typed check: `{cmd, expect}` renders the verifying command with its expected outcome, `{judgment}` renders a visible "judgment call" tag naming who looks at what. `scripts/verify.mjs <contract-data.json>` executes every `cmd` and prints a machine-readable `VERIFY {slug}: commits=A/B pass=N fail=M judgment=K` line (exit 0 = the contract's completion predicate; it verifies one contract's acceptance checks, never repo health)
 - **Decision log** — a "Decisions considered and rejected" panel recording interview rejections and critic-blocker fixes; carried into every spec so executors and reviewers can catch rejected approaches re-proposed as deviations
 - **Nested scope tiers** showing MVP / Full / Stretch commitment levels
 - **Horizontal phase track** with risk coloring and gate support
@@ -136,7 +157,7 @@ One-pass ideation for well-understood work: `/ideation:express` runs the identic
 
 **What changes:**
 
-- **Two hard preconditions**, checked when the interview ends: all 5 gates `ready` (an early-stopped interview falls back to the standard flow) and a majority of success criteria carrying `check` commands (unattended execution can only trust what it verifies mechanically). Failing either routes to the standard ideation flow — never a silent downgrade.
+- **Two hard preconditions**, checked when the interview ends: all 5 gates `ready` (an early-stopped interview falls back to the standard flow) and a majority of success criteria carrying `cmd` checks — read from the generator's printed `{N} criteria ({M} cmd, {K} judgment)` count, since unattended execution can only trust what `verify.mjs` checks mechanically. Failing either routes to the standard ideation flow — never a silent downgrade.
 - **One confirmation**, led by the success-criteria check commands (approve what "done" means, not the essay), plus scope-tier contents and the critic digest. Answering it is the approval.
 - **Isolation branch.** Execution commits to `ideation/{slug}`; review moves to the branch diff. A bad run is a deleted branch, not a revert (autopilot's git-log skip pre-pass would treat reverted phase commits as complete).
 - **Fail-closed execution.** `approvalMode: "express"` → engine `strict: true` → `/ideation:execute-spec --headless --strict`.
@@ -210,7 +231,7 @@ Each critic returns `blocker` / `notable` / `nit` findings. Blockers are folded 
 
 ## Learning Loop
 
-The learning loop is push-based — it comes to you; there is no command to remember. When a watched run completes, the just-finished project's implementation notes pass through the generalization filter in `references/learning-filter.md`; up to 3 candidates survive, and one accept/edit/dismiss question decides what lands in the repo-level `docs/ideation/learnings.md`. Zero candidates means zero prompts — a clean run stays silent. Unattended runs never write learnings; the next interactive interview intake spots their unmined notes with a bounded scan and offers once to mine them. When a recorded learning shapes an interview question or a spec implication, the interview says so visibly: `Applying learning from {project} ({date}): {why}`.
+The learning loop is push-based — it comes to you; there is no command to remember. When a watched run completes, the just-finished project's implementation notes pass through the generalization filter in `references/learning-filter.md`; up to 3 candidates survive, and one accept/edit/dismiss question decides what lands in the repo-level `docs/ideation/learnings.md`. The store is meant to be committed and shared with the repo — if the repo ignores `docs/ideation/`, un-ignore that one file (this repo's `.gitignore` does exactly that), or it stays machine-local. Zero candidates means zero prompts — a clean run stays silent. Unattended runs never write learnings; the next interactive interview intake spots their unmined notes with a bounded scan and offers once to mine them. When a recorded learning shapes an interview question or a spec implication, the interview says so visibly: `Applying learning from {project} ({date}): {why}`.
 
 ## Feedback Loops
 
@@ -423,11 +444,13 @@ Orchestrates full project execution — reads the contract, walks the phase depe
 - Reads `contract-data.json` for phase titles, dependencies, and spec paths (falls back to parsing the contract's Execution Plan for older projects)
 - **Git skip pre-pass** — commits referencing a phase's slug-qualified spec path mark it complete, so re-running the command resumes where it left off, even across sessions
 - Computes execution waves — groups of phases whose blockers are all satisfied; phases declaring overlapping `files` are serialized within a wave
-- Dispatches each phase as a subagent with a clean context running `/ideation:execute-spec --headless`
-- Independent phases within a wave run in parallel
-- **Full auto** — continues without pausing on success
+- Runs each phase as **five sibling agent stages** (scout → build → review ⇄ fix → commit), each a fresh-context agent — a workflow subagent can't spawn subagents, so the scout and reviewer are siblings of the builder, not its children (see [`workflows/README.md`](workflows/README.md))
+- Independent phases within a wave run in parallel; high-risk phases build and fix at elevated effort, and review always runs at high effort
+- **Full auto** — continues without pausing on success; a phase whose spec the repo already satisfies returns **NO-OP** (done, not failed — it never re-dispatches)
+- **Honest review reporting** — every result carries a `reviewStatus`; a validation-only commit (reviewer unavailable, non-strict) leads the report with `WARNING — UNREVIEWED CODE COMMITTED` instead of a bare PASS, and strict runs fail closed instead
 - **Gates on failure** — after the run, if any phase failed, pauses to ask: retry failed phases (resumes from where it stopped), stop here, or accept and finish; phases dependent on a failure are skipped automatically
-- Each phase commits independently — completed work is durable even if later phases fail
+- Each phase commits independently, with the slug-qualified spec path verbatim in the commit body — that string is what the resume pre-pass and `scripts/verify.mjs` grep for
+- After the run, `scripts/verify.mjs` executes the contract's acceptance checks and its `VERIFY` line is quoted in the completion report
 
 > _The wave planning and parallel dispatch run on a deterministic [dynamic Workflow](https://claude.com/blog/introducing-dynamic-workflows-in-claude-code) engine in [`workflows/`](workflows/README.md) — see its README for the `args` contract and return shape._
 
@@ -464,9 +487,10 @@ Generate a `/goal` command that runs the project **unattended** by driving `/ide
 
 **How it works:**
 
-- Reads the contract and project name
-- Builds a short `/goal` whose objective is "run `/ideation:autopilot` to completion; on failure, fix and re-run; repeat until every phase is committed"
+- Resolves the project's `contract-data.json` (source of truth; `contract.md` is a legacy fallback)
+- The `/goal` string itself is owned by the generator — `contract-gen.ts --print-goal` emits it (branch clause, background-workflow rule, and a `verify.mjs`-based done-when included); the skill never hand-authors it
 - The `/goal` does **not** inline per-phase steps — autopilot + the specs hold that detail
+- Completion is judged by `scripts/verify.mjs`'s `VERIFY` line, with an escape hatch for rotted contracts (two consecutive identical failing runs)
 - Copies the `/goal` to clipboard and prints it; you paste to start
 
 **When to use this vs. plain autopilot:**

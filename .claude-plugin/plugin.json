@@ -1,14 +1,15 @@
 {
   "name": "ideation",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "homepage": "https://nicknisi.github.io/ideation/",
-  "description": "Transform brain dumps into implementation specs through an evidence-gated interview stress-tested by adversarial plan critics. Interactive HTML contract for planning decisions, Markdown specs for execution. One door in: the interview routes to full artifact review or an express finish on an isolation branch; /ideation:autopilot runs all phases on a deterministic workflow engine with overlap-serialized parallel waves; completed watched runs capture learnings inline that future interviews read and apply visibly.",
+  "description": "Whether, then how, then shipped. /ideation:brainstorm pressure-tests ideas in conversation; the evidence-gated interview, stress-tested by adversarial plan critics, turns a yes into an interactive HTML contract and Markdown specs; /ideation:autopilot runs all phases on a deterministic workflow engine. Watched runs teach the next interview.",
   "author": {
     "name": "Nick Nisi",
     "email": "nick@nisi.org"
   },
   "keywords": [
     "ideation",
+    "brainstorming",
     "brain-dump",
     "planning",
     "prd",

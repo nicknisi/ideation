@@ -685,8 +685,8 @@ html.js .theme { display: inline-flex; }
   flex-direction: column;
   gap: 22px;
 }
-.cmds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-@media (max-width: 639px) { .cmds { grid-template-columns: 1fr; } }
+.cmds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 679px) { .cmds { grid-template-columns: 1fr; } }
 .cmd {
   background: var(--surface-1);
   border: 1px solid var(--line-strong);
@@ -1353,8 +1353,12 @@ html.clip .copy { display: inline-block; }
 <!-- ══════════ RUN IT YOURSELF ══════════ -->
 <footer class="end">
   <p class="chapter">Epilogue · Run it yourself</p>
-  <h2>One door, two ways through</h2>
+  <h2>One door, two ways through — and a bench out front</h2>
   <div class="cmds">
+    <div class="cmd">
+      <code>/ideation:brainstorm</code>
+      <p>The bench out front. Weigh whether the idea is worth building at all — pure conversation, no files. A "yes" walks through the door with a running start.</p>
+    </div>
     <div class="cmd">
       <code>/ideation</code>
       <p>The one door. Interview → critics → contract → the fork. You pick express or full review when the evidence is on the table.</p>
