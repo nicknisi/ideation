@@ -13,8 +13,10 @@ import { parseArgs } from 'node:util';
 // decides what is runnable, and importing keeps the renderer and the executor
 // from ever disagreeing about a criterion's kind.
 import {
+  adviseRunMode,
   committablePhases,
   isJudgment,
+  isStaticCheck,
   normalizeCriterion,
   summarizeCriteria,
   validateCheck,
@@ -54,6 +56,13 @@ interface Phase {
   prereqs?: string[];
   specPath?: string;
   notes?: string;
+  /** Files this phase claims. The engine reads it twice — to serialise phases
+      that would collide inside one wave (splitWavesByFileOverlap) and as the
+      commit stage's fallback list of what to stage when the builder reports
+      no filesChanged. It also logs a WARN for every fileless phase dispatched
+      into a parallel wave. The renderer never had the field, so no contract
+      has ever emitted one; the interview is where that has to change. */
+  files?: string[];
 }
 
 /** A runnable command plus the outcome that means it passed. */
@@ -171,10 +180,10 @@ function phaseCommand(phase: Phase, slug: string, index: number): string {
   return `/ideation:execute-spec docs/ideation/${slug}/spec-phase-${index + 1}.md`;
 }
 
-function cmdField(id: string, cmd: string, wide = false): string {
-  return `<div class="cmd-field${wide ? ' cmd-field-wide' : ''}">
-            <span class="cmd-field-text" id="${id}">${esc(cmd)}</span>
-            <button type="button" class="copy-btn" data-copy="${id}">copy</button>
+function cmdField(id: string, cmd: string, block = false): string {
+  return `<div class="cmd${block ? ' cmd-block' : ''}">
+            <span class="cmd-text" id="${id}">${esc(cmd)}</span>
+            <button type="button" class="copy" data-copy="${id}">copy</button>
           </div>`;
 }
 
@@ -263,18 +272,538 @@ function buildGoal(d: ContractData, paths: ContractPaths): string {
   ].join('\n');
 }
 
-function sectionHdr(title: string, count?: string): string {
-  return `      <div class="section-hdr">
-        <span class="label">${esc(title)}</span>
-        <span class="section-hdr-rule"></span>${
-          count
-            ? `\n        <span class="section-count">${esc(count)}</span>`
-            : ''
+/** Section head: a serif heading, an optional deck of one sentence, and an
+    optional right-aligned count. Deliberately NOT a tracked uppercase eyebrow
+    — those are reserved here for labels on measurements. */
+function secHead(
+  id: string,
+  title: string,
+  sub?: string,
+  count?: string,
+): string {
+  return `      <div class="sec-head">
+        <div>
+          <h2 id="${id}-h">${esc(title)}</h2>${
+            sub ? `\n          <p class="sec-sub">${sub}</p>` : ''
+          }
+        </div>${
+          count ? `\n        <span class="sec-count">${esc(count)}</span>` : ''
         }
       </div>`;
 }
 
-// --- Pipeline DAG ---
+/** `<section>` wrapper: one band of the document. */
+function band(
+  id: string,
+  inner: string,
+  opts: { wash?: boolean } = {},
+): string {
+  return `
+    <section class="band${opts.wash ? ' band-wash' : ''}" id="${id}" aria-labelledby="${id}-h">
+      <div class="wrap">
+${inner}
+      </div>
+    </section>`;
+}
+
+// --- Derived facts -------------------------------------------------------
+//
+// Everything the page states about itself is computed once, here, so a
+// figure in the flight strip and the sentence that explains it downstream can
+// never drift apart.
+
+type Advice = ReturnType<typeof adviseRunMode>;
+
+interface Facts {
+  phases: Phase[];
+  waves: number[];
+  waveCount: number;
+  /** Prereqs were declared, so the wave columns mean something. */
+  explicitGraph: boolean;
+  /** Any phase claims files, so file-overlap serialisation is actually live. */
+  anyFiles: boolean;
+  /** Phases expected to leave a commit — verify.mjs's own filter. */
+  committable: number;
+  risk: { high: number; medium: number; low: number };
+  criteria: NormalizedCriterion[];
+  cmdCount: number;
+  judgmentCount: number;
+  staticCount: number;
+  scopeCommitted: number;
+  gatesReady: number;
+  gatesTotal: number;
+  advice: Advice;
+  /** Phases whose failure strands work downstream, with what gets stranded. */
+  chokepoints: Array<{ title: string; index: number; blocks: string[] }>;
+}
+
+function deriveFacts(d: ContractData): Facts {
+  const phases = d.execution.phases ?? [];
+  const waves = computeWaves(phases);
+  const criteria = (d.successCriteria ?? []).map(asCriterion);
+  const cmds = criteria.filter(c => isCmd(c.check));
+  const risk = { high: 0, medium: 0, low: 0 };
+  for (const p of phases) risk[p.risk ?? 'low']++;
+
+  // Transitive dependents of each phase — the concrete cost of a failure. Uses
+  // declared prereqs; with none declared the plan is an implicit chain, so
+  // everything after a phase is downstream of it.
+  const anyPrereqs = phases.some(p => p.prereqs?.length);
+  const byTitle = new Map(phases.map((p, i) => [p.title, i] as const));
+  const directDeps = phases.map((_, i) =>
+    phases
+      .map((p, j) => {
+        if (i === j) return -1;
+        if (!anyPrereqs) return j === i + 1 ? j : -1;
+        return (p.prereqs ?? []).some(t => byTitle.get(t) === i) ? j : -1;
+      })
+      .filter(j => j >= 0),
+  );
+  const downstream = (i: number): string[] => {
+    const seen = new Set<number>();
+    const stack = [...directDeps[i]];
+    while (stack.length) {
+      const j = stack.pop() as number;
+      if (seen.has(j)) continue;
+      seen.add(j);
+      stack.push(...directDeps[j]);
+    }
+    return [...seen].sort((a, b) => a - b).map(j => phases[j].title);
+  };
+  const chokepoints = phases
+    .map((p, index) => ({ title: p.title, index, blocks: downstream(index) }))
+    .filter(c => c.blocks.length > 0);
+
+  return {
+    phases,
+    waves,
+    waveCount: phases.length ? Math.max(...waves) + 1 : 0,
+    explicitGraph: anyPrereqs,
+    anyFiles: phases.some(p => (p.files ?? []).length > 0),
+    committable: committablePhases(d).length,
+    risk,
+    criteria,
+    cmdCount: cmds.length,
+    judgmentCount: criteria.length - cmds.length,
+    staticCount: cmds.filter(c => isCmd(c.check) && isStaticCheck(c.check.cmd))
+      .length,
+    scopeCommitted:
+      d.scope.mvp.length + d.scope.full.length + d.scope.stretch.length,
+    gatesReady: d.gates.dimensions.filter(g => g.status === 'ready').length,
+    gatesTotal: d.gates.dimensions.length,
+    advice: adviseRunMode(d as never),
+    chokepoints,
+  };
+}
+
+// --- Masthead ------------------------------------------------------------
+
+const THEME_ICONS = `<svg class="i-auto" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="5"/><path d="M8 3v10" /><path d="M8 3a5 5 0 010 10z" fill="currentColor" stroke="none"/></svg>
+      <svg class="i-light" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="3.1"/><path d="M8 1v1.6M8 13.4V15M15 8h-1.6M2.6 8H1M12.9 3.1l-1.1 1.1M4.2 11.8l-1.1 1.1M12.9 12.9l-1.1-1.1M4.2 4.2L3.1 3.1"/></svg>
+      <svg class="i-dark" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M13.4 9.8A5.8 5.8 0 016.2 2.6a5.8 5.8 0 107.2 7.2z"/></svg>`;
+
+function buildRunhead(d: ContractData, f: Facts, paths: ContractPaths): string {
+  const links: Array<[string, string]> = [
+    ['readiness', 'Readiness'],
+    ['brief', 'Brief'],
+    ['scope', 'Scope'],
+    ['plan', 'Plan'],
+    ['run-model', 'Run model'],
+    ['done', 'Done when'],
+  ];
+  if ((d.decisions ?? []).length) links.push(['decisions', 'Decisions']);
+  links.push(['run', 'Run it']);
+  const canRun = d.status === 'Approved' && f.phases.length > 0;
+  return `    <div class="runhead" id="runhead" data-visible="false">
+      <div class="wrap runhead-inner">
+        <span class="runhead-name">${esc(d.projectName)}</span>
+        <nav class="runhead-nav" aria-label="Contract sections">
+${links
+  .map(([id, label]) => `          <a href="#${id}">${esc(label)}</a>`)
+  .join('\n')}
+        </nav>${
+          canRun
+            ? `\n        <button type="button" class="runhead-run" data-copy-text="${esc(primaryCommand(d, f, paths))}">copy run command</button>`
+            : ''
+        }
+      </div>
+    </div>`;
+}
+
+/** One sentence stating what this contract commits to, assembled from its own
+    numbers. The reader should not have to scroll 6,000px to learn the shape. */
+function ledeFor(d: ContractData, f: Facts): string {
+  if (!f.phases.length) {
+    return `A <strong>${esc(d.status.toLowerCase())}</strong> contract awaiting its execution plan. ${f.scopeCommitted} committed scope item${f.scopeCommitted === 1 ? '' : 's'}, ${f.criteria.length} success criteri${f.criteria.length === 1 ? 'on' : 'a'}.`;
+  }
+  const shape = f.explicitGraph
+    ? `<strong>${f.phases.length} phases</strong> across ${f.waveCount} dependency wave${f.waveCount === 1 ? '' : 's'}`
+    : `<strong>${f.phases.length} phase${f.phases.length === 1 ? '' : 's'}</strong>, run in order`;
+  return `${shape}, delivering ${f.scopeCommitted} committed scope item${f.scopeCommitted === 1 ? '' : 's'}. Completion is decided by <strong>${f.cmdCount} of ${f.criteria.length}</strong> criteria a machine can check${f.judgmentCount ? ` and ${f.judgmentCount} a human must` : ''}.`;
+}
+
+function buildMasthead(d: ContractData, f: Facts): string {
+  const stampClass = d.status === 'Approved' ? 'is-go' : 'is-caution';
+  return `
+    <header class="band masthead" id="top">
+      <div class="wrap">
+        <div class="masthead-top">
+          <div>
+            <div class="masthead-slug">
+              <span class="masthead-mark" aria-hidden="true"></span>
+              <span class="kicker">contract · ${esc(d.slug)}</span>
+            </div>
+            <h1>${esc(d.projectName)}</h1>
+          </div>
+          <div class="masthead-aside">
+            <span class="stamp ${stampClass}">${esc(d.status)}</span>
+            <div class="masthead-dates">
+              <span class="meta">drafted ${esc(d.date)}</span>${
+                d.approvedOn
+                  ? `\n              <span class="meta">approved ${esc(d.approvedOn)}${d.approvedBy ? ` · ${esc(d.approvedBy)}` : ''}</span>`
+                  : ''
+              }${
+                d.approvalMode === 'express'
+                  ? `\n              <span class="meta">express · one confirmation</span>`
+                  : ''
+              }${
+                d.branch
+                  ? `\n              <span class="meta">branch ${esc(d.branch)}</span>`
+                  : ''
+              }${
+                d.supersedes
+                  ? `\n              <span class="meta">supersedes ${esc(d.supersedes)}</span>`
+                  : ''
+              }
+            </div>
+            <button type="button" class="theme-toggle" id="theme-toggle" data-mode="auto" aria-label="Colour theme: follow system">
+      ${THEME_ICONS}
+            </button>
+          </div>
+        </div>
+        <p class="masthead-lede">${ledeFor(d, f)}</p>
+${buildFlightStrip(d, f)}
+      </div>
+    </header>`;
+}
+
+/** The measurements that decide whether you hand this to a machine, drawn to
+    scale where a proportion exists. Reading these five is meant to be enough
+    to know whether to read the rest. */
+function buildFlightStrip(d: ContractData, f: Facts): string {
+  const cell = (
+    label: string,
+    figure: string,
+    note: string,
+    extra = '',
+  ): string => `          <div class="fs-cell">
+            <span class="kicker">${esc(label)}</span>
+            <span class="fs-figure">${figure}</span>
+            <span class="fs-note">${note}</span>${extra ? `\n            ${extra}` : ''}
+          </div>`;
+
+  const cells: string[] = [];
+
+  cells.push(
+    cell(
+      'gates',
+      `<span class="num">${f.gatesReady}</span><span class="fs-of">/${f.gatesTotal}</span>`,
+      f.gatesReady === f.gatesTotal
+        ? 'ready — the interview closed every gate'
+        : `${f.gatesTotal - f.gatesReady} open — the interview ended early`,
+      `<div class="meter" aria-hidden="true">${d.gates.dimensions
+        .map(g => `<span class="${g.status === 'ready' ? 'on' : ''}"></span>`)
+        .join('')}</div>`,
+    ),
+  );
+
+  if (f.phases.length) {
+    cells.push(
+      cell(
+        'phases',
+        `<span class="num">${pad2(f.phases.length)}</span>`,
+        f.explicitGraph
+          ? `${f.waveCount} dependency wave${f.waveCount === 1 ? '' : 's'} · ${f.committable} expected to commit`
+          : `run in order · ${f.committable} expected to commit`,
+      ),
+    );
+  }
+
+  cells.push(
+    cell(
+      'checkable',
+      `<span class="num">${f.cmdCount}</span><span class="fs-of">/${f.criteria.length}</span>`,
+      f.judgmentCount === 0
+        ? 'every criterion runs unattended'
+        : `${f.judgmentCount} ${f.judgmentCount === 1 ? 'needs' : 'need'} a human to look`,
+      `<div class="meter" aria-hidden="true">${f.criteria
+        .map(
+          c =>
+            `<span class="${isCmd(c.check) ? (isStaticCheck(c.check.cmd) ? 'warn' : 'on') : ''}"></span>`,
+        )
+        .join('')}</div>`,
+    ),
+  );
+
+  cells.push(
+    cell(
+      'scope',
+      `<span class="num">${pad2(f.scopeCommitted)}</span>`,
+      `${d.scope.mvp.length} MVP · ${d.scope.full.length} full · ${d.scope.stretch.length} stretch · ${d.scope.outOfScope.length} refused`,
+    ),
+  );
+
+  if (f.phases.length) {
+    const total = f.phases.length;
+    const seg = (k: 'high' | 'medium' | 'low') =>
+      f.risk[k]
+        ? `<i class="r-${k}" style="width:${((f.risk[k] / total) * 100).toFixed(1)}%"></i>`
+        : '';
+    const parts = (['high', 'medium', 'low'] as const)
+      .filter(k => f.risk[k])
+      .map(k => `${f.risk[k]} ${k}`);
+    // The figure is the count at the WORST level present, with that level as
+    // its unit — a bare "1" next to "1 high · 2 medium · 1 low" says nothing.
+    const worst = f.risk.high ? 'high' : f.risk.medium ? 'medium' : 'low';
+    cells.push(
+      cell(
+        'risk',
+        `<span class="num">${f.risk[worst]}</span><span class="fs-of">${worst}</span>`,
+        `of ${total} phase${total === 1 ? '' : 's'} · ${parts.join(' · ')}`,
+        `<div class="riskbar" aria-hidden="true">${seg('high')}${seg('medium')}${seg('low')}</div>`,
+      ),
+    );
+  }
+
+  return `        <div class="flightstrip">
+${cells.join('\n')}
+        </div>`;
+}
+
+// --- Readiness -----------------------------------------------------------
+
+function buildReadiness(
+  d: ContractData,
+  f: Facts,
+  paths: ContractPaths,
+): string {
+  const open = d.gates.dimensions.filter(g => g.status !== 'ready');
+  const sub =
+    open.length === 0
+      ? 'Every dimension the interview probes closed with evidence. Each cell below is what closed it.'
+      : `The interview ended before ${open.length} dimension${open.length === 1 ? '' : 's'} closed. Read the open cells first — they are where this plan is guessing.`;
+
+  const gates = `      <div class="gates">
+${d.gates.dimensions
+  .map(
+    g => `        <div class="gate">
+          <span class="gate-mark ${g.status === 'ready' ? 'is-go' : 'is-caution'}" aria-hidden="true">${g.status === 'ready' ? '✓' : '✗'}</span>
+          <span class="gate-name">${esc(g.label)} <span class="sr-only">— ${g.status === 'ready' ? 'ready' : 'not ready'}</span></span>
+          <span class="gate-ev">${esc(g.evidence)}</span>
+        </div>`,
+  )
+  .join('\n')}
+      </div>`;
+
+  return band(
+    'readiness',
+    `${secHead('readiness', 'Is this ready to hand over?', sub, `${f.gatesReady}/${f.gatesTotal} ready`)}
+${gates}
+${buildAdvice(d, f, paths)}`,
+  );
+}
+
+/** verify.mjs's adviseRunMode(), rendered. The routing verdict has always been
+    derivable from this contract; printing it here is the difference between a
+    decision the reader can audit and one that scrolled out of a transcript. */
+function buildAdvice(d: ContractData, f: Facts, paths: ContractPaths): string {
+  if (!f.phases.length) return '';
+  const a = f.advice;
+  const copy: Record<string, { title: string; gloss: string }> = {
+    'walk-away': {
+      title: 'Safe to walk away',
+      gloss:
+        'The checks are mechanical enough that verify.mjs can certify completion without you. Start it, leave, and read the VERIFY line when it lands.',
+    },
+    watch: {
+      title: 'Stay at the desk',
+      gloss:
+        'Something here needs a human at the failure gate. Run it, but do not leave the session — a green result would not mean what you want it to mean.',
+    },
+    'run-spec': {
+      title: 'Skip the orchestration',
+      gloss:
+        'Wave planning, parallel dispatch, and skip propagation have nothing to do at this size. Run the one spec directly and save the overhead.',
+    },
+  };
+  const c = copy[a.mode] ?? copy.watch;
+  const tone =
+    a.mode === 'walk-away' ? 'is-go' : a.mode === 'watch' ? 'is-caution' : 'is-accent';
+  const marks: Record<string, string> = { ok: '✓', no: '✗', warn: '!' };
+
+  return `
+      <div class="advice" data-few="${a.reasons.length < 3}" style="margin-top: var(--s5)">
+        <div class="advice-verdict">
+          <span class="stamp ${tone}">${esc(a.mode)}</span>
+          <span class="advice-mode">${esc(c.title)}</span>
+          <span class="advice-gloss">${esc(c.gloss)}</span>
+          <span class="meta">${esc(a.line)}</span>
+        </div>
+        <ul class="advice-reasons">
+${a.reasons
+  .map(
+    r => `          <li><span class="r-mark m-${r.mark}" aria-hidden="true">${marks[r.mark] ?? '·'}</span><span><span class="sr-only">${r.mark === 'ok' ? 'In favour: ' : r.mark === 'no' ? 'Against: ' : 'Caveat: '}</span>${esc(r.text)}</span></li>`,
+  )
+  .join('\n')}
+        </ul>
+      </div>${d.status === 'Approved' ? topRunbar(d, f, paths) : ''}`;
+}
+
+/** The action must agree with the verdict directly above it. On a one-phase
+    contract the advisor says "skip the orchestration" — leading with
+    `/ideation:autopilot` there told the reader to do the thing the sentence
+    above had just argued against. */
+function primaryCommand(
+  d: ContractData,
+  f: Facts,
+  paths: ContractPaths,
+): string {
+  const only = f.phases.find(p => p.specPath && p.kind !== 'gate');
+  return f.advice.mode === 'run-spec' && only
+    ? phaseCommand(only, d.slug, f.phases.indexOf(only))
+    : `/ideation:autopilot ${paths.contractPath}`;
+}
+
+function topRunbar(d: ContractData, f: Facts, paths: ContractPaths): string {
+  const only = f.phases.find(p => p.specPath && p.kind !== 'gate');
+  const runSpec = f.advice.mode === 'run-spec' && only;
+  const head = runSpec
+    ? {
+        kicker: 'start here',
+        title: 'Run the one spec.',
+        body: `A single phase has no waves to plan, no dependents to gate, and nothing to resume past. <code>execute-spec</code> runs the same scout → build → review → commit loop without the orchestration around it.`,
+        cmd: phaseCommand(only, d.slug, f.phases.indexOf(only)),
+      }
+    : {
+        kicker: 'start here',
+        title: 'Run the whole contract.',
+        body: 'Autopilot reads this plan, orders the phases, and dispatches each one through the loop below. It skips phases that already have a commit, so re-running after a fix is safe.',
+        cmd: `/ideation:autopilot ${paths.contractPath}`,
+      };
+  return `
+      <div class="runbar" style="margin-top: var(--s5)">
+        <div>
+          <span class="kicker">${head.kicker}</span>
+          <h3>${head.title}</h3>
+          <p>${head.body}</p>
+        </div>
+        ${cmdField('cmd-top', head.cmd)}
+      </div>`;
+}
+
+// --- Brief: problem & goals ----------------------------------------------
+
+function buildProblemGoals(d: ContractData): string {
+  return band(
+    'brief',
+    `${secHead(
+      'brief',
+      'What is wrong, and what would fix it',
+      'The problem this contract exists to close, and the outcomes that would mean it closed.',
+    )}
+      <div class="split">
+        <div class="prose">
+${d.problem.map(p => `          <p>${esc(p)}</p>`).join('\n')}
+        </div>
+        <div>
+          <div class="tier-hd">
+            <h3>Goals</h3>
+            <span class="hrule"></span>
+            <span class="sec-count">×${d.goals.length}</span>
+          </div>
+          <ol class="goals">
+${d.goals.map(g => `            <li>${esc(g)}</li>`).join('\n')}
+          </ol>
+        </div>
+      </div>`,
+  );
+}
+
+// --- Scope ---------------------------------------------------------------
+
+function buildScope(d: ContractData, f: Facts): string {
+  const tier = (key: string, title: string, items: ScopeItem[]) => {
+    if (!items.length) return '';
+    return `          <div class="tier-group" data-tier="${key}">
+            <div class="tier-hd">
+              <h3>${esc(title)}</h3>
+              <span class="hrule"></span>
+              <span class="sec-count">×${items.length}</span>
+            </div>
+            <ul class="items">
+${items
+  .map(
+    it =>
+      `              <li><strong>${esc(it.item)}</strong>${it.reason ? ` <span class="why">— ${esc(it.reason)}</span>` : ''}</li>`,
+  )
+  .join('\n')}
+            </ul>
+          </div>`;
+  };
+
+  const boundList = (items: string[], empty: string) =>
+    items.length
+      ? `<ul>\n${items.map(i => `            <li>${i}</li>`).join('\n')}\n          </ul>`
+      : `<p class="bound-empty">${esc(empty)}</p>`;
+
+  return band(
+    'scope',
+    `${secHead(
+      'scope',
+      'What is in, and what was refused',
+      'MVP nests inside Full nests inside Stretch — each ring contains the one before it. Select a ring to isolate its items.',
+      `${f.scopeCommitted} committed · ${d.scope.outOfScope.length} refused`,
+    )}
+      <div class="scope">
+        <div>
+          <div class="nest">
+            <button type="button" class="nest-ring nest-stretch" data-tier="stretch" aria-pressed="false"><span class="nest-label">Stretch ×${d.scope.stretch.length}</span></button>
+            <button type="button" class="nest-ring nest-full" data-tier="full" aria-pressed="false"><span class="nest-label">Full ×${d.scope.full.length}</span></button>
+            <button type="button" class="nest-ring nest-mvp" data-tier="mvp" aria-pressed="false"><span class="nest-label">MVP ×${d.scope.mvp.length}</span></button>
+          </div>
+          <p class="nest-caption">Cutting to the inner ring is always a legal move. Adding a ring is not — that is a new revision that supersedes this one.</p>
+        </div>
+        <div class="tiers" id="tiers">
+${tier('mvp', 'MVP — must ship', d.scope.mvp)}
+${tier('full', 'Full — the target outcome', d.scope.full)}
+${tier('stretch', 'Stretch — only if time allows', d.scope.stretch)}
+        </div>
+      </div>
+
+      <div class="boundaries">
+        <div class="bound bound-out">
+          <h3>Out of scope — refused on purpose</h3>
+          ${boundList(
+            d.scope.outOfScope.map(
+              it =>
+                `<span class="struck">${esc(it.item)}</span>${it.reason ? ` — ${esc(it.reason)}` : ''}`,
+            ),
+            'Nothing was explicitly refused.',
+          )}
+        </div>
+        <div class="bound">
+          <h3>Future — someday, maybe</h3>
+          ${boundList(
+            d.scope.future.map(x => esc(x)),
+            'Nothing deferred.',
+          )}
+        </div>
+      </div>`,
+    { wash: true },
+  );
+}
+
+// --- Plan: the graph and the ledger --------------------------------------
 
 /** Wave (column) per phase: longest prereq chain depth.
     When no phase declares prereqs, the plan is an implicit sequential chain. */
@@ -301,32 +830,58 @@ function computeWaves(phases: Phase[]): number[] {
   return depth;
 }
 
-const NODE_W = 200;
-const NODE_H = 64;
-const GAP_X = 64;
-const GAP_Y = 16;
-const PAD = 6;
-
-function truncate(s: string, max: number): string {
-  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+function riskChip(risk: string): string {
+  const cls =
+    risk === 'high' ? 'chip-danger' : risk === 'medium' ? 'chip-caution' : 'chip-go';
+  return `<span class="chip ${cls}">${esc(risk)} risk</span>`;
 }
 
-function buildPipeline(phases: Phase[], waves: number[]): string {
-  const waveCount = Math.max(...waves) + 1;
-  const rows: number[] = phases
-    .map((_, i) => waves.slice(0, i).filter(w => w === waves[i]))
-    .map(arr => arr.length);
-  const maxRows = Math.max(...phases.map((_, i) => rows[i])) + 1;
+/** HTML nodes on a CSS grid, with edges drawn by JS from measured geometry.
+    The predecessor used SVG <text>, which forced titles to be truncated at 26
+    characters; a phase you cannot read is not a plan you can approve. */
+function buildGraph(f: Facts): string {
+  const { phases, waves, waveCount } = f;
+  // Row within the wave, so two phases in one wave stack instead of collide.
+  const rows = phases.map(
+    (_, i) => waves.slice(0, i).filter(w => w === waves[i]).length,
+  );
 
-  const x = (i: number) => PAD + waves[i] * (NODE_W + GAP_X);
-  const y = (i: number) => PAD + rows[i] * (NODE_H + GAP_Y);
-  const width = PAD * 2 + waveCount * NODE_W + (waveCount - 1) * GAP_X;
-  const height = PAD * 2 + maxRows * NODE_H + (maxRows - 1) * GAP_Y;
+  const labels = Array.from({ length: waveCount }, (_, w) => {
+    const n = waves.filter(x => x === w).length;
+    const text = f.explicitGraph
+      ? `wave ${w + 1}${n > 1 ? ` · ${n} in parallel` : ''}`
+      : `step ${w + 1}`;
+    return `          <div class="wave-label" style="grid-column:${w + 1}">${esc(text)}</div>`;
+  }).join('\n');
 
+  const nodes = phases
+    .map((p, i) => {
+      const risk = p.risk ?? 'low';
+      const isGate = p.kind === 'gate';
+      const tags = [
+        isGate ? '<span class="chip chip-accent">gate</span>' : '',
+        p.blocking ? '<span class="chip">blocking</span>' : '',
+        riskChip(risk),
+      ]
+        .filter(Boolean)
+        .join('\n              ');
+      return `          <button type="button" class="pnode${isGate ? ' pnode-gate' : ''}" data-phase="${i}" data-risk="${risk}" aria-pressed="false"
+            style="grid-column:${waves[i] + 1}; grid-row:${rows[i] + 2}">
+            <span class="pnode-top">
+              <span class="pnode-n">${pad2(i + 1)}</span>
+            </span>
+            <span class="pnode-title">${esc(p.title)}</span>
+            <span class="pnode-foot">
+              ${tags}
+            </span>
+          </button>`;
+    })
+    .join('\n');
+
+  // Edge list mirrors the run engine: declared prereqs, else an implicit chain.
   const byTitle = new Map(phases.map((p, i) => [p.title, i] as const));
-  const anyPrereqs = phases.some(p => p.prereqs && p.prereqs.length > 0);
   const edges: Array<[number, number]> = [];
-  if (anyPrereqs) {
+  if (f.explicitGraph) {
     phases.forEach((p, i) => {
       for (const t of p.prereqs ?? []) {
         const j = byTitle.get(t);
@@ -337,404 +892,472 @@ function buildPipeline(phases: Phase[], waves: number[]): string {
     for (let i = 1; i < phases.length; i++) edges.push([i - 1, i]);
   }
 
-  const edgePaths = edges
-    .map(([from, to]) => {
-      const x1 = x(from) + NODE_W;
-      const y1 = y(from) + NODE_H / 2;
-      const x2 = x(to) - 7; // leave room for the arrowhead
-      const y2 = y(to) + NODE_H / 2;
-      const mid = x1 + (x(to) - x1) / 2;
-      const d =
-        y1 === y2
-          ? `M ${x1} ${y1} H ${x2}`
-          : `M ${x1} ${y1} H ${mid} V ${y2} H ${x2}`;
-      return `      <path class="edge" d="${d}" marker-end="url(#arrow)" />`;
-    })
-    .join('\n');
+  const summary = phases
+    .map(
+      (p, i) =>
+        `${pad2(i + 1)} ${p.title}${f.explicitGraph ? ` (wave ${waves[i] + 1})` : ''}`,
+    )
+    .join('; ');
 
-  const nodes = phases
-    .map((p, i) => {
-      const rm = riskMeta(p.risk ?? 'low');
-      const nx = x(i);
-      const ny = y(i);
-      const isGate = p.kind === 'gate';
-      return `      <g class="node${isGate ? ' node-gate' : ''}">
-        <rect class="node-box" x="${nx}" y="${ny}" width="${NODE_W}" height="${NODE_H}" rx="5" />
-        <line class="node-rail" x1="${nx + 1}" y1="${ny + 1.5}" x2="${nx + NODE_W - 1}" y2="${ny + 1.5}" stroke="${rm.color}" />
-        <text class="node-num" x="${nx + 12}" y="${ny + 22}">${pad2(i + 1)}</text>
-        <text class="node-kind" x="${nx + NODE_W - 12}" y="${ny + 22}" text-anchor="end" fill="${rm.color}">${rm.label}</text>
-        <text class="node-title" x="${nx + 12}" y="${ny + 41}">${esc(truncate(p.title, 26))}</text>
-        <text class="node-kind" x="${nx + 12}" y="${ny + 56}">${isGate ? 'gate' : 'phase'}${p.blocking ? ' · blocking' : ''}</text>
-      </g>`;
-    })
-    .join('\n');
-
-  const waveLabel = anyPrereqs
-    ? `${waveCount} wave${waveCount === 1 ? '' : 's'}`
-    : 'sequential';
-  return `      <div class="panel pipeline-wrap">
-        <svg class="pipeline" viewBox="0 0 ${width} ${height}" role="img" aria-label="Phase pipeline: ${esc(
-          phases
-            .map((p, i) => `${pad2(i + 1)} ${p.title} (wave ${waves[i] + 1})`)
-            .join('; '),
-        )} — ${waveLabel}">
-          <defs>
-            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-              <path class="edge-head" d="M0,0 L10,5 L0,10 z" />
-            </marker>
-          </defs>
-${edgePaths}
+  return `      <div class="graph" id="graph" data-edges="${esc(JSON.stringify(edges))}">
+        <div class="graph-grid" aria-label="Phase dependency graph: ${esc(summary)}" style="grid-template-columns: repeat(${waveCount}, max-content)">
+          <svg class="graph-edges" aria-hidden="true"></svg>
+${labels}
 ${nodes}
-        </svg>
+        </div>
+      </div>
+      <div class="graph-hint" id="graph-hint" data-active="false">
+        <span>Select a phase to isolate it here and in the ledger below.</span>
+        <button type="button" class="graph-clear" id="graph-clear">show all</button>
       </div>`;
 }
 
-// --- Section Builders ---
-
-function buildHeader(d: ContractData): string {
-  const dims = d.gates.dimensions;
-  const open = dims.filter(dim => dim.status !== 'ready');
-  const allReady = open.length === 0;
-  const verdict = allReady
-    ? 'All gates ready'
-    : `${open.length} gate${open.length === 1 ? '' : 's'} open — interview ended early`;
-  const statusClass = d.status === 'Approved' ? 'status-go' : 'status-caution';
-  return `
-    <header class="deck-header">
-      <div class="deck-id">
-        <div>
-          <div class="deck-slug label">mission brief · ${esc(d.slug)}</div>
-          <h1 class="deck-title">${esc(d.projectName)}</h1>
-        </div>
-        <div class="deck-meta">
-          <span class="status-ind ${statusClass}"><span class="status-dot" aria-hidden="true"></span>${esc(d.status)}</span>
-          ${d.approvalMode === 'express' ? `<span class="mono-meta">express · single-confirmation approval</span>` : ''}
-          <span class="mono-meta">created ${esc(d.date)}</span>
-          ${d.approvedOn ? `<span class="mono-meta">approved ${esc(d.approvedOn)}${d.approvedBy ? ` · ${esc(d.approvedBy)}` : ''}</span>` : ''}
-          ${d.supersedes ? `<span class="mono-meta">supersedes ${esc(d.supersedes)}</span>` : ''}
-          <button type="button" class="theme-toggle" id="theme-toggle">theme · auto</button>
-        </div>
-      </div>
-
-      <div class="gate-verdict">
-        <span class="label">Readiness gates</span>
-        <span class="status-ind ${allReady ? 'status-go' : 'status-caution'}">${esc(verdict)}</span>
-      </div>
-      <div class="gate-strip">
-${dims
-  .map(
-    dim => `        <div class="gate-cell">
-          <span class="gate-mark" style="color: ${dim.status === 'ready' ? 'var(--go)' : 'var(--caution)'}">${dim.status === 'ready' ? '✓' : '✗'}</span>
-          <span class="gate-name">${esc(dim.label)}</span>
-          <span class="gate-evidence">${esc(dim.evidence)}</span>
-        </div>`,
-  )
+function buildLedger(d: ContractData, f: Facts): string {
+  return `      <div class="ledger" id="ledger">
+${f.phases
+  .map((p, i) => {
+    const risk = p.risk ?? 'low';
+    const tags = [
+      p.kind === 'gate'
+        ? '<span class="chip chip-accent">human gate</span>'
+        : '<span class="chip">phase</span>',
+      p.blocking ? '<span class="chip chip-caution">blocking</span>' : '',
+      riskChip(risk),
+      f.explicitGraph
+        ? `<span class="chip">wave ${f.waves[i] + 1}</span>`
+        : '',
+    ]
+      .filter(Boolean)
+      .join('\n              ');
+    const choke = f.chokepoints.find(c => c.index === i);
+    return `        <div class="lrow" id="phase-${i}" data-phase="${i}">
+          <div class="lrow-n">${pad2(i + 1)}</div>
+          <div class="lrow-head">
+            <h3>${esc(p.title)}</h3>
+            <div class="lrow-tags">
+              ${tags}
+            </div>
+          </div>
+          <div class="lrow-body">
+            ${p.notes ? esc(p.notes) : '<span class="lrow-none">No implementation notes recorded.</span>'}${
+              p.prereqs?.length
+                ? `\n            <div style="margin-top: var(--s2)">Waits for ${p.prereqs.map(t => `<strong>${esc(t)}</strong>`).join(', ')}.</div>`
+                : ''
+            }${
+              choke
+                ? `\n            <div style="margin-top: var(--s2)">If this fails, ${choke.blocks.length} downstream phase${choke.blocks.length === 1 ? '' : 's'} ${choke.blocks.length === 1 ? 'is' : 'are'} skipped, not attempted: ${choke.blocks.map(t => esc(t)).join(', ')}.</div>`
+                : ''
+            }${
+              (p.files ?? []).length
+                ? `\n            <div style="margin-top: var(--s2)">Claims ${(p.files ?? []).map(x => `<code>${esc(x)}</code>`).join(', ')} — used to serialise colliding phases and as the commit stage's fallback file list.</div>`
+                : ''
+            }${
+              p.specPath
+                ? `\n            <span class="spec">${esc(p.specPath)}</span>`
+                : ''
+            }
+          </div>
+        </div>`;
+  })
   .join('\n')}
-      </div>
-    </header>`;
+      </div>`;
 }
 
-function buildFirstMove(d: ContractData): string {
-  const phase = d.execution.phases[0];
-  if (!phase || d.status === 'Draft') return '';
-  const cmd = phaseCommand(phase, d.slug, 0);
-  return `
-    <section class="run-bar">
-      <div>
-        <div class="label label-accent">First move</div>
-        <div class="run-bar-headline">Run this.</div>
-        <div class="run-bar-desc">Phase 01 of ${pad2(d.execution.phases.length)} — <strong>${esc(phase.title)}</strong></div>
-      </div>
-      ${cmdField('cmd-first', cmd)}
-    </section>`;
+function buildPlan(d: ContractData, f: Facts): string {
+  if (!f.phases.length) {
+    return band(
+      'plan',
+      `${secHead('plan', 'The plan', d.execution.strategy)}
+      <p class="placeholder">Phases are decided after approval.</p>`,
+    );
+  }
+  const sub = f.explicitGraph
+    ? `${d.execution.strategy}. Columns are dependency waves — everything in one column can run at the same time, because nothing in it waits on anything else in it.`
+    : `${d.execution.strategy}. No phase declares a prerequisite, so the engine runs them in the order written.`;
+
+  const awaiting =
+    d.status === 'Draft'
+      ? `
+      <div class="awaiting">
+        <span class="stamp is-caution">awaiting approval</span>
+        <p>Approve this contract in the session. Specs are then written per phase and this document regenerates carrying its run commands.</p>
+      </div>`
+      : '';
+
+  return band(
+    'plan',
+    `${secHead('plan', 'What gets built, in what order', sub, `${f.phases.length} phases`)}
+${buildGraph(f)}
+${buildLedger(d, f)}${awaiting}`,
+  );
 }
 
-function buildProblemGoals(d: ContractData): string {
-  return `
-    <div class="section two-col">
-      <section>
-${sectionHdr('The problem')}
-        <div class="prose">
-${d.problem
-  .map(
-    (p, i) =>
-      `          <p><span class="line-num">${pad2(i + 1)}</span>${esc(p)}</p>`,
-  )
-  .join('\n')}
+// --- The run model -------------------------------------------------------
+
+interface Stage {
+  name: string;
+  agent: string;
+  what: string;
+  /** The stage's result enum, verbatim from execute-contract.mjs's schemas. */
+  outs: Array<[string, string]>;
+  /** How the run leaves the loop HERE rather than continuing. Trusted HTML —
+      authored in this file, never from contract data. The single most
+      decision-relevant fact per stage, and the one a linear diagram hides. */
+  exit: string;
+}
+
+/** The engine's real per-phase loop, as implemented in
+    workflows/execute-contract.mjs. Kept literal on purpose: a diagram that
+    flatters the engine is worse than no diagram, because the reader calibrates
+    their trust on it. Every `outs` value below is an enum member from that
+    file's *_RESULT_SCHEMA — do not invent a friendlier one. */
+const STAGES: Stage[] = [
+  {
+    name: 'Scout',
+    agent: 'ideation:scout',
+    what: 'Reads the codebase against the spec and scores five evidence gates before a line is written.',
+    outs: [
+      ['chip-go', 'ready'],
+      ['chip-caution', 'hold'],
+    ],
+    exit: 'Under --strict a HOLD stops here — nothing is built.',
+  },
+  {
+    name: 'Build',
+    agent: 'general-purpose',
+    what: 'Implements the spec, then runs the validation the spec itself declares.',
+    outs: [
+      ['chip-go', 'built'],
+      ['chip', 'no-op'],
+      ['chip-danger', 'fail'],
+    ],
+    exit: 'Failed validation stops here. An empty diff is a NO-OP and also stops here — review never runs.',
+  },
+  {
+    name: 'Review',
+    agent: 'ideation:reviewer',
+    what: 'Reads the diff back against the spec and returns findings counted by severity.',
+    outs: [
+      ['chip-go', 'pass'],
+      ['chip-danger', 'fail'],
+    ],
+    exit: 'An unavailable reviewer stops here under --strict; otherwise it commits as validation-only.',
+  },
+  {
+    name: 'Fix',
+    agent: 'general-purpose',
+    what: 'Applies or refutes every blocking finding, then hands back for another review.',
+    outs: [
+      ['chip-go', 'fixed'],
+      ['chip-danger', 'fail'],
+    ],
+    exit: 'Still FAIL on cycle 3 stops here — changes are left unstaged, not committed.',
+  },
+  {
+    name: 'Commit',
+    agent: 'git',
+    what: 'Stages only the files the builder named and writes the spec path into the commit body.',
+    outs: [['chip-accent', 'committed']],
+    exit: 'If neither the builder nor the phase named a file, it refuses to commit blind rather than <code>git add -A</code>.',
+  },
+];
+
+function buildRunModel(d: ContractData, f: Facts): string {
+  if (!f.phases.length) return '';
+  const strict = d.approvalMode === 'express';
+
+  const stages = STAGES.map(
+    (s, i) => `            <div class="stage" data-stage="${i}" data-reached="false">
+              <span class="stage-dot" aria-hidden="true"></span>
+              <span class="stage-name">${esc(s.name)}</span>
+              <span class="stage-agent">${esc(s.agent)}</span>
+              <span class="stage-what">${esc(s.what)}</span>
+              <span class="stage-outs">${s.outs
+                .map(([cls, label]) => `<span class="chip ${cls}">${esc(label)}</span>`)
+                .join('')}</span>
+              <span class="stage-exit"><span class="sr-only">Stops here when: </span>${s.exit}</span>
+            </div>`,
+  ).join('\n');
+
+  // Rules stated with this contract's own numbers, not in the abstract.
+  const rules: Array<[string, string]> = [];
+
+  rules.push([
+    f.explicitGraph ? 'Waves, not a queue' : 'One at a time',
+    f.explicitGraph
+      ? `Phases are grouped into ${f.waveCount} wave${f.waveCount === 1 ? '' : 's'} from their declared prerequisites. A wave dispatches together; the next one waits for all of it. ${
+          f.anyFiles
+            ? 'Two phases naming the same file are serialised even inside one wave.'
+            : 'No phase here declares <code>files</code>, so the engine treats every one as parallel-safe and logs a warning saying so — two phases in one wave could edit the same file.'
+        }`
+      : `No phase declares a prerequisite, so all ${f.phases.length} run one after another. Declaring <code>prereqs</code> is what unlocks parallel dispatch.`,
+  ]);
+
+  rules.push([
+    'Failure strands, it does not retry',
+    f.chokepoints.length
+      ? `A failed phase is not retried, and everything downstream of it is marked <code>SKIPPED</code> rather than attempted. Here that means ${f.chokepoints
+          .slice(0, 2)
+          .map(
+            c =>
+              `<strong>${esc(c.title)}</strong> failing costs ${c.blocks.length} more phase${c.blocks.length === 1 ? '' : 's'}`,
+          )
+          .join(', and ')}.`
+      : 'A failed phase is not retried. No phase here has dependents, so a failure costs only itself.',
+  ]);
+
+  rules.push([
+    'Resume is a git question',
+    `Re-running skips any phase whose spec path already appears in a commit body — which is why the commit stage writes it there. ${f.committable} of ${f.phases.length} phase${f.phases.length === 1 ? '' : 's'} ${f.committable === 1 ? 'is' : 'are'} expected to leave one.`,
+  ]);
+
+  rules.push([
+    strict ? 'Strict: it fails closed' : 'Non-strict: it degrades loudly',
+    strict
+      ? 'This is an express contract — no human reviewed the specs — so phases dispatch <code>--strict</code>. A scout HOLD or an unavailable reviewer stops the phase instead of proceeding on an assumption.'
+      : 'If the scout holds or the reviewer is unavailable, the phase proceeds and says so in its warnings rather than failing. The result reports <code>validation-only</code>, never a bare pass.',
+  ]);
+
+  return band(
+    'run-model',
+    `${secHead(
+      'run-model',
+      'What actually happens when you run it',
+      'Every phase goes through the same five stages. These are the real agents and the real gates — the points where the run can stop before anything is committed.',
+      'per phase',
+    )}
+      <div class="model" id="model">
+        <div class="model-track">
+          <div class="stages">
+            <span class="token" id="token" aria-hidden="true"></span>
+${stages}
+            <div class="loopback" aria-hidden="true">
+              <svg viewBox="0 0 200 26" preserveAspectRatio="none"><path vector-effect="non-scaling-stroke" d="M197 0 V17 Q197 24 190 24 H10 Q3 24 3 17 V0"/></svg>
+              <span class="loopback-label">review → fix → review · 3 cycles max, then it stops</span>
+            </div>
+          </div>
         </div>
-      </section>
-      <section>
-${sectionHdr('Goals', `×${d.goals.length}`)}
-        <div class="goal-list">
-${d.goals
+        <div class="rules">
+${rules
   .map(
-    (g, i) => `          <div class="goal-row">
-            <span class="goal-num">${pad2(i + 1)}</span>
-            <span class="goal-text">${esc(g)}</span>
+    ([h, p]) => `          <div class="rule">
+            <h3>${esc(h)}</h3>
+            <p>${p}</p>
           </div>`,
   )
   .join('\n')}
         </div>
-      </section>
-    </div>`;
+      </div>`,
+    { wash: true },
+  );
 }
 
-function buildSuccess(d: ContractData): string {
-  const criteria = d.successCriteria.map(asCriterion);
-  const checked = criteria.filter(c => isCmd(c.check)).length;
-  const countLabel =
-    checked === criteria.length
-      ? `${criteria.length} signals · all mechanically checked`
-      : `${criteria.length} signals · ${checked} mechanically checked`;
-  const body = (c: NormalizedCriterion): string => {
+// --- Done when -----------------------------------------------------------
+
+function buildSuccess(
+  d: ContractData,
+  f: Facts,
+  paths: ContractPaths,
+): string {
+  const cmds = f.criteria.filter(c => isCmd(c.check));
+  const judged = f.criteria.filter(c => !isCmd(c.check));
+
+  const item = (c: NormalizedCriterion, n: number): string => {
+    const isJ = !isCmd(c.check);
+    let body: string;
     if (isCmd(c.check)) {
-      const { cmd, expect } = c.check;
-      return [
-        `<code class="criteria-check">${esc(cmd)}</code>`,
-        expect ? `<span class="criteria-expect">expect: ${esc(expect)}</span>` : '',
-      ]
-        .filter(Boolean)
-        .join('\n            ');
+      const stat = isStaticCheck(c.check.cmd)
+        ? '<span class="chip chip-caution crit-static">inspects files only</span>'
+        : '';
+      // "exits 0" is what a passing shell command already means — verify.mjs
+      // checks the exit code and nothing else. Across this repo's contracts it
+      // is 23 of 31 expect values, so printing it is 23 lines of restated
+      // mechanism down the longest section on the page.
+      const expect = /^exits\s+0\.?$/i.test((c.check.expect ?? '').trim())
+        ? ''
+        : c.check.expect;
+      body = `<code class="crit-check">${esc(c.check.cmd)}</code>${
+        expect
+          ? `<span class="crit-expect">expect: ${esc(expect)}${stat}</span>`
+          : stat
+            ? `<span class="crit-expect">${stat}</span>`
+            : ''
+      }`;
+    } else {
+      const note = isJudge(c.check) ? c.check.judgment : '';
+      body = `<span class="crit-check">${note ? esc(note) : 'No mechanical check, and no reviewer named. verify.mjs cannot certify this one.'}</span>`;
     }
-    const note = isJudge(c.check) ? c.check.judgment : '';
-    return [
-      `<span class="criteria-judgment">judgment call${note ? '' : ' — no mechanical check'}</span>`,
-      note ? `<span class="criteria-expect">${esc(note)}</span>` : '',
-    ]
-      .filter(Boolean)
-      .join('\n            ');
-  };
-  return `
-    <section class="section">
-${sectionHdr('Done when', countLabel)}
-      <ul class="criteria-grid">
-${criteria
-  .map(
-    (c, i) => `        <li class="criteria-item">
-          <span class="line-num">${pad2(i + 1)}</span>
-          <div class="criteria-body">
-            <span>${esc(c.criterion)}</span>
-            ${body(c)}
-          </div>
-        </li>`,
-  )
-  .join('\n')}
-      </ul>
-    </section>`;
-}
-
-function buildScope(d: ContractData): string {
-  const tierList = (title: string, items: ScopeItem[]) => {
-    if (!items.length) return '';
-    return `
-          <div class="tier-group">
-            <div class="tier-header">
-              <span class="tier-title">${esc(title)}</span>
-              <span class="tier-rule"></span>
-              <span class="tier-count">×${items.length}</span>
-            </div>
-            <ul class="tier-items">
-${items
-  .map(
-    it =>
-      `              <li><strong>${esc(it.item)}</strong>${it.reason ? `<span class="tier-reason">— ${esc(it.reason)}</span>` : ''}</li>`,
-  )
-  .join('\n')}
-            </ul>
-          </div>`;
+    return `          <li class="crit${isJ ? ' crit-judge' : ''}">
+            <span class="crit-n">${pad2(n)}</span>
+            <span class="crit-text">${esc(c.criterion)}${body}</span>
+          </li>`;
   };
 
-  return `
-    <section class="section">
-${sectionHdr('Scope', 'MVP nests inside Full nests inside Stretch')}
-      <div class="scope-layout">
-        <div class="nested-tiers" aria-hidden="true">
-          <div class="tier-box tier-box-stretch"><span class="tier-box-label">Stretch ×${d.scope.stretch.length}</span></div>
-          <div class="tier-box tier-box-full"><span class="tier-box-label">Full ×${d.scope.full.length}</span></div>
-          <div class="tier-box tier-box-mvp"><span class="tier-box-label">MVP ×${d.scope.mvp.length}</span></div>
-        </div>
-        <div class="tier-lists">
-${tierList('MVP — must ship', d.scope.mvp)}
-${tierList('Full — target outcome', d.scope.full)}
-${tierList('Stretch — if time permits', d.scope.stretch)}
-        </div>
-      </div>
+  // Index against the full list: contract-gen's own render errors report
+  // successCriteria[i], so the numbers here have to be those indices.
+  const indexOf = new Map(f.criteria.map((c, i) => [c, i + 1] as const));
 
-      <div class="two-col scope-extras">
-        <div class="scope-panel scope-panel-out">
-          <span class="label label-danger">Out of scope — said no on purpose</span>
-          <ul class="scope-list">
-${d.scope.outOfScope
-  .map(
-    it =>
-      `            <li><span class="scope-out-item">${esc(it.item)}</span>${it.reason ? ` — ${esc(it.reason)}` : ''}</li>`,
-  )
-  .join('\n')}
-          </ul>
+  const group = (
+    title: string,
+    note: string,
+    list: NormalizedCriterion[],
+  ): string =>
+    list.length
+      ? `      <div class="crit-group">
+        <h3>${esc(title)} <span class="hrule"></span> <span class="sec-count">${esc(note)}</span></h3>
+        <ul class="crits">
+${list.map(c => item(c, indexOf.get(c) ?? 0)).join('\n')}
+        </ul>
+      </div>`
+      : '';
+
+  const goalTarget = f.committable;
+  const verify = `<span class="vk">VERIFY</span> ${esc(d.slug)}: commits=<span class="vg">${goalTarget}/${goalTarget}</span> pass=<span class="vg">${f.cmdCount}</span> fail=<span class="vg">0</span> judgment=${f.judgmentCount}`;
+
+  return band(
+    'done',
+    `${secHead(
+      'done',
+      'How you will know it worked',
+      'These are not aspirations — the ones with a command are executed by <code>verify.mjs</code>, and their result is what an unattended run is judged on.',
+      `${f.cmdCount} of ${f.criteria.length} mechanical`,
+    )}
+      <div class="score">
+        <div class="score-panel">
+          <span class="kicker">completion predicate</span>
+          <div class="score-figure"><span class="num">${f.cmdCount}</span><span class="of">/${f.criteria.length}</span></div>
+          <p class="score-label">${
+            f.judgmentCount === 0
+              ? 'Every criterion is machine-checkable. A green run means what it says.'
+              : `${f.judgmentCount} criteri${f.judgmentCount === 1 ? 'on is a judgment call' : 'a are judgment calls'} — printed, but never counted. A green run does not cover ${f.judgmentCount === 1 ? 'it' : 'them'}.`
+          }</p>
+          <div class="verify-line">${verify}</div>
+          <p class="verify-cap">The line this contract is finished on, as <code>verify.mjs</code> will print it. Anything else is not done.</p>
+          ${cmdField('cmd-verify', `node ${paths.verifyBin} ${paths.dataPath}`)}
         </div>
-        <div class="scope-panel">
-          <span class="label">Future — someday, maybe</span>
-          <ul class="scope-list">
-${d.scope.future.map(f => `            <li>${esc(f)}</li>`).join('\n')}
-          </ul>
+        <div>
+${group('Mechanically checked', `×${cmds.length}`, cmds)}
+${group('Judgment calls', `×${judged.length} · a human must look`, judged)}
         </div>
-      </div>
-    </section>`;
+      </div>`,
+  );
 }
+
+// --- Decisions -----------------------------------------------------------
 
 function buildDecisionLog(d: ContractData): string {
   const items = Array.isArray(d.decisions) ? d.decisions : [];
   if (items.length === 0) return '';
-  return `
-    <section class="section">
-${sectionHdr('Decisions considered and rejected', `×${items.length}`)}
-      <ul class="tier-items">
+  return band(
+    'decisions',
+    `${secHead(
+      'decisions',
+      'What was considered and turned down',
+      'A rejected alternative is evidence, not an oversight. Before proposing one of these, read why it lost.',
+      `×${items.length}`,
+    )}
+      <ul class="decisions">
 ${items
-  .map(it => {
-    const clause = [
-      it.rejected ? `rejected: ${esc(it.rejected)}.` : '',
-      it.reason ? esc(it.reason) : '',
-    ]
-      .filter(Boolean)
-      .join(' ');
-    return `        <li><strong>${esc(it.decision)}</strong>${clause ? `<span class="tier-reason">— ${clause}</span>` : ''}</li>`;
-  })
+  .map(
+    it => `        <li class="decision">
+          <h3>${esc(it.decision)}</h3>
+          <p>${it.rejected ? `<span class="rejected">Instead of</span> ${esc(it.rejected)}. ` : ''}${esc(it.reason)}</p>
+        </li>`,
+  )
   .join('\n')}
-      </ul>
-    </section>`;
+      </ul>`,
+    { wash: true },
+  );
 }
 
-function buildExecution(d: ContractData, paths: ContractPaths): string {
-  const phases = d.execution.phases;
-  const isDraft = d.status === 'Draft';
+// --- Run it --------------------------------------------------------------
 
-  if (!phases.length) {
-    return `
-    <section class="section">
-${sectionHdr(isDraft ? 'Plan' : 'Execution', d.execution.strategy)}
-      <p class="plan-placeholder">Phases are decided after approval.</p>
-    </section>`;
-  }
+function buildCommands(
+  d: ContractData,
+  f: Facts,
+  paths: ContractPaths,
+): string {
+  if (d.status !== 'Approved' || !f.phases.length) return '';
+  const first = f.phases[0];
 
-  const waves = computeWaves(phases);
-  const pipeline = buildPipeline(phases, waves);
-
-  const table = `      <div class="panel">
-        <table class="phase-table">
-          <thead>
-            <tr>
-              <th scope="col">##</th>
-              <th scope="col">Phase</th>
-              <th scope="col">Kind</th>
-              <th scope="col">Risk</th>
-              <th scope="col" class="phase-notes-col">Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-${phases
-  .map((p, i) => {
-    const rm = riskMeta(p.risk ?? 'low');
-    return `            <tr>
-              <td class="phase-num">${pad2(i + 1)}</td>
-              <td class="phase-title">${esc(p.title)}</td>
-              <td class="phase-kind">${p.kind === 'gate' ? 'gate' : 'phase'}${p.blocking ? ' · blocking' : ''}</td>
-              <td class="phase-risk" style="color: ${rm.color}">${rm.label}</td>
-              <td class="phase-notes phase-notes-col">${p.notes ? esc(p.notes) : '—'}</td>
-            </tr>`;
-  })
-  .join('\n')}
-          </tbody>
-        </table>
-      </div>`;
-
-  if (isDraft) {
-    return `
-    <section class="section">
-${sectionHdr('Plan', d.execution.strategy)}
-${pipeline}
-${table}
-
-      <div class="approval-bar">
-        <span class="status-ind status-caution"><span class="status-dot" aria-hidden="true"></span>Awaiting approval</span>
-        <div class="approval-desc">Approve this contract in the session. Specs are then generated per phase, and this brief regenerates with its run commands.</div>
-      </div>
-    </section>`;
-  }
-
-  return `
-    <section class="section">
-${sectionHdr('Execution', d.execution.strategy)}
-${pipeline}
-${table}
-
-      <div class="run-bar">
+  return band(
+    'run',
+    `${secHead(
+      'run',
+      'Run it',
+      'Three ways in, in descending order of how much you can walk away from.',
+    )}
+      <div class="runbar">
         <div>
-          <div class="label label-accent">Run all phases</div>
-          <div class="run-bar-headline">Autopilot.</div>
-          <div class="run-bar-desc">Reads the contract, walks the dependency graph, and dispatches phases automatically.</div>
+          <span class="kicker">recommended</span>
+          <h3>Autopilot.</h3>
+          <p>Dispatches every phase through the loop above, in dependency order, gating on failure. Already-committed phases are skipped, so re-running after a fix picks up where it stopped.</p>
         </div>
         ${cmdField('cmd-autopilot', `/ideation:autopilot ${paths.contractPath}`)}
       </div>
 
-      <details class="disclosure">
-        <summary>Run it unattended (/goal)</summary>
-        <div class="disclosure-body">
-          <p class="run-bar-desc">A durability wrapper around autopilot: Claude re-checks this condition before it is allowed to stop, so a failed phase gets repaired and re-run instead of ending the session. Verified by <code>verify.mjs</code>, which reports on this contract only.</p>
+      <details class="fold">
+        <summary>Unattended, with a stop condition (/goal)</summary>
+        <div class="fold-body">
+          <p>A durability wrapper around the same autopilot run: Claude re-checks this condition before it is allowed to stop, so a failed phase gets repaired and re-run instead of ending the session. The done-when is deliberately disjunctive — two identical failing VERIFY lines release the run, because a contract whose checks have rotted must not trap it forever.</p>
           ${cmdField('cmd-goal', buildGoal(d, paths), true)}
         </div>
       </details>
 
-      <details class="disclosure">
-        <summary>Run phases individually (${phases.length})</summary>
-        <div class="disclosure-body">
-          <div class="cmd-list">
-${phases
-  .map((p, i) => {
-    const cmd = phaseCommand(p, d.slug, i);
-    return `            <div class="cmd-row">
-              <span class="cmd-row-num">${pad2(i + 1)}</span>
-              <span class="cmd-row-title">${esc(p.title)}</span>
-              ${cmdField(`cmd-${i + 1}`, cmd)}
-            </div>`;
-  })
+      <details class="fold">
+        <summary>One phase at a time (${f.phases.length})</summary>
+        <div class="fold-body">
+          <p>No orchestration, no failure gating, no resume — you are the scheduler. Start with <strong>${esc(first.title)}</strong>.</p>
+          <div class="phase-cmds">
+${f.phases
+  .map(
+    (p, i) => `            <div class="phase-cmd">
+              <span class="n">${pad2(i + 1)}</span>
+              <span class="t">${esc(p.title)}</span>
+              ${cmdField(`cmd-${i + 1}`, phaseCommand(p, d.slug, i))}
+            </div>`,
+  )
   .join('\n')}
           </div>
         </div>
-      </details>
-${
-  d.execution.agentTeamPrompt
-    ? `
-      <details class="disclosure">
-        <summary>Agent Team Prompt (parallel execution)</summary>
-        <div class="disclosure-body">
+      </details>${
+        d.execution.agentTeamPrompt
+          ? `
+
+      <details class="fold">
+        <summary>Agent team prompt (parallel execution)</summary>
+        <div class="fold-body">
           ${cmdField('agent-team-prompt', d.execution.agentTeamPrompt, true)}
         </div>
       </details>`
-    : ''
-}
-    </section>`;
+          : ''
+      }`,
+  );
 }
 
-/** Closing approval band — the contract ends on the decision, not a footnote.
-    Approval happens in the session; this records it (peak-end). */
-function buildClose(d: ContractData): string {
+/** Closing band — the contract ends on the commitment, not a footnote. */
+function buildClose(d: ContractData, f: Facts, paths: ContractPaths): string {
   if (d.status !== 'Approved') return '';
-  const phaseCount = d.execution.phases.length;
   const when = d.approvedOn ?? d.date;
   const expressNote =
     d.approvalMode === 'express'
-      ? ' Express run — approved in one confirmation after the interview; review lives in the branch diff.'
+      ? ' Express run — approved in one confirmation after the interview, so the review lives in the branch diff rather than in a per-artifact sign-off.'
       : '';
   return `
-    <section class="contract-close">
-      <div>
-        <div class="label label-accent">Contract approved</div>
-        <div class="close-headline">This plan is the commitment.</div>
-        <div class="close-desc">${phaseCount} phase${phaseCount === 1 ? '' : 's'} · ${esc(d.execution.strategy)}. Scope changes mean a new revision that supersedes this brief — not silent drift.${expressNote}</div>
-      </div>
-      <div class="close-meta">
-        <span class="status-ind status-go"><span class="status-dot" aria-hidden="true"></span>Approved</span>
-        <span class="mono-meta">${esc(when)}${d.approvedBy ? ` · ${esc(d.approvedBy)}` : ''}</span>
+    <section class="band" id="close" aria-labelledby="close-h">
+      <div class="wrap">
+        <div class="close">
+          <div>
+            <span class="kicker">the commitment</span>
+            <h2 id="close-h">This plan is what was agreed.</h2>
+            <p>${f.phases.length} phase${f.phases.length === 1 ? '' : 's'} · ${esc(d.execution.strategy)}. Scope changes mean a new revision that supersedes this document — not silent drift.${expressNote}</p>
+          </div>
+          <div class="close-meta">
+            <span class="stamp is-go">approved</span>
+            <span class="meta">${esc(when)}${d.approvedBy ? ` · ${esc(d.approvedBy)}` : ''}</span>
+          </div>
+        </div>
+        <p class="colophon">Generated by <code>ideation:contract-gen</code> from <code>${esc(paths.dataPath)}</code>. That JSON is the source of truth; this page and <code>${esc(paths.contractPath)}</code> are both rendered from it, so edit the data and re-render rather than editing either output.</p>
       </div>
     </section>`;
 }
@@ -972,15 +1595,276 @@ function buildMarkdown(d: ContractData, paths: ContractPaths): string {
 
 // --- Main Template ---
 
+/* Client behaviour. Deliberately dependency-free and written without template
+   literals: this string is itself inside one. Everything below degrades to a
+   readable document if it never runs. */
+const CLIENT_JS = String.raw`
+(function () {
+  'use strict';
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- copy ------------------------------------------------------------ */
+  function flash(btn, label) {
+    var prior = btn.dataset.label || btn.textContent;
+    btn.dataset.label = prior;
+    btn.textContent = label;
+    btn.dataset.state = 'done';
+    setTimeout(function () {
+      btn.textContent = prior;
+      btn.removeAttribute('data-state');
+    }, 1800);
+  }
+  function wireCopy(btn, getText) {
+    btn.setAttribute('aria-live', 'polite');
+    btn.addEventListener('click', function () {
+      var text = getText();
+      if (text == null) return;
+      navigator.clipboard.writeText(text).then(
+        function () { flash(btn, 'copied'); },
+        /* file:// or a denied permission: the field is select-all, so point at
+           the manual path rather than failing silently. */
+        function () { flash(btn, 'press ' + (navigator.platform.indexOf('Mac') === 0 ? '⌘C' : 'Ctrl+C')); }
+      );
+    });
+  }
+  document.querySelectorAll('.copy[data-copy]').forEach(function (btn) {
+    wireCopy(btn, function () {
+      var t = document.getElementById(btn.dataset.copy);
+      return t ? t.textContent.trim() : null;
+    });
+  });
+  document.querySelectorAll('[data-copy-text]').forEach(function (btn) {
+    wireCopy(btn, function () { return btn.dataset.copyText; });
+  });
+
+  /* ---- theme (auto -> light -> dark) ----------------------------------- */
+  var themeBtn = document.getElementById('theme-toggle');
+  if (themeBtn) {
+    var KEY = 'ideation-contract-theme';
+    var root = document.documentElement;
+    var LABEL = {
+      auto: 'Colour theme: follow system',
+      light: 'Colour theme: light',
+      dark: 'Colour theme: dark'
+    };
+    var apply = function (mode) {
+      if (mode === 'auto') delete root.dataset.theme;
+      else root.dataset.theme = mode;
+      themeBtn.dataset.mode = mode;
+      themeBtn.setAttribute('aria-label', LABEL[mode]);
+      themeBtn.title = LABEL[mode];
+      try {
+        if (mode === 'auto') localStorage.removeItem(KEY);
+        else localStorage.setItem(KEY, mode);
+      } catch (e) {}
+    };
+    apply(root.dataset.theme || 'auto');
+    themeBtn.addEventListener('click', function () {
+      var order = ['auto', 'light', 'dark'];
+      apply(order[(order.indexOf(root.dataset.theme || 'auto') + 1) % 3]);
+    });
+  }
+
+  /* ---- running head + scrollspy ---------------------------------------- */
+  var runhead = document.getElementById('runhead');
+  var masthead = document.querySelector('.masthead');
+  if (runhead && masthead && 'IntersectionObserver' in window) {
+    new IntersectionObserver(function (es) {
+      runhead.dataset.visible = String(!es[0].isIntersecting);
+    }, { rootMargin: '-60px 0px 0px 0px' }).observe(masthead);
+
+    var navLinks = {};
+    runhead.querySelectorAll('.runhead-nav a').forEach(function (a) {
+      navLinks[a.getAttribute('href').slice(1)] = a;
+    });
+    /* One observer over every section; the topmost intersecting one wins, so
+       the marker never flickers between two bands sharing the viewport. */
+    var visible = {};
+    var spy = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+      var order = Object.keys(navLinks);
+      var current = order.filter(function (id) { return visible[id]; })[0];
+      order.forEach(function (id) {
+        if (current === id) navLinks[id].setAttribute('aria-current', 'true');
+        else navLinks[id].removeAttribute('aria-current');
+      });
+    }, { rootMargin: '-70px 0px -55% 0px' });
+    Object.keys(navLinks).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) spy.observe(el);
+    });
+  }
+
+  /* ---- phase graph: edges measured from real geometry ------------------ */
+  var graph = document.getElementById('graph');
+  var ledger = document.getElementById('ledger');
+  if (graph) {
+    var grid = graph.querySelector('.graph-grid');
+    var svg = graph.querySelector('.graph-edges');
+    var nodes = Array.prototype.slice.call(grid.querySelectorAll('.pnode'));
+    var edges = [];
+    try { edges = JSON.parse(graph.dataset.edges || '[]'); } catch (e) {}
+    var byIndex = {};
+    nodes.forEach(function (n) { byIndex[n.dataset.phase] = n; });
+
+    var draw = function () {
+      if (!edges.length) return;
+      var gb = grid.getBoundingClientRect();
+      svg.setAttribute('viewBox', '0 0 ' + gb.width + ' ' + gb.height);
+      var box = function (i) {
+        var el = byIndex[i];
+        if (!el) return null;
+        var r = el.getBoundingClientRect();
+        return {
+          l: r.left - gb.left, r: r.right - gb.left,
+          cy: r.top - gb.top + r.height / 2
+        };
+      };
+      var focus = graph.dataset.focus;
+      /* Built with DOM calls rather than innerHTML: every value here is
+         geometry, but a renderer that cannot inject markup cannot regress
+         into one that can. */
+      var NS = 'http://www.w3.org/2000/svg';
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      var defs = document.createElementNS(NS, 'defs');
+      var marker = document.createElementNS(NS, 'marker');
+      marker.setAttribute('id', 'ah');
+      marker.setAttribute('viewBox', '0 0 10 10');
+      marker.setAttribute('refX', '9');
+      marker.setAttribute('refY', '5');
+      marker.setAttribute('markerWidth', '6');
+      marker.setAttribute('markerHeight', '6');
+      marker.setAttribute('orient', 'auto');
+      var head = document.createElementNS(NS, 'path');
+      head.setAttribute('d', 'M0 0 L10 5 L0 10 z');
+      head.setAttribute('fill', 'context-stroke');
+      marker.appendChild(head);
+      defs.appendChild(marker);
+      svg.appendChild(defs);
+      edges.forEach(function (e) {
+        var a = box(e[0]), b = box(e[1]);
+        if (!a || !b) return;
+        var x1 = a.r, x2 = b.l - 7, y1 = a.cy, y2 = b.cy;
+        var mid = x1 + (x2 - x1) / 2;
+        var d = Math.abs(y1 - y2) < 0.5
+          ? 'M' + x1 + ' ' + y1 + ' H' + x2
+          : 'M' + x1 + ' ' + y1 + ' H' + mid + ' V' + y2 + ' H' + x2;
+        var p = document.createElementNS(NS, 'path');
+        p.setAttribute('d', d);
+        p.setAttribute('marker-end', 'url(#ah)');
+        if (focus !== undefined && (String(e[0]) === focus || String(e[1]) === focus)) {
+          p.setAttribute('class', 'e-hot');
+        }
+        svg.appendChild(p);
+      });
+    };
+
+    /* Fonts land after first paint and change node heights. */
+    draw();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+    addEventListener('resize', draw);
+    addEventListener('beforeprint', draw);
+    graph.addEventListener('scroll', draw);
+
+    /* ---- focus: one phase isolated across graph and ledger ------------- */
+    var hint = document.getElementById('graph-hint');
+    var rows = ledger ? Array.prototype.slice.call(ledger.querySelectorAll('.lrow')) : [];
+    var clearFocus = function () {
+      delete graph.dataset.focus;
+      if (ledger) delete ledger.dataset.focus;
+      nodes.forEach(function (n) { n.setAttribute('aria-pressed', 'false'); });
+      rows.forEach(function (r) { r.dataset.hot = 'false'; });
+      if (hint) hint.dataset.active = 'false';
+      draw();
+    };
+    var setFocus = function (i, scroll) {
+      if (graph.dataset.focus === String(i)) return clearFocus();
+      graph.dataset.focus = String(i);
+      if (ledger) ledger.dataset.focus = String(i);
+      nodes.forEach(function (n) {
+        n.setAttribute('aria-pressed', String(n.dataset.phase === String(i)));
+      });
+      rows.forEach(function (r) { r.dataset.hot = String(r.dataset.phase === String(i)); });
+      if (hint) hint.dataset.active = 'true';
+      draw();
+      if (scroll) {
+        var row = document.getElementById('phase-' + i);
+        if (row) row.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+      }
+    };
+    nodes.forEach(function (n) {
+      n.addEventListener('click', function () { setFocus(n.dataset.phase, true); });
+    });
+    var clearBtn = document.getElementById('graph-clear');
+    if (clearBtn) clearBtn.addEventListener('click', clearFocus);
+    addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && graph.dataset.focus !== undefined) clearFocus();
+    });
+  }
+
+  /* ---- scope rings ------------------------------------------------------ */
+  var tiers = document.getElementById('tiers');
+  if (tiers) {
+    var rings = Array.prototype.slice.call(document.querySelectorAll('.nest-ring'));
+    rings.forEach(function (ring) {
+      ring.addEventListener('click', function () {
+        var t = ring.dataset.tier;
+        var on = tiers.dataset.tier !== t;
+        if (on) tiers.dataset.tier = t; else delete tiers.dataset.tier;
+        rings.forEach(function (r) {
+          r.setAttribute('aria-pressed', String(on && r.dataset.tier === t));
+        });
+      });
+    });
+  }
+
+  /* ---- the one authored moment: the run model's token ------------------ */
+  var model = document.getElementById('model');
+  var token = document.getElementById('token');
+  if (model && token && 'IntersectionObserver' in window) {
+    var stages = Array.prototype.slice.call(model.querySelectorAll('.stage'));
+    var light = function (animate) {
+      var dots = stages.map(function (s) { return s.querySelector('.stage-dot'); });
+      var wrap = model.querySelector('.stages');
+      var wb = wrap.getBoundingClientRect();
+      var first = dots[0].getBoundingClientRect();
+      var last = dots[dots.length - 1].getBoundingClientRect();
+      token.style.left = (first.left - wb.left + first.width / 2 - 5.5) + 'px';
+      token.style.setProperty('--travel', (last.left - first.left) + 'px');
+      if (!animate) {
+        stages.forEach(function (s) { s.dataset.reached = 'true'; });
+        model.dataset.lit = 'done';
+        return;
+      }
+      var dur = 420 * (stages.length - 1);
+      token.style.setProperty('--dur', dur + 'ms');
+      model.dataset.lit = 'running';
+      stages.forEach(function (s, i) {
+        setTimeout(function () { s.dataset.reached = 'true'; }, (dur / (stages.length - 1)) * i);
+      });
+      setTimeout(function () { model.dataset.lit = 'done'; }, dur + 260);
+    };
+    var io = new IntersectionObserver(function (es) {
+      if (!es[0].isIntersecting) return;
+      io.disconnect();
+      light(!reduce);
+    }, { threshold: 0.3 });
+    io.observe(model);
+  }
+})();
+`;
+
 function generate(data: ContractData, paths: ContractPaths): string {
   const d = data;
+  const f = deriveFacts(d);
 
   return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${esc(d.projectName)} — Mission Brief</title>
+    <meta name="color-scheme" content="light dark" />
+    <title>${esc(d.projectName)} — Contract</title>
     <script>
       // Apply a saved forced theme before first paint to avoid a flash
       try {
@@ -994,59 +1878,20 @@ ${CSS}
     </style>
   </head>
   <body data-contract-status="${esc(d.status)}">
-${buildHeader(d)}
+${buildRunhead(d, f, paths)}
+${buildMasthead(d, f)}
     <main>
-${buildFirstMove(d)}
+${buildReadiness(d, f, paths)}
 ${buildProblemGoals(d)}
-${buildSuccess(d)}
-${buildScope(d)}
+${buildScope(d, f)}
+${buildPlan(d, f)}
+${buildRunModel(d, f)}
+${buildSuccess(d, f, paths)}
 ${buildDecisionLog(d)}
-${buildExecution(d, paths)}
-${buildClose(d)}
+${buildCommands(d, f, paths)}
+${buildClose(d, f, paths)}
     </main>
-
-    <script>
-      document.querySelectorAll('.copy-btn').forEach(btn => {
-        // aria-live so the copied/failed text swap is announced
-        btn.setAttribute('aria-live', 'polite');
-        btn.addEventListener('click', () => {
-          const target = document.getElementById(btn.dataset.copy);
-          if (!target) return;
-          const flash = label => {
-            btn.textContent = label;
-            setTimeout(() => (btn.textContent = 'copy'), 2000);
-          };
-          navigator.clipboard
-            .writeText(target.textContent.trim())
-            .then(() => flash('copied'))
-            // file:// or denied permission — the text is select-all, so
-            // point at the manual path instead of failing silently
-            .catch(() => flash('press ⌘C / Ctrl+C'));
-        });
-      });
-
-      /* === THEME TOGGLE (auto → light → dark) === */
-      const themeBtn = document.getElementById('theme-toggle');
-      if (themeBtn) {
-        const KEY = 'ideation-contract-theme';
-        const root = document.documentElement;
-        const apply = mode => {
-          if (mode === 'auto') delete root.dataset.theme;
-          else root.dataset.theme = mode;
-          themeBtn.textContent = 'theme · ' + mode;
-          try {
-            if (mode === 'auto') localStorage.removeItem(KEY);
-            else localStorage.setItem(KEY, mode);
-          } catch {}
-        };
-        apply(root.dataset.theme || 'auto');
-        themeBtn.addEventListener('click', () => {
-          const order = ['auto', 'light', 'dark'];
-          const current = root.dataset.theme || 'auto';
-          apply(order[(order.indexOf(current) + 1) % order.length]);
-        });
-      }
-    </script>
+    <script>${CLIENT_JS}</script>
   </body>
 </html>
 `;
