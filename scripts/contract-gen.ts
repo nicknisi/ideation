@@ -60,8 +60,16 @@ interface Phase {
       that would collide inside one wave (splitWavesByFileOverlap) and as the
       commit stage's fallback list of what to stage when the builder reports
       no filesChanged. It also logs a WARN for every fileless phase dispatched
-      into a parallel wave. The renderer never had the field, so no contract
-      has ever emitted one; the interview is where that has to change. */
+      into a parallel wave.
+
+      This is NOT the engine's source of truth. autopilot builds the dispatch
+      manifest by extracting every path from each spec's File Changes tables
+      (skills/autopilot/SKILL.md, "Populate `files` from each spec's File
+      Changes table"), so a contract that omits the field can still be
+      serialised correctly. The field is here because contract-data.json may
+      carry it — the memory-and-retrieval contract does, on all five phases —
+      and a plan that names what it touches should render that. Where the two
+      disagree, the run follows the specs, not this page. */
   files?: string[];
 }
 
@@ -1108,8 +1116,8 @@ function buildRunModel(d: ContractData, f: Facts): string {
     f.explicitGraph
       ? `Phases are grouped into ${f.waveCount} wave${f.waveCount === 1 ? '' : 's'} from their declared prerequisites. A wave dispatches together; the next one waits for all of it. ${
           f.anyFiles
-            ? 'Two phases naming the same file are serialised even inside one wave.'
-            : 'No phase here declares <code>files</code>, so the engine treats every one as parallel-safe and logs a warning saying so — two phases in one wave could edit the same file.'
+            ? 'Two phases naming the same file are serialised even inside one wave. Autopilot re-derives that list from each spec&rsquo;s File Changes tables at dispatch, so the run follows the specs rather than this page.'
+            : 'No phase here declares <code>files</code>, but autopilot derives them from each spec&rsquo;s File Changes tables before dispatch, so colliding phases can still be serialised. A phase whose spec has no readable File Changes section is treated as parallel-safe, and the engine logs a warning saying so.'
         }`
       : `No phase declares a prerequisite, so all ${f.phases.length} run one after another. Declaring <code>prereqs</code> is what unlocks parallel dispatch.`,
   ]);

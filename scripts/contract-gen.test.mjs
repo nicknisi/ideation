@@ -31,6 +31,10 @@ const ENGINE = readFileSync(
   join(dir, '..', 'workflows', 'execute-contract.mjs'),
   'utf8',
 );
+const AUTOPILOT = readFileSync(
+  join(dir, '..', 'skills', 'autopilot', 'SKILL.md'),
+  'utf8',
+);
 
 /** The `const STAGES: Stage[] = [ … ];` literal, as source text. */
 function stagesBlock(src) {
@@ -162,6 +166,33 @@ describe('run model — phase.files is described honestly', () => {
       GEN,
       /files\?: string\[\]/,
       'Phase must carry `files` or contracts can never declare what the engine reads',
+    );
+  });
+
+  /**
+   * The page tells the reader that autopilot derives `files` from the specs
+   * even when the contract omits the field. That claim is only true while
+   * autopilot's extraction step exists. It was missed once already — the
+   * field was documented as dormant ("the interview is where that has to
+   * change") when in fact the producer had been specified all along, in a
+   * subsection of a different skill.
+   */
+  it('autopilot still derives files from the specs, as the page claims', () => {
+    has(
+      AUTOPILOT,
+      /Populate `files` from each spec's File Changes table/,
+      "autopilot no longer extracts files from the specs — the contract page's " +
+        'wave rule claims it does, and would now be lying',
+    );
+    has(
+      AUTOPILOT,
+      /New Files, Modified Files, and Deleted Files/,
+      'the File Changes tables autopilot reads are no longer named',
+    );
+    has(
+      GEN,
+      /autopilot (re-)?derives/i,
+      'the wave rule no longer credits autopilot with deriving files',
     );
   });
 });
