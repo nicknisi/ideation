@@ -7,7 +7,7 @@ description: "You MUST use this before building any new feature, planning a migr
 
 # Ideation
 
-Transform unstructured brain dumps into implementation artifacts through a conversational interview that builds shared understanding before writing anything. HTML is for interactive decision-making (visualizations, comparisons, the Mission Brief contract); Markdown is for reference documents (specs, PRDs).
+Transform unstructured brain dumps into implementation artifacts through a conversational interview that builds shared understanding before writing anything. HTML is for interactive decision-making (visualizations, comparisons, the contract); Markdown is for reference documents (specs, PRDs).
 
 ## Workflow
 
@@ -27,7 +27,7 @@ Read and follow `${CLAUDE_PLUGIN_ROOT}/references/interview-engine.md` for the f
 
 ## Phase 3: Contract (HTML)
 
-When all 5 evidence gates are `ready` — **not before** — generate the Mission Brief contract:
+When all 5 evidence gates are `ready` — **not before** — generate the contract:
 
 1. **Name the project yourself and say so** — the interview just produced the evidence for every gate, so the name is inferable; kebab-case it into the `slug`. State it in one line (`Calling this "{name}" → docs/ideation/{slug}/`) rather than asking. The user corrects it in passing if it's wrong, and a rename here costs one `git mv` before anything references the slug. Ask only when the brain dump genuinely covers two separable projects and the split decides what gets built.
 2. Create `./docs/ideation/{slug}/`.
@@ -235,7 +235,7 @@ Present a brief summary, then **recommend one entry point** — don't hand over 
 
 ```
 Ideation complete. Artifacts written to `./docs/ideation/{project-name}/`.
-Open contract.html to review the full plan — phase track, scope, and the Mission Brief.
+Open contract.html to review the full plan — the phase graph, the run model, scope, and how completion is decided.
 ```
 
 Then apply the decision rule:
@@ -284,7 +284,7 @@ All written to `./docs/ideation/{project-name}/`:
 ```
 _comparison.html                   # Ephemeral decision aid (deleted after choice is made)
 contract-data.json                 # Machine-readable contract (source of truth; consumed by autopilot)
-contract.html                      # Mission Brief contract (for review)
+contract.html                      # the contract (for review)
 contract.md                        # Plain contract (autopilot fallback when contract-data.json is absent)
 prd-phase-1.md                     # Phase 1 requirements (only if PRDs chosen)
 ...

@@ -2,11 +2,12 @@
 
 > 🌱 **[nicknisi.github.io/ideation](https://nicknisi.github.io/ideation/)** — the pitch, install, and an animated walkthrough of the whole loop, on one self-contained page.
 
-Transform brain dumps into structured implementation artifacts through a conversational interview. HTML is used for interactive decision-making (the Mission Brief contract with evidence-gate readiness, visual comparisons during the interview). Markdown is used for reference documents (specs, PRDs) consumed directly by `/ideation:execute-spec`. Includes an execution workflow for implementing specs in fresh sessions with per-component feedback loops, adversarial plan critics, a Scout/Reviewer agent pipeline, and a push-based learning loop that captures lessons at completion and applies them visibly at future intakes.
+Transform brain dumps into structured implementation artifacts through a conversational interview. HTML is used for interactive decision-making (the contract with evidence-gate readiness, visual comparisons during the interview). Markdown is used for reference documents (specs, PRDs) consumed directly by `/ideation:execute-spec`. Includes an execution workflow for implementing specs in fresh sessions with per-component feedback loops, adversarial plan critics, a Scout/Reviewer agent pipeline, and a push-based learning loop that captures lessons at completion and applies them visibly at future intakes.
 
 ## What's New (0.20.0)
 
 - **`/ideation:brainstorm` — the stage before the interview.** A lightweight thinking partner for deciding _whether_ an idea is worth building — pure conversation, no files, no spec. When the conclusion is "yes, build it," it hands what you settled to the ideation interview as a running start: rejected alternatives arrive as `decisions` entries, exclusions as `scope.outOfScope`, and the interview opens on the gates that are still actually open. It never pre-seeds Success Criteria — a conversation about _whether_ produces no runnable checks. Moved in from the essentials plugin; **remove that copy**, or two skills compete for the same triggers. See [brainstorm](#brainstorm).
+- **The contract is a pre-flight document now, not a dashboard.** It retires the Command Deck instrument panel and renders in the same editorial field-guide world as the site — paper, ink, one cobalt accent, light-first with a graphite dark deck — and it shows the machine, not just the plan. A flight strip carries the five measurements that decide whether to hand the work over. `verify.mjs`'s run-mode verdict (walk away / stay at the desk / skip the orchestration) is printed with its reasons instead of scrolling past in a transcript, and the page's primary action follows that verdict. The phase graph is interactive and wave-aware, titles are no longer truncated, and selecting a phase cross-links it to a ledger row stating what its failure costs downstream. A new **run model** section draws the engine's real per-phase loop — scout → build → review ⇄ fix → commit — naming every exit that stops a run before it commits. Its stage names, agent types, and result enums are drift-tested against `workflows/execute-contract.mjs`; four were wrong before the test existed. The artifact is now titled "Contract", matching every other name in the product.
 - **A deliberate exception to 0.19.0's surface reduction.** That release collapsed the _planning_ fork — express stopped being a separate entry point and became a routing answer inside the interview — under the rule "reduce surface, never add." This adds a skill, which is in tension with that. The case for the exception: whether-vs-how is a different axis from full-review-vs-express, the new door writes nothing and owns no artifacts, and it hands to the same single planning door rather than reopening a second one. Net instruction surface still shrank.
 
 ## What's New (0.17.0)
@@ -34,7 +35,7 @@ This release ships the full Fable 5 upgrade. Six behavior changes, plus one brea
 - **Previews-first decision aids.** Comparisons default to inline `AskUserQuestion` previews (monospace, side-by-side) and escalate to ephemeral HTML only when the decision hinges on real visual rendering.
 - **Overlap-serialized parallel waves.** `/ideation:autopilot` and `--parallel` execution plan waves with a tested CLI that serializes any phases declaring overlapping `files`, so two phases never race the same file. See [Orchestration](#ideationautopilot).
 - **Retro loop.** A retro command mined a completed project's implementation notes for generalizable spec-gap patterns and appended them to a repo-level `docs/ideation/learnings.md` that future interviews read. (Replaced in 0.19.0 by push-based inline capture — see [Learning Loop](#learning-loop).)
-- **Command Deck contract design.** The contract HTML is redesigned as an instrument panel — dark-first with a co-equal light theme and an explicit theme toggle — surfacing the execution plan as an operational dashboard (run bar, phase table, copyable commands) rather than a static document. The artifact is still titled "Mission Brief".
+- **Command Deck contract design.** The contract HTML is redesigned as an instrument panel — dark-first with a co-equal light theme and an explicit theme toggle — surfacing the execution plan as an operational dashboard (run bar, phase table, copyable commands) rather than a static document. The artifact is still titled "Mission Brief". (Replaced in 0.20.0 by the field-guide contract — see [What's New (0.20.0)](#whats-new-0200).)
 
 > **Breaking change — `contract-data.json` schema.** The contract now uses a `gates` object instead of the old `confidence` object. Regenerating an old contract fails fast:
 >
@@ -90,7 +91,7 @@ I want to build something. Here's what I'm thinking...
 
 1. **Intake** - Accept your messy, unstructured input without judgment. Take a position upfront — what's strong, what's weak. On an existing codebase, fire a parallel exploration sweep so the first question is already informed.
 2. **Interview loop** - One question at a time, each with a recommended answer. Explores the codebase inline — if it can look something up instead of asking, it does. Challenges vague demand, undefined terms, and hypothetical users. Loops until all 5 evidence gates are `ready`.
-3. **Contract** - When all 5 gates are `ready`, four plan critics stress-test the plan in parallel; then generate `contract.html` via the contract-gen CLI. Command Deck instrument-panel layout with the gate readiness checklist, nested scope tiers (MVP / Full / Stretch), and copyable execution commands. Pick your scope tier in the terminal. Includes revision lineage tracking via `Supersedes` link.
+3. **Contract** - When all 5 gates are `ready`, four plan critics stress-test the plan in parallel; then generate `contract.html` via the contract-gen CLI. A flight strip of the deciding measurements, the gate readiness board, nested scope tiers (MVP / Full / Stretch), an interactive phase graph, the run model, and copyable execution commands. Pick your scope tier in the terminal. Includes revision lineage tracking via `Supersedes` link.
 4. **HTML visualizations** - During interview and phasing, decisions default to inline `AskUserQuestion` previews; ephemeral HTML pages (comparisons, mockups, architecture options) are reserved for decisions that need real visual rendering. Deleted after you choose.
 5. **Phasing & specs** - Determine phases, generate Markdown specs with feedback loops and failure mode catalogs
 6. **Feedback quality check** - Self-review specs for feedback loop coverage before presenting
@@ -103,7 +104,7 @@ All artifacts are written to `./docs/ideation/{project-name}/`:
 ```
 _comparison.html               # Ephemeral decision aid (deleted after choice is made)
 contract-data.json             # Machine-readable contract (source of truth; consumed by autopilot)
-contract.html                  # Mission Brief contract (for review)
+contract.html                  # the contract (for review)
 contract.md                    # Plain contract (autopilot fallback when contract-data.json is absent)
 contract-{date}.html / .md     # Superseded revisions (lineage chain)
 prd-phase-1.md                 # Phase 1 requirements (only if PRDs chosen)
@@ -116,7 +117,7 @@ implementation-notes-phase-1.html  # Decisions made during execution (per-phase)
 
 HTML artifacts (contract, implementation notes, ephemeral visualizations) are self-contained single files with all CSS/JS inlined — no external dependencies. They open in your browser automatically. Features include:
 
-- **Command Deck layout** — a single instrument-panel page: deck header, run bar, and sectioned panels (no tabs, no JS framework)
+- **Field-guide layout** — one scrolling document: masthead, flight strip, banded sections, and a running head that carries the run command once you scroll past it (no tabs, no framework, no CDN)
 - **Readiness gate checklist** — a ✓/✗ per dimension with its one-sentence evidence citation in the hero (no score; readiness is binary)
 - **Success criteria with checks** — each criterion carries a typed check: `{cmd, expect}` renders the verifying command with its expected outcome, `{judgment}` renders a visible "judgment call" tag naming who looks at what. `scripts/verify.mjs <contract-data.json>` executes every `cmd` and prints a machine-readable `VERIFY {slug}: commits=A/B pass=N fail=M judgment=K` line (exit 0 = the contract's completion predicate; it verifies one contract's acceptance checks, never repo health)
 - **Decision log** — a "Decisions considered and rejected" panel recording interview rejections and critic-blocker fixes; carried into every spec so executors and reviewers can catch rejected approaches re-proposed as deviations
@@ -274,12 +275,12 @@ search too...
 3. Explores codebase inline — finds existing tag system, recommends reusing it instead of asking
 4. Challenges assumptions: "Have users complained about folders, or is this your gut?"
 5. All 5 evidence gates reach `ready` after ~5 questions
-6. Four plan critics stress-test the plan; then generates `contract.html` via contract-gen CLI — Command Deck layout with the gate readiness checklist, nested scope tiers, and copyable execution commands. Pick your scope in the terminal.
+6. Four plan critics stress-test the plan; then generates `contract.html` via contract-gen CLI — flight strip, gate readiness board, nested scope tiers, interactive phase graph, run model, and copyable execution commands. Pick your scope in the terminal.
 7. After approval, asks: "Straight to specs or PRDs first?"
 8. At decision points (phasing, orchestration), opens side-by-side visual comparisons in browser
 9. Generates Markdown specs with feedback loops and failure modes
 
-**Result:** Mission Brief HTML contract for reviewing the plan, plus Markdown specs ready for `/ideation:execute-spec`.
+**Result:** an HTML contract for reviewing the plan, plus Markdown specs ready for `/ideation:execute-spec`.
 
 **Prefer to watch it happen?** The [ideation site](https://nicknisi.github.io/ideation/) walks one fictional feature — a bookmark garden — through the whole loop as an animated, self-contained page: the interview scoreboard, the plan critics, the routing fork, execution waves, and the learning the next interview inherits. After cloning: `open docs/index.html`.
 
@@ -293,7 +294,7 @@ flowchart TD
         C -->|"Not yet"| D["Interview Loop<br/><i>one question at a time,<br/>recommended answer,<br/>explore codebase inline</i>"]
         D --> C
         C -->|"All ready"| CR["Plan Critics<br/><i>scope-creep, over-engineering,<br/>hidden-dependency, success-criteria<br/>— parallel</i>"]
-        CR --> E["Generate Contract<br/><i>Mission Brief: gate checklist,<br/>nested scope tiers, phase track</i>"]
+        CR --> E["Generate Contract<br/><i>gate evidence, scope tiers,<br/>phase graph, run model</i>"]
         E --> F{"User<br/>Approval<br/>(pick scope tier,<br/>see critic digest)"}
         F -->|"Needs changes"| E
         F -->|"Approved"| G{"PRDs or<br/>straight to specs?"}
@@ -379,7 +380,7 @@ flowchart TD
 
 ### Reading the Diagram
 
-**Ideation (left/top)** — brain dump → evidence-gated questioning → plan critics → Mission Brief contract → specs → execution plan. Human approves at each gate.
+**Ideation (left/top)** — brain dump → evidence-gated questioning → plan critics → contract → specs → execution plan. Human approves at each gate.
 
 **Execute-Spec (right/bottom)** — three phases per spec:
 
