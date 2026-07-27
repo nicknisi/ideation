@@ -7,6 +7,12 @@ node_modules/
 .impeccable/
 PRODUCT.md
 DESIGN.md
+# The impeccable skill installs a full copy of itself into all three of these.
+# This repo publishes a plugin to a marketplace: a stray `git add -A` would
+# vendor ~50 files of someone else's skill into it. Ignored, not deleted.
+.claude/skills/
+.github/skills/
+.github/hooks/
 test-fixtures/**/out/
 # Ideation working artifacts stay local — but the learning store is meant to be
 # committed and shared, so it is explicitly un-ignored. (`docs/ideation/*` not
