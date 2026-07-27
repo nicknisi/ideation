@@ -412,7 +412,9 @@ function buildRunhead(d: ContractData, f: Facts, paths: ContractPaths): string {
     ['done', 'Done when'],
   ];
   if ((d.decisions ?? []).length) links.push(['decisions', 'Decisions']);
-  links.push(['run', 'Run it']);
+  // No "Run it" entry: nothing ever carried `id="run"`, and the run commands
+  // live in the `run-model` band that already has its own link above. Pointing
+  // this at the sticky header instead just scrolled the reader back to the top.
   const canRun = d.status === 'Approved' && f.phases.length > 0;
   return `    <div class="runhead" id="runhead" data-visible="false">
       <div class="wrap runhead-inner">
@@ -436,9 +438,13 @@ function ledeFor(d: ContractData, f: Facts): string {
   if (!f.phases.length) {
     return `A <strong>${esc(d.status.toLowerCase())}</strong> contract awaiting its execution plan. ${f.scopeCommitted} committed scope item${f.scopeCommitted === 1 ? '' : 's'}, ${f.criteria.length} success criteri${f.criteria.length === 1 ? 'on' : 'a'}.`;
   }
+  // Gates are human checkpoints, not build phases — counting them together
+  // overstates the work and misnumbers it against spec-phase-N.md.
+  const gates = f.phases.length - f.committable;
+  const built = `<strong>${f.committable} build phase${f.committable === 1 ? '' : 's'}</strong>${gates ? ` plus ${gates} human gate${gates === 1 ? '' : 's'}` : ''}`;
   const shape = f.explicitGraph
-    ? `<strong>${f.phases.length} phases</strong> across ${f.waveCount} dependency wave${f.waveCount === 1 ? '' : 's'}`
-    : `<strong>${f.phases.length} phase${f.phases.length === 1 ? '' : 's'}</strong>, run in order`;
+    ? `${built} across ${f.waveCount} dependency wave${f.waveCount === 1 ? '' : 's'}`
+    : `${built}, run in order`;
   return `${shape}, delivering ${f.scopeCommitted} committed scope item${f.scopeCommitted === 1 ? '' : 's'}. Completion is decided by <strong>${f.cmdCount} of ${f.criteria.length}</strong> criteria a machine can check${f.judgmentCount ? ` and ${f.judgmentCount} a human must` : ''}.`;
 }
 
@@ -569,7 +575,9 @@ function buildFlightStrip(d: ContractData, f: Facts): string {
       cell(
         'risk',
         `<span class="num">${f.risk[worst]}</span><span class="fs-of">${worst}</span>`,
-        `of ${total} phase${total === 1 ? '' : 's'} · ${parts.join(' · ')}`,
+        // Gates carry a risk rating but are not build phases, so "of N phases"
+        // overstates the work whenever one is present.
+        `of ${total} ${total > f.committable ? 'plan item' : 'phase'}${total === 1 ? '' : 's'} · ${parts.join(' · ')}`,
         `<div class="riskbar" aria-hidden="true">${seg('high')}${seg('medium')}${seg('low')}</div>`,
       ),
     );
@@ -847,10 +855,20 @@ function buildGraph(f: Facts): string {
   );
 
   const labels = Array.from({ length: waveCount }, (_, w) => {
-    const n = waves.filter(x => x === w).length;
-    const text = f.explicitGraph
-      ? `wave ${w + 1}${n > 1 ? ` · ${n} in parallel` : ''}`
-      : `step ${w + 1}`;
+    const inWave = phases.filter((_, i) => waves[i] === w);
+    // A wave is only as parallel as its file claims allow: the engine
+    // serialises phases that would collide, so "N in parallel" is a lie
+    // whenever two of them name the same file. Report what will actually
+    // happen, not the wave's width.
+    const collides = inWave.some((a, x) =>
+      inWave.slice(x + 1).some(b =>
+        (a.files ?? []).some(file => (b.files ?? []).includes(file)),
+      ),
+    );
+    const n = inWave.length;
+    const concurrency =
+      n > 1 ? (collides ? ' · serialised by file overlap' : ` · ${n} in parallel`) : '';
+    const text = f.explicitGraph ? `wave ${w + 1}${concurrency}` : `step ${w + 1}`;
     return `          <div class="wave-label" style="grid-column:${w + 1}">${esc(text)}</div>`;
   }).join('\n');
 
@@ -972,7 +990,7 @@ function buildPlan(d: ContractData, f: Facts): string {
     );
   }
   const sub = f.explicitGraph
-    ? `${d.execution.strategy}. Columns are dependency waves — everything in one column can run at the same time, because nothing in it waits on anything else in it.`
+    ? `${d.execution.strategy}. Columns are dependency waves — nothing in a column waits on anything else in it, but two phases naming the same file are still serialised, so a column is an upper bound on concurrency rather than a promise of it.`
     : `${d.execution.strategy}. No phase declares a prerequisite, so the engine runs them in the order written.`;
 
   const awaiting =
@@ -986,7 +1004,7 @@ function buildPlan(d: ContractData, f: Facts): string {
 
   return band(
     'plan',
-    `${secHead('plan', 'What gets built, in what order', sub, `${f.phases.length} phases`)}
+    `${secHead('plan', 'What gets built, in what order', sub, f.phases.length > f.committable ? `${f.committable} phases + ${f.phases.length - f.committable} gate${f.phases.length - f.committable === 1 ? '' : 's'}` : `${f.phases.length} phases`)}
 ${buildGraph(f)}
 ${buildLedger(d, f)}${awaiting}`,
   );
@@ -1017,8 +1035,8 @@ const STAGES: Stage[] = [
     agent: 'ideation:scout',
     what: 'Reads the codebase against the spec and scores five evidence gates before a line is written.',
     outs: [
-      ['chip-go', 'ready'],
-      ['chip-caution', 'hold'],
+      ['chip-go', 'GO'],
+      ['chip-caution', 'HOLD'],
     ],
     exit: 'Under --strict a HOLD stops here — nothing is built.',
   },
@@ -1027,9 +1045,9 @@ const STAGES: Stage[] = [
     agent: 'general-purpose',
     what: 'Implements the spec, then runs the validation the spec itself declares.',
     outs: [
-      ['chip-go', 'built'],
-      ['chip', 'no-op'],
-      ['chip-danger', 'fail'],
+      ['chip-go', 'BUILT'],
+      ['chip', 'NO-OP'],
+      ['chip-danger', 'FAIL'],
     ],
     exit: 'Failed validation stops here. An empty diff is a NO-OP and also stops here — review never runs.',
   },
@@ -1038,8 +1056,8 @@ const STAGES: Stage[] = [
     agent: 'ideation:reviewer',
     what: 'Reads the diff back against the spec and returns findings counted by severity.',
     outs: [
-      ['chip-go', 'pass'],
-      ['chip-danger', 'fail'],
+      ['chip-go', 'PASS'],
+      ['chip-danger', 'FAIL'],
     ],
     exit: 'An unavailable reviewer stops here under --strict; otherwise it commits as validation-only.',
   },
@@ -1048,16 +1066,19 @@ const STAGES: Stage[] = [
     agent: 'general-purpose',
     what: 'Applies or refutes every blocking finding, then hands back for another review.',
     outs: [
-      ['chip-go', 'fixed'],
-      ['chip-danger', 'fail'],
+      ['chip-go', 'FIXED'],
+      ['chip-danger', 'FAIL'],
     ],
     exit: 'Still FAIL on cycle 3 stops here — changes are left unstaged, not committed.',
   },
   {
     name: 'Commit',
-    agent: 'git',
+    agent: 'general-purpose',
     what: 'Stages only the files the builder named and writes the spec path into the commit body.',
-    outs: [['chip-accent', 'committed']],
+    outs: [
+      ['chip-accent', 'COMMITTED'],
+      ['chip-danger', 'FAILED'],
+    ],
     exit: 'If neither the builder nor the phase named a file, it refuses to commit blind rather than <code>git add -A</code>.',
   },
 ];
@@ -1108,7 +1129,7 @@ function buildRunModel(d: ContractData, f: Facts): string {
 
   rules.push([
     'Resume is a git question',
-    `Re-running skips any phase whose spec path already appears in a commit body — which is why the commit stage writes it there. ${f.committable} of ${f.phases.length} phase${f.phases.length === 1 ? '' : 's'} ${f.committable === 1 ? 'is' : 'are'} expected to leave one.`,
+    `Re-running skips any phase whose spec path already appears in a commit body — which is why the commit stage writes it there. ${f.committable} build phase${f.committable === 1 ? '' : 's'} ${f.committable === 1 ? 'is' : 'are'} expected to leave one${f.phases.length > f.committable ? `; the ${f.phases.length - f.committable} human gate${f.phases.length - f.committable === 1 ? '' : 's'} commit${f.phases.length - f.committable === 1 ? 's' : ''} nothing` : ''}.`,
   ]);
 
   rules.push([
@@ -1123,8 +1144,8 @@ function buildRunModel(d: ContractData, f: Facts): string {
     `${secHead(
       'run-model',
       'What actually happens when you run it',
-      'Every phase goes through the same five stages. These are the real agents and the real gates — the points where the run can stop before anything is committed.',
-      'per phase',
+      'Every build phase goes through the same five stages. These are the real agents and the real gates — the points where the run can stop before anything is committed. Human gates in the plan above are not build phases: nothing is specced, built, or committed for them.',
+      'per build phase',
     )}
       <div class="model" id="model">
         <div class="model-track">
@@ -1232,7 +1253,11 @@ ${list.map(c => item(c, indexOf.get(c) ?? 0)).join('\n')}
               : `${f.judgmentCount} criteri${f.judgmentCount === 1 ? 'on is a judgment call' : 'a are judgment calls'} — printed, but never counted. A green run does not cover ${f.judgmentCount === 1 ? 'it' : 'them'}.`
           }</p>
           <div class="verify-line">${verify}</div>
-          <p class="verify-cap">The line this contract is finished on, as <code>verify.mjs</code> will print it. Anything else is not done.</p>
+          <p class="verify-cap">${
+            f.judgmentCount === 0
+              ? 'The line this contract is finished on, as <code>verify.mjs</code> will print it. Anything else is not done.'
+              : `Mechanical verification only, as <code>verify.mjs</code> will print it — a green line here is necessary, not sufficient. ${f.judgmentCount === 1 ? 'The judgment criterion above is' : `The ${f.judgmentCount} judgment criteria above are`} uncounted, so this contract is not finished until ${f.judgmentCount === 1 ? 'it has' : 'they have'} been signed off too.`
+          }</p>
           ${cmdField('cmd-verify', `node ${paths.verifyBin} ${paths.dataPath}`)}
         </div>
         <div>
@@ -1619,11 +1644,26 @@ const CLIENT_JS = String.raw`
     btn.addEventListener('click', function () {
       var text = getText();
       if (text == null) return;
+      /* file:// or a denied permission: point at the manual path rather than
+         failing silently — and select the text first, so "press ⌘C" is true.
+         navigator.clipboard is absent entirely outside a secure context, which
+         throws synchronously before any rejection handler runs, so the guard
+         has to come before the call and not only after it. */
+      var manual = function () {
+        var t = btn.dataset.copy ? document.getElementById(btn.dataset.copy) : null;
+        if (t && window.getSelection && document.createRange) {
+          var range = document.createRange();
+          range.selectNodeContents(t);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+        flash(btn, 'press ' + (navigator.platform.indexOf('Mac') === 0 ? '⌘C' : 'Ctrl+C'));
+      };
+      if (!navigator.clipboard || !navigator.clipboard.writeText) { manual(); return; }
       navigator.clipboard.writeText(text).then(
         function () { flash(btn, 'copied'); },
-        /* file:// or a denied permission: the field is select-all, so point at
-           the manual path rather than failing silently. */
-        function () { flash(btn, 'press ' + (navigator.platform.indexOf('Mac') === 0 ? '⌘C' : 'Ctrl+C')); }
+        manual
       );
     });
   }
