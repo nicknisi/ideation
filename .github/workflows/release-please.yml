@@ -30,7 +30,14 @@ jobs:
       # too, but its updater is declared `createIfMissing: false`, so with no
       # such file in the repo it is skipped rather than created — plugin.json
       # ends up the single source of truth, which is what we want.
-      - uses: googleapis/release-please-action@v4
+      #
+      # Pinned to a commit SHA, not `@v4`. A tag is mutable: whoever controls
+      # the action's repo can retarget it, and this job hands the result
+      # `contents: write` on our default branch. That is not hypothetical —
+      # tj-actions/changed-files was compromised exactly this way in 2025, by
+      # retargeting tags at a malicious commit. The tradeoff is that updates are
+      # now deliberate: bump the SHA and the comment together.
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
