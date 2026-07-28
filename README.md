@@ -3,50 +3,10 @@
 > 🌱 **[ideation.engineering](https://ideation.engineering/)** — the pitch, install, and an illustrated walkthrough of the whole loop.
 >
 > 📖 **[ideation.engineering/guide](https://ideation.engineering/guide/)** — which command to run for your situation, what each one writes, and the five gates the interview will not skip.
+>
+> 📓 **[CHANGELOG.md](CHANGELOG.md)** — what shipped in each release, newest first.
 
 Transform brain dumps into structured implementation artifacts through a conversational interview. HTML is used for interactive decision-making (the contract with evidence-gate readiness, visual comparisons during the interview). Markdown is used for reference documents (specs, PRDs) consumed directly by `/ideation:execute-spec`. Includes an execution workflow for implementing specs in fresh sessions with per-component feedback loops, adversarial plan critics, a Scout/Reviewer agent pipeline, and a push-based learning loop that captures lessons at completion and applies them visibly at future intakes.
-
-## What's New (0.20.0)
-
-- **`/ideation:brainstorm` — the stage before the interview.** A lightweight thinking partner for deciding _whether_ an idea is worth building — pure conversation, no files, no spec. When the conclusion is "yes, build it," it hands what you settled to the ideation interview as a running start: rejected alternatives arrive as `decisions` entries, exclusions as `scope.outOfScope`, and the interview opens on the gates that are still actually open. It never pre-seeds Success Criteria — a conversation about _whether_ produces no runnable checks. Moved in from the essentials plugin; **remove that copy**, or two skills compete for the same triggers. See [brainstorm](#brainstorm).
-- **The contract is a pre-flight document now, not a dashboard.** It retires the Command Deck instrument panel and renders in the same editorial field-guide world as the site — paper, ink, one cobalt accent, light-first with a graphite dark deck — and it shows the machine, not just the plan. A flight strip carries the five measurements that decide whether to hand the work over. `verify.mjs`'s run-mode verdict (walk away / stay at the desk / skip the orchestration) is printed with its reasons instead of scrolling past in a transcript, and the page's primary action follows that verdict. The phase graph is interactive and wave-aware, titles are no longer truncated, and selecting a phase cross-links it to a ledger row stating what its failure costs downstream. A new **run model** section draws the engine's real per-phase loop — scout → build → review ⇄ fix → commit — naming every exit that stops a run before it commits. Its stage names, agent types, and result enums are drift-tested against `workflows/execute-contract.mjs`; four were wrong before the test existed. The artifact is now titled "Contract", matching every other name in the product.
-- **A real site at [ideation.engineering](https://ideation.engineering/), and a command reference that cannot go stale.** The walkthrough explained why to use this and never which command to run — six commands, two of which Claude can start on its own, documented only as README prose. [/guide](https://ideation.engineering/guide/) answers that, and it is generated: every command name, argument hint, and badge is read from `skills/*/SKILL.md` frontmatter at build time, and the five gates from the same `references/confidence-rubric.md` the interview itself uses. Only editorial judgement is authored. A skill that ships without an entry **fails the build**, as does a rubric that stops having five gates — the build is the drift test, and CI runs it. Hosted on Cloudflare from `site/`; the old `nicknisi.github.io/ideation/` URL redirects.
-- **A deliberate exception to 0.19.0's surface reduction.** That release collapsed the _planning_ fork — express stopped being a separate entry point and became a routing answer inside the interview — under the rule "reduce surface, never add." This adds a skill, which is in tension with that. The case for the exception: whether-vs-how is a different axis from full-review-vs-express, the new door writes nothing and owns no artifacts, and it hands to the same single planning door rather than reopening a second one. Net instruction surface still shrank.
-
-## What's New (0.17.0)
-
-- **`/ideation:express` — one-pass planning-to-execution.** The exact same evidence-gated interview, then ONE consolidated confirmation (scope tier + run mode, led by the success-criteria check commands), then contract + specs generated without per-artifact approval loops and executed immediately via autopilot on an isolation branch (`ideation/{slug}`). The design follows the pattern every mature spec-driven tool converged on (Kiro Quick Plan, BMAD quick-dev, Claude Code plan mode): express modes delete the review _gates_, never the artifacts or the upfront elicitation. See [express](#express).
-- **Fail-closed strict execution.** Express contracts carry `approvalMode: "express"` in `contract-data.json`; autopilot passes `strict: true` to the engine, and phases dispatch as `/ideation:execute-spec --headless --strict` — a scout HOLD stops instead of proceeding, and a crashed reviewer stops instead of committing validation-only. The fail-open headless defaults remain for interactively reviewed contracts, whose artifacts a human approved.
-- **Single-spec auto-detect fix.** `/ideation:execute-spec` with no argument now also globs `docs/ideation/*/spec.md`, so small single-spec projects are found without an explicit path.
-
-## What's New (0.16.0)
-
-- **Fourth plan critic: `over-engineering`.** Joins `scope-creep`, `hidden-dependency`, and `success-criteria`. It flags speculative generality in the plan — single-user abstractions, unused configurability, infrastructure ahead of demand, defensive handling for cases the contract can't raise. Where `scope-creep` asks whether a _feature_ belongs, this asks whether an in-scope feature is built with more _structure_ than its goal needs. See [Plan Critics](#plan-critics).
-- **Interviews open by surfacing silent assumptions.** Before the first clarifying question, the interview names the interpretations it would otherwise silently default to and lets you correct them — cheap insurance against interviewing toward the wrong target.
-- **Specs prefer the minimum approach.** Implementation specs call for the simplest approach that meets the phase's success criteria, naming the goal that justifies any added structure — the implementation-stage companion to the `over-engineering` critic.
-- **Sharper trigger boundary.** Ideation now frames itself as the planning-HOW stage and cedes deciding-WHETHER (weighing options, "should I build X") to a lightweight companion brainstorming skill.
-
-## What's New (0.14.0)
-
-This release ships the full Fable 5 upgrade. Six behavior changes, plus one breaking schema change:
-
-- **Evidence gates replace numeric confidence scoring.** Readiness is no longer a 0–100 score. Each of 5 dimensions is a gate that is `ready` or `not-ready`, justified by a concrete artifact. The contract proceeds only when all 5 are ready (or the user ends the interview early). See [Evidence Gates](#evidence-gates).
-- **Registered agent types.** Scout, Reviewer, and the plan critics are registered agents (`ideation:scout`, `ideation:reviewer`, `ideation:plan-critic`) invoked with per-invocation inputs only — their workflow, output format, and read-only tool restrictions live in the agent definitions and are enforced by the platform.
-- **Reviewer escape hatch.** During the review cycle the builder may _refute_ a finding the code demonstrably contradicts, citing file:line evidence. A refutation is logged and carried back to the reviewer, which either withdraws it or maintains it; a maintained finding becomes blocking and may not be refuted twice.
-- **Adversarial plan critics.** Before the contract renders, three critics (`scope-creep`, `hidden-dependency`, `success-criteria`) review the plan in parallel while a blocker is still a one-line JSON edit. A Critic digest is shown at the approval gate. See [Plan Critics](#plan-critics).
-- **Intake exploration sweep.** When the work touches an existing codebase, the interview fires 2–3 parallel `Explore` agents at intake so the first question is already informed. Skipped for greenfield work.
-- **Previews-first decision aids.** Comparisons default to inline `AskUserQuestion` previews (monospace, side-by-side) and escalate to ephemeral HTML only when the decision hinges on real visual rendering.
-- **Overlap-serialized parallel waves.** `/ideation:autopilot` and `--parallel` execution plan waves with a tested CLI that serializes any phases declaring overlapping `files`, so two phases never race the same file. See [Orchestration](#ideationautopilot).
-- **Retro loop.** A retro command mined a completed project's implementation notes for generalizable spec-gap patterns and appended them to a repo-level `docs/ideation/learnings.md` that future interviews read. (Replaced in 0.19.0 by push-based inline capture — see [Learning Loop](#learning-loop).)
-- **Command Deck contract design.** The contract HTML is redesigned as an instrument panel — dark-first with a co-equal light theme and an explicit theme toggle — surfacing the execution plan as an operational dashboard (run bar, phase table, copyable commands) rather than a static document. The artifact is still titled "Mission Brief". (Replaced in 0.20.0 by the field-guide contract — see [What's New (0.20.0)](#whats-new-0200).)
-
-> **Breaking change — `contract-data.json` schema.** The contract now uses a `gates` object instead of the old `confidence` object. Regenerating an old contract fails fast:
->
-> ```
-> contract-data.json uses the pre-gate `confidence` schema; regenerate via ideation to produce the `gates` schema.
-> ```
->
-> Re-run ideation on the project to produce a `gates`-shaped `contract-data.json`. Specs also gained an optional per-phase `files` manifest field (the paths a phase touches), used by the autopilot/parallel engine to serialize file-overlapping phases.
 
 ## Skills
 
@@ -572,3 +532,60 @@ only the site build needs them.
 If you would rather not use pnpm, `node --run test` and
 `node --test 'workflows/*.test.mjs' 'scripts/*.test.mjs' 'test-fixtures/**/*.test.mjs'`
 both work directly.
+
+### Releasing
+
+Releases are automated. Commit messages are the input, so they have to be
+[Conventional Commits](https://www.conventionalcommits.org/) — `feat:`, `fix:`,
+`docs:`, `chore:`, and so on. On every push to `main`,
+[release-please](https://github.com/googleapis/release-please) opens or updates a
+single **"chore: release x.y.z"** pull request that accumulates everything
+unreleased. Nothing ships until you merge it; merging it tags the release,
+publishes the GitHub release, and writes [CHANGELOG.md](CHANGELOG.md).
+
+The version that matters lives in **`.claude-plugin/plugin.json`** — Claude Code
+resolves a plugin's version from that file first, and it is what decides whether
+an installed copy sees an update. release-please bumps it as part of the release
+PR, so it is never edited by hand. `marketplace.json` deliberately carries **no**
+`version`: when both are set, `plugin.json` silently wins, and a stale
+marketplace entry would be invisible drift.
+
+While the major version is still `0`, a breaking change bumps the minor
+(`0.20.0` → `0.21.0`) rather than jumping to `1.0.0` —
+`bump-minor-pre-major` in `release-please-config.json`. Going to 1.0 should be a
+decision, not a side effect of a commit message; when it is time, put
+`Release-As: 1.0.0` in a commit body.
+
+Which commit types produce which bump, and which appear in the changelog:
+
+| Commit                        | Version bump           | Changelog section       |
+| ----------------------------- | ---------------------- | ----------------------- |
+| `feat:`                       | minor (`0.21.0`)       | Features                |
+| `feat!:` / `BREAKING CHANGE:` | minor (pre-1.0)        | Features, with a notice |
+| `fix:`                        | patch (`0.20.1`)       | Bug Fixes               |
+| `perf:`                       | patch                  | Performance             |
+| `refactor:`                   | patch                  | Refactors               |
+| `docs:`                       | patch                  | Documentation           |
+| `chore:` `test:` `ci:` `build:` `style:` | patch       | not shown               |
+
+Note the last row: marking a type `hidden` in `release-please-config.json` keeps
+it out of the changelog but does **not** stop it counting toward the version, so
+a run of nothing but `chore:` commits still proposes a patch release. That is
+release-please's behaviour, not a setting we chose.
+
+**Do not squash-merge into `main`.** The changelog is built from the commits that
+actually land on `main`, and release-please does not recover the individual
+commits from a squashed body — it reads the subject line and stops. Squashing a
+twenty-commit branch therefore produces a release whose entire changelog is one
+line. Rebase-merge (or a merge commit) puts each commit on `main` and gives the
+release a real set of entries. This is the one repo setting the release pipeline
+depends on.
+
+For the same reason, **don't put version numbers in commit subjects.** Earlier
+releases used `feat: … (v0.19.0)` when the bump was manual; release-please owns
+the version now, and a subject like that becomes a changelog entry carrying a
+stale version string.
+
+Because the release PR is pushed with the default `GITHUB_TOKEN`, `ci.yml` does
+not re-run on it. That PR only ever contains a version string and changelog
+prose, both already tested on the commits that produced them.
