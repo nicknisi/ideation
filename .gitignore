@@ -7,5 +7,20 @@ node_modules/
 .impeccable/
 PRODUCT.md
 DESIGN.md
+# The impeccable skill installs a full copy of itself into all three of these.
+# This repo publishes a plugin to a marketplace: a stray `git add -A` would
+# vendor ~50 files of someone else's skill into it. Ignored, not deleted.
+.claude/skills/
+.github/skills/
+.github/hooks/
 test-fixtures/**/out/
-docs/ideation/
+# Ideation working artifacts stay local — but the learning store is meant to be
+# committed and shared, so it is explicitly un-ignored. (`docs/ideation/*` not
+# `docs/ideation/`: git cannot re-include a file under an ignored directory.)
+docs/ideation/*
+!docs/ideation/learnings.md
+
+# Astro site build output and cache (the site is built by Cloudflare from source)
+site/dist/
+site/.astro/
+site/.wrangler/

@@ -47,7 +47,10 @@
   "successCriteria": [
     {
       "criterion": "completed = [P1, P2]; failed = [P3]; skipped = [P4].",
-      "check": "node --test test-fixtures/orchestration/graph.test.mjs — all tests pass"
+      "check": {
+        "cmd": "node --test test-fixtures/orchestration/graph.test.mjs",
+        "expect": "all tests pass"
+      }
     }
   ],
   "scope": {

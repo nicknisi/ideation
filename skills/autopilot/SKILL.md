@@ -35,13 +35,13 @@ parse `RESULT:` text yourself — the engine returns a structured summary.**
 
 1. Resolve the contract path (argument or glob). Derive the **project directory** from it — for `docs/ideation/my-project/contract.md`, that's `docs/ideation/my-project/`.
 2. Read the sibling **`contract-data.json`** in that directory. Its `execution.phases` array already holds each phase's `title`, `specPath`, `prereqs`, and `risk` — this is the manifest. Also read `projectName`, `slug`, `approvalMode` (`"express"` = single-confirmation approval, no per-artifact human review — drives `strict` in Step 3), and `branch`.
-3. **If `branch` is set, re-assert the checkout before anything else touches git:** `git branch --show-current` — if it differs, `git switch <branch>` (create with `git switch -c` if missing). This must happen **before** the Step 2 pre-pass: both the skip detection and the phase commits belong on the isolation branch, on every entry, including fresh-session re-runs where the user has since switched away.
+3. **If `branch` is set, re-assert the checkout before anything else touches git:** `git branch --show-current` — if it differs, `git switch <branch>` (create with `git switch -c` if missing). This must happen **before** the Step 2 pre-pass: both the skip detection and the phase commits belong on the isolation branch, on every entry, including fresh-session re-runs where the user has since switched away. (Isolation-branch *semantics* — creation, resume-vs-fresh, delete-not-revert — are owned by ideation's Express finish path; this step only re-asserts the checkout.)
 4. **Validate** each `specPath` exists. If any are missing, report which and ask the user whether to continue without them or abort.
 5. **Fallback if `contract-data.json` is absent** (older projects with only `contract.md`): parse the `## Execution Plan` section of `contract.md` — phase titles, spec paths from the `/ideation:execute-spec <path>` lines, and blocking relationships from the dependency graph — and build the same phase list. Also read the header's `**Approval**` line: `Express` → treat as `approvalMode: "express"` (set `strict` in Step 3). If you cannot parse it, abort with guidance to re-run ideation.
 
 ## Step 2: Git Skip Pre-Pass
 
-Run `git log --oneline --grep="<slug>"` (or `git log --oneline -F --grep="<specPath>"`) to find commits that already reference this project's spec files. **Match on the slug-qualified spec path, not the bare filename** — `spec-phase-1.md` alone collides across projects (every ideation project has one), so a commit from a different project must not be mistaken for this one's. Treat a phase as complete only when a commit references its `specPath` including the project directory/slug (e.g. `<slug>/spec-phase-1.md`). Add each matched phase's **title** to a `completedPhases` list. Report what's being skipped:
+For each phase, run `git log --oneline -F --grep="<specPath>"` with the **full slug-qualified spec path** (e.g. `docs/ideation/<slug>/spec-phase-1.md`). That exact form only — a loose `--grep="<slug>"` false-positives on any commit that merely mentions the project, and a bare filename (`spec-phase-1.md`) collides across projects, since every ideation project has one. The grep is sound because `execute-spec`'s Commit section **requires** the slug-qualified `specPath` verbatim in every phase commit body. Treat a phase as complete only on a match; add each matched phase's **title** to a `completedPhases` list. Report what's being skipped:
 
 ```
 Skipping "Phase title" (already committed: abc1234)
@@ -73,7 +73,7 @@ Assemble the manifest exactly per `${CLAUDE_PLUGIN_ROOT}/workflows/README.md`:
 ```
 
 - `prereqs` are **phase titles** — pass `contract-data.json`'s values straight through; do not remap to indices.
-- `strict: true` (express contracts only) makes the engine dispatch each phase as `/ideation:execute-spec --headless --strict` — fail-closed at scout HOLD and reviewer failure, because no human reviewed the specs. Omit or set `false` for interactively approved contracts.
+- `strict: true` (express contracts only) makes the engine run each phase fail-closed, because no human reviewed the specs. The decision-point semantics live in **execute-spec's headless/strict resolution matrix** (`${CLAUDE_PLUGIN_ROOT}/skills/execute-spec/SKILL.md`) — do not restate them here. Omit or set `false` for interactively approved contracts.
 - Before invoking, sanity-check that every `prereqs` entry matches some phase `title` (or a `completedPhases` entry). If a title doesn't resolve, it's a manifest bug — report it rather than dispatching a broken graph (the engine will otherwise throw "Unknown prereq").
 
 ### Populate `files` from each spec's File Changes table
@@ -103,11 +103,15 @@ repo use consistent relative paths; no resolution or normalization).
 
 The engine runs in the background and notifies on completion. Watch progress with `/workflows`.
 
-**If the `Workflow` tool is unavailable** (feature not enabled in this Claude Code): degrade gracefully — tell the user, then walk the phases yourself in dependency order using `/ideation:execute-spec <specPath>` per phase (the contract's per-phase commands), committing each before the next. For express contracts, carry the `--strict` semantics into this path too: a scout HOLD or a reviewer failure stops the phase rather than proceeding or committing validation-only. This is the legacy manual path.
+**If the `Workflow` tool is unavailable** (feature not enabled in this Claude Code): degrade gracefully — tell the user, then walk the phases yourself in dependency order using `/ideation:execute-spec <specPath>` per phase (the contract's per-phase commands), committing each before the next. For express contracts, carry the `--strict` semantics into this path too (per execute-spec's resolution matrix). This is the legacy manual path.
 
 ## Step 5: Handle the Summary
 
-The engine returns `{ completed, failed, skipped, results }`. Print the three buckets.
+The engine returns `{ completed, noops, failed, skipped, results }`. Print all four buckets.
+
+- **`noops` are done, not failed.** A NO-OP phase produced a genuinely empty diff (the repo already satisfies its spec) — review was skipped, nothing was committed, and dependents were not blocked. Treat `completed + noops` as the set needing no further work; re-dispatching a no-op phase loops forever.
+- **Each entry in `results` carries `reviewStatus`** (`passed` / `validation-only` / `failed` / `skipped-empty-diff` / `not-run`), a `warnings` array that leads its `summary` string, and `reviewCycles`. Any `reviewStatus` other than `passed` on a committed phase means unreviewed or partially reviewed code landed — that must reach the Completion Report, never be collapsed into a bare PASS.
+- **Effort tracks risk** (informational — the engine handles it): a phase with `risk: "high"` runs its build and fix stages at `effort: 'high'`; review always runs at `effort: 'high'`. `risk` comes straight from `contract-data.json`, so it is worth passing through accurately.
 
 **If `failed` is empty:** proceed to the Completion Report.
 
@@ -121,7 +125,7 @@ Options:
 - "Accept and finish" — Treat failures as acknowledged; report and finish.
 ```
 
-**Unattended** (driven by a `/goal` wrapper, or any run with no interactive user): do not block on `AskUserQuestion` — apply "Stop here" semantics: report the three buckets and halt. Completed phases are already committed and durable; retry belongs to whoever is driving (a `/goal` wrapper re-runs this skill, and the Step 2 git pre-pass resumes past everything committed).
+**Unattended** (driven by a `/goal` wrapper, or any run with no interactive user): do not block on `AskUserQuestion` — apply "Stop here" semantics: report the four buckets and halt. Completed phases are already committed and durable; retry belongs to whoever is driving (a `/goal` wrapper re-runs this skill, and the Step 2 git pre-pass resumes past everything committed).
 
 **If "Retry failed phases":**
 
@@ -134,14 +138,20 @@ Options:
 
 ## Completion Report
 
-After the engine finishes (or execution stops), present a summary:
+After the engine finishes (or execution stops), present a summary. **Warnings come first**: if any result has a non-empty `warnings` array or a `reviewStatus` other than `passed`/`skipped-empty-diff`, lead the report with them — a validation-only commit prints its `WARNING — UNREVIEWED CODE COMMITTED` line verbatim at the top, never a bare PASS. Reporting that truth is the point of `reviewStatus`.
 
 ```markdown
 ## Execution Complete
 
+{⚠ one line per warning, verbatim from results[].warnings — omit the block only when there are none}
+
 ### Completed Phases
 
-- {title} — {commitHash from results}
+- {title} — {commitHash} (review: {reviewStatus}, {reviewCycles} cycle(s))
+
+### No-Op Phases
+
+- {title} — spec already satisfied; nothing to commit
 
 ### Skipped Phases
 
@@ -153,10 +163,12 @@ After the engine finishes (or execution stops), present a summary:
 
 ### Summary
 
-{N} of {M} phases completed successfully.
+{N} of {M} phases completed successfully ({K} no-ops need no further work).
 ```
 
-If all phases completed:
+**Then verify the contract** (when `contract-data.json` exists): run `node ${CLAUDE_PLUGIN_ROOT}/scripts/verify.mjs {projectDir}/contract-data.json` and quote its final line — `VERIFY {slug}: commits=A/B pass=N fail=M judgment=K` — verbatim in the report. Exit 0 (fail=0 and commits=B/B) is the completion predicate; if the script cannot run, say "verification not run", never "Complete" on the engine summary alone. Scope caveat: it checks this one contract's acceptance criteria, not repo health.
+
+If all phases completed and verification passed:
 
 ```
 All {N} phases complete. Run `git log --oneline -{N}` to see the commits.
@@ -184,6 +196,6 @@ the lifecycle rules in the filter reference.
 1. **The engine orchestrates; the skill prepares and gates.** Wave planning, parallelism, and result handling are deterministic JS in `workflows/execute-contract.mjs`. This skill builds the `args`, runs the git pre-pass, and handles the human-in-the-loop moments the sandbox can't.
 2. **No wave math, no `RESULT:` parsing here.** Pass `prereqs` through untouched; read the structured summary the engine returns.
 3. **The contract is the source of truth** — phase order, dependencies, and spec paths all come from `contract-data.json` (`contract.md` Execution Plan as fallback).
-4. **Subagents get clean contexts** — the engine dispatches each phase as a fresh-context subagent running `/ideation:execute-spec --headless`. No phase inherits another's context.
+4. **Subagents get clean contexts** — the engine runs each phase as five sibling agent stages (scout → build → review ⇄ fix → commit), each a fresh-context agent; the build stage runs execute-spec's build+verify halves as `--headless`, or `--headless --strict` when the manifest sets `strict` (semantics: execute-spec's resolution matrix). No phase inherits another's context.
 5. **Gate on failures, not successes** — the happy path is fully hands-off; the engine runs everything still reachable and only the skill pauses, after the run, when something failed.
 6. **Already-committed phases are durable** — each phase commits independently. The git pre-pass makes resume work across sessions; `resumeFromRunId` makes it instant within a session.

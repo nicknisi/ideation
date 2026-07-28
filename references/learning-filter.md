@@ -59,6 +59,13 @@ sibling of the project directories, **not** per-project and **not** inside the
 plugin directory; learnings are codebase-specific and the plugin dir shouldn't
 accumulate user state).
 
+The store is meant to be **committed and shared with the repo** — but that only
+happens if git can see it. If the repo ignores `docs/ideation/`, un-ignore this
+one file (`docs/ideation/*` plus `!docs/ideation/learnings.md` — git cannot
+re-include a file under an ignored *directory*), otherwise the sharing intent
+silently fails and the store stays machine-local. This plugin's own repo made
+exactly that mistake for its first several releases.
+
 1. **Read the existing `learnings.md` first** (if it exists). If it does not
    exist, create it with this header:
 

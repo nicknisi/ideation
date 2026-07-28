@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node >= 22.18 required: contract-gen.ts runs via native type-stripping, no tsx/tsc.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # Still no install step. The root package.json declares scripts and a
+      # packageManager and nothing else — zero dependencies — and `node --run`
+      # is Node's own script runner, so this needs no package manager at all.
+      # Using the script rather than repeating the command keeps CI and a local
+      # `pnpm test` from drifting apart.
+      - name: Run tests
+        run: node --run test
+
+      - name: Render orchestration fixture (contract-gen smoke test)
+        run: node scripts/contract-gen.ts --input test-fixtures/orchestration/contract-data.json --output /tmp/ci.html
+
+  # The guide derives its command table from skills/*/SKILL.md and its gates
+  # from references/confidence-rubric.md, and throws if either disagrees with
+  # what the page claims. That makes the build the drift test — so it has to
+  # run here, or a skill could ship undocumented and nothing would notice.
+  site:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+
+      # `defaults.run.working-directory` only applies to `run` steps, so this
+      # action still resolves package.json from the repo root — which has none.
+      # The version itself comes from site/package.json's `packageManager`.
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: site/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: site/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build the site (also the guide's drift check)
+        run: pnpm build

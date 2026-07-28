@@ -1,0 +1,182 @@
+@import 'tailwindcss';
+
+/* ═══════════════════════════════════════════════════════════════════
+   The ideation field guide, as Tailwind theme tokens.
+
+   These values are the committed visual world, copied verbatim from the
+   marketing page (public/index.html): paper ground, ink, ONE cobalt
+   accent, serif display, letterpress offset chips, hairline rules, 3px
+   radii, graphite dark deck — never navy.
+
+   Tailwind's default palette is cleared on purpose. If `bg-blue-500` is
+   reachable someone will reach for it, and the whole point of this world
+   is that it does not look like a default.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  color-scheme: light;
+  --paper: #f7f7f3;
+  --surface-1: #fcfcfa;
+  --surface-2: #ffffff;
+  --wash: #ebebe4;
+  --line: #dededf;
+  --line-strong: #a6a6a0;
+  --ink: #191b1d;
+  --muted: #50555a;
+  --faint: #75797d;
+  --accent: #2b46c7;
+  --accent-tint: #e6eafb;
+  --go: #187a48;
+  --go-tint: #e0f0e7;
+  --caution: #94660a;
+  --caution-tint: #f5ecd2;
+  --danger: #bb3a2c;
+  --danger-tint: #f8e2de;
+  --press-line: #dededf;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --paper: #131417;
+    --surface-1: #1a1c20;
+    --surface-2: #202329;
+    --wash: #0c0d0f;
+    --line: #2d3036;
+    --line-strong: #4c505a;
+    --ink: #e9e9e4;
+    --muted: #a8aaa6;
+    --faint: #82858a;
+    --accent: #93a7ff;
+    --accent-tint: #1e2542;
+    --go: #63bf8d;
+    --go-tint: #15291e;
+    --caution: #d2ad55;
+    --caution-tint: #2b2513;
+    --danger: #e0796e;
+    --danger-tint: #331714;
+    --press-line: #0c0d0f;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --paper: #131417;
+  --surface-1: #1a1c20;
+  --surface-2: #202329;
+  --wash: #0c0d0f;
+  --line: #2d3036;
+  --line-strong: #4c505a;
+  --ink: #e9e9e4;
+  --muted: #a8aaa6;
+  --faint: #82858a;
+  --accent: #93a7ff;
+  --accent-tint: #1e2542;
+  --go: #63bf8d;
+  --go-tint: #15291e;
+  --caution: #d2ad55;
+  --caution-tint: #2b2513;
+  --danger: #e0796e;
+  --danger-tint: #331714;
+  --press-line: #0c0d0f;
+}
+
+@theme inline {
+  /* Clear Tailwind's palette, then re-add only what the world contains.
+     `inline` keeps the utilities pointing at the vars above, so the theme
+     toggle flips at runtime instead of being baked in at build time. */
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-paper: var(--paper);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-wash: var(--wash);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-tint: var(--accent-tint);
+  --color-go: var(--go);
+  --color-go-tint: var(--go-tint);
+  --color-caution: var(--caution);
+  --color-caution-tint: var(--caution-tint);
+  --color-danger: var(--danger);
+  --color-danger-tint: var(--danger-tint);
+
+  --font-serif:
+    'Iowan Old Style', 'Palatino Nova', Palatino, 'Book Antiqua', Georgia,
+    'Times New Roman', serif;
+  --font-mono:
+    'Berkeley Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, Consolas,
+    monospace;
+  --font-sans:
+    system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial,
+    sans-serif;
+
+  --radius-guide: 3px;
+  --radius-guide-lg: 4px;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  html,
+  body {
+    overflow-x: clip;
+  }
+  body {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: 1.0625rem;
+    line-height: 1.7;
+    color: var(--ink);
+    background: var(--paper);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.008em;
+    text-wrap: balance;
+    margin: 0;
+  }
+  ::selection {
+    background: var(--accent-tint);
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+/* The letterpress offset this world uses instead of a soft shadow. */
+@utility press {
+  box-shadow: 3px 3px 0 0 var(--press-line);
+}
+
+/* Small uppercase mono label — for labels and measurements, never as costume. */
+@utility label-mono {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+/* Paper grain: one inline SVG turbulence tile, no requests. */
+@utility grain {
+  &::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}

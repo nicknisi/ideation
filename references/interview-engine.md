@@ -22,6 +22,23 @@ While the sweep runs, acknowledge the brain dump and state what looks strong and
 
 **Cap at 3 sweep agents.** Scope each agent's prompt to the brain dump's stated area; beyond 3 agents, latency and token cost outrun the value for an interview opener. Sweep findings stay in conversation context — the "do not write exploration findings to files" rule below applies to the sweep too.
 
+### Carry a brainstorm conclusion
+
+When the current conversation already contains a brainstorm conclusion — a settled decision with its assumptions, rejected alternatives, and explicit exclusions, typically from `/ideation:brainstorm` — carry it as starting evidence instead of re-asking what it settled. Say so visibly at intake, one line, no banner (same convention as the learning line below):
+
+```
+Carrying brainstorm conclusion: {decision, one clause} — {n} rejected alternatives, {m} exclusions
+```
+
+The pieces map onto structures the contract already has:
+
+- **Rejected alternatives** are `decisions` entries — `{decision, rejected, reason}` — captured now, at the moment they exist, not reconstructed later.
+- **The settled problem** is Problem Clarity evidence when it's concrete (who, what, when, impact); cite the brainstorm as the artifact.
+- **"Explicitly out"** items become `scope.outOfScope` with their reasons, covering Scope Boundaries' exclusion half; the in-scope tiers still need the interview.
+- **Assumptions** are Consistency input — check later answers against them and surface contradictions.
+
+**A brainstorm conclusion is the user's stated intent, not verified evidence.** It can seed a gate but cannot mark one `ready` on its own where the rubric demands an artifact. In practice: Problem Clarity is the only gate a strong conclusion plausibly closes by itself; Scope Boundaries arrives half-done (exclusions yes, tiers no); Goal Definition rarely survives the rubric's metric requirement; Success Criteria never does — a conversation about *whether* produces no runnable checks, so always interview for it. The rubric's "when unsure, not-ready" rule still governs. The payoff is a shorter interview aimed only at the open gates — never a skipped one.
+
 ### Read accumulated learnings
 
 If `docs/ideation/learnings.md` exists, read it. It holds generalizable spec-gap and interview patterns captured from completed ideation projects (lifecycle: `${CLAUDE_PLUGIN_ROOT}/references/learning-filter.md`). Where a recorded pattern is relevant to this project's scope, apply it — ask the question it implies, or carry its spec implication into artifact generation — and **say so visibly at that moment**, one line, no banner:
