@@ -1,0 +1,14 @@
+{
+  "name": "ideation-plugin",
+  "private": true,
+  "packageManager": "pnpm@11.10.0",
+  "scripts": {
+    "test": "node --test 'workflows/*.test.mjs' 'scripts/*.test.mjs' 'test-fixtures/**/*.test.mjs'",
+    "dev": "pnpm -C site dev",
+    "build": "pnpm -C site build",
+    "preview": "pnpm -C site preview",
+    "deploy": "pnpm -C site deploy",
+    "deploy:check": "pnpm -C site deploy:check",
+    "site:install": "pnpm -C site install"
+  }
+}

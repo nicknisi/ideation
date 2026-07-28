@@ -17,6 +17,9 @@ pnpm deploy:check   # validate wrangler.jsonc, no credentials needed
 pnpm exec wrangler dev   # serve dist/ through the Workers runtime, with _headers
 ```
 
+The repo root delegates, so `pnpm dev`, `pnpm build`, `pnpm deploy` and
+`pnpm deploy:check` all work from one directory up too.
+
 `pnpm dev` and the build route identically. That was not free: the walkthrough
 originally lived in `public/index.html`, which Vite special-cases as an entry
 template, so `/` 404'd in dev while the build served it fine. Astro supports

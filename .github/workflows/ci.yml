@@ -15,10 +15,13 @@ jobs:
         with:
           node-version: 24
 
-      # No npm install — the plugin itself has no package.json and zero
-      # dependencies. Only site/ has any, and it builds in a separate job.
+      # Still no install step. The root package.json declares scripts and a
+      # packageManager and nothing else — zero dependencies — and `node --run`
+      # is Node's own script runner, so this needs no package manager at all.
+      # Using the script rather than repeating the command keeps CI and a local
+      # `pnpm test` from drifting apart.
       - name: Run tests
-        run: node --test 'workflows/*.test.mjs' 'scripts/*.test.mjs' 'test-fixtures/**/*.test.mjs'
+        run: node --run test
 
       - name: Render orchestration fixture (contract-gen smoke test)
         run: node scripts/contract-gen.ts --input test-fixtures/orchestration/contract-data.json --output /tmp/ci.html

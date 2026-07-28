@@ -549,3 +549,26 @@ For manual control, run specs individually:
 /plugin marketplace add nicknisi/ideation
 /plugin install ideation@ideation
 ```
+
+## Working on this repo
+
+Everything runs from the top level:
+
+```bash
+pnpm test           # the whole suite — also exactly what CI runs
+pnpm dev            # the site at localhost:4321 (/ and /guide/)
+pnpm build          # → site/dist
+pnpm deploy:check   # validate wrangler.jsonc, no credentials needed
+pnpm site:install   # install the site's dependencies
+```
+
+**The plugin itself still has zero dependencies.** The root `package.json`
+declares scripts and a pinned `packageManager` and nothing else — no
+`dependencies`, no `devDependencies` — so there is nothing to install before
+`pnpm test` works, and CI runs it with `node --run test`, Node's own script
+runner, without a package manager at all. Only `site/` has dependencies, and
+only the site build needs them.
+
+If you would rather not use pnpm, `node --run test` and
+`node --test 'workflows/*.test.mjs' 'scripts/*.test.mjs' 'test-fixtures/**/*.test.mjs'`
+both work directly.
