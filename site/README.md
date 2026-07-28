@@ -11,24 +11,44 @@ The plugin's public site. Two pages, one deploy:
 
 ```sh
 pnpm install
-pnpm dev      # http://localhost:4321
-pnpm build    # → dist/
+pnpm dev            # http://localhost:4321 — / and /guide/
+pnpm build          # → dist/
+pnpm deploy:check   # validate wrangler.jsonc, no credentials needed
+pnpm exec wrangler dev   # serve dist/ through the Workers runtime, with _headers
 ```
 
-## Cloudflare settings
+`pnpm dev` and the build route identically. That was not free: the walkthrough
+originally lived in `public/index.html`, which Vite special-cases as an entry
+template, so `/` 404'd in dev while the build served it fine. Astro supports
+plain `.html` files as pages, so it lives in `src/pages/index.html` and passes
+through byte-identically.
 
-Connect the repo and set:
+## Deploying
 
-| Setting              | Value        |
-| -------------------- | ------------ |
-| Root directory       | `site`       |
-| Build command        | `pnpm build` |
-| Build output         | `dist`       |
-| Node version         | `24`         |
+Config is in `wrangler.jsonc` rather than dashboard state, so it is reviewable
+and can be validated locally. There is no `main` worker script — this is a
+static assets deploy, and Astro needs no Cloudflare adapter for it.
 
-No adapter is needed — this is a static build. The custom domain is
-`ideation.engineering`; `nicknisi.github.io/ideation/` still serves a redirect
-stub from `docs/index.html` for anyone holding the old URL.
+```sh
+pnpm deploy         # astro build && wrangler deploy
+```
+
+`not_found_handling: "404-page"` serves `dist/404.html` for unknown paths.
+`public/_headers` is copied to the output root and applies a CSP plus the usual
+hardening; both Pages and Workers static assets honour it.
+
+If you deploy through the **Pages** Git integration instead of `wrangler`, no
+config file is required — set root directory `site`, build command `pnpm build`,
+output `dist`, Node 24 in the dashboard.
+
+The custom domain is `ideation.engineering`. `nicknisi.github.io/ideation/`
+still serves a redirect stub from `docs/index.html` for anyone holding the old
+URL.
+
+Verified through the Workers runtime rather than assumed: `/` and `/guide/`
+return 200, `/nope` returns 404 and renders the custom page, all five headers
+arrive, and the CSP does not break the inline styles and scripts every page
+here depends on.
 
 ## Why the build is also a test
 
