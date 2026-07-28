@@ -780,24 +780,205 @@ html.clip .copy { display: inline-block; }
 .feature .icon .lit { fill: var(--accent); stroke: var(--accent); }
 
 /* ── the loop at a glance ──────────────────────── */
-.flowmap { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 4px; }
-.hop {
-  font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  color: var(--ink);
-  text-decoration: none;
-  background: var(--surface-2);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  box-shadow: var(--press);
-  padding: 6px 14px;
-  white-space: nowrap;
+/* ── The loop, as a machine you can interrogate ─────────────────────
+   This replaced a flowmap of seven identical anchors. Every move had
+   the same weight, the row wrapped so "one loop" read as two, and the
+   labels were monospace for no reason — none of them is a command.
+   What makes this a process rather than a checklist is that each move
+   can refuse to continue, so that is what the section is now about:
+   the rail selects, the panel explains, and one switch shows every
+   refusal at once. */
+.loopmap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+html.js .loopmap {
+  grid-template-columns: minmax(0, 14.5rem) minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
 }
-.hop:hover { translate: 1px 1px; box-shadow: 2px 2px 0 0 var(--line); color: var(--accent); }
-.hop .n { color: var(--faint); margin-right: 6px; font-size: 0.6875rem; }
-.hop-arrow { color: var(--faint); font-family: var(--font-mono); padding: 0 4px; user-select: none; }
-.hop.loopback { border-style: dashed; border-color: var(--accent); color: var(--accent); box-shadow: none; }
-.hop.loopback:hover { background: var(--accent-tint); translate: none; }
+/* Grid items default to min-width:auto, so one long command string in
+   the panel would set a floor the whole page has to scroll to reach. */
+.loopmap > * { min-width: 0; }
+
+/* Column 1 is the return arc's gutter and column 2 the moves, so the
+   arc spans rows 2–7 exactly — no measuring, no JS geometry. */
+.loop-rail { display: none; }
+html.js .loop-rail {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  column-gap: 7px;
+  row-gap: 3px;
+  padding-left: 3px;
+}
+.loop-step {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0 8px;
+  align-items: baseline;
+  text-align: left;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: var(--ink);
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 6px 9px;
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+.loop-step .n {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--faint);
+}
+.loop-step:hover { border-color: var(--line-strong); background: var(--surface-2); }
+.loop-step[aria-selected='true'] {
+  background: var(--surface-2);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: var(--press);
+}
+.loop-step[aria-selected='true'] .n { color: var(--accent); }
+.loop-step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* the stop line, revealed by the switch */
+.loop-step .stop {
+  grid-column: 2;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--danger);
+  margin-top: 3px;
+  display: none;
+}
+/* --muted, not --faint: this is 12px prose, and --faint on --surface-1 is
+   4.27:1 — under the 4.5:1 floor. --muted is 7.3:1. */
+.loop-step .stop.none { color: var(--muted); }
+[data-stops='on'] .loop-step .stop { display: block; }
+
+/* The return arc: 07 hands back to 02, drawn as a bracket in the gutter.
+   It spans rows 2–7 exactly and takes no vertical margin on purpose — an
+   inset tuned to centre on the labels drifts the moment the switch makes
+   every row taller. Bracketing the six repeated moves is both stable and
+   the truer statement. */
+.loop-arc {
+  grid-column: 1;
+  grid-row: 2 / 8;
+  position: relative;
+  margin: 0;
+  border: 1px dashed var(--accent);
+  border-right: 0;
+  border-radius: var(--radius) 0 0 var(--radius);
+  opacity: 0.7;
+}
+.loop-arc svg { position: absolute; top: -4px; right: -1px; color: var(--accent); }
+
+/* the panel */
+.loop-panel {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 15px 17px 16px;
+}
+/* Panels run 244–361px, so switching moves would jog the page. The floor is
+   the rail's own height, which starts the two columns level. */
+html.js .loop-panel { min-height: 16.5rem; }
+html.js .loop-panel + .loop-panel { margin-top: 0; }
+.loopmap .loop-panel + .loop-panel { margin-top: 12px; }
+.loop-panel h3 {
+  font-size: 1.0625rem;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.loop-panel h3 .n {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+}
+.loop-panel .who {
+  font-style: italic;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+.loop-panel dl { margin: 13px 0 0; display: grid; grid-template-columns: 4.4rem minmax(0, 1fr); gap: 8px 14px; }
+.loop-panel dt {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding-top: 0.28em;
+}
+.loop-panel dd { margin: 0; font-size: 0.9375rem; line-height: 1.55; color: var(--muted); }
+.loop-panel dd strong { color: var(--ink); font-weight: 600; }
+.loop-panel dd code {
+  font-family: var(--font-mono);
+  font-size: 0.8125em;
+  background: var(--wash);
+  border-radius: 2px;
+  padding: 0.1em 0.34em;
+}
+.loop-panel dt.x { color: var(--danger); }
+.loop-panel dd.x { color: var(--ink); }
+.loop-panel dt.x.quiet { color: var(--faint); }
+.loop-panel dd.x.quiet { color: var(--muted); }
+
+/* the switch */
+.loop-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+html:not(.js) .loop-switch { display: none; }
+/* Without JS there is no rail to pick from and no switch to throw, so the
+   intro must not promise either. */
+.if-js { display: none; }
+html.js .if-js { display: inline; }
+html.js .no-js { display: none; }
+.loop-switch .track {
+  width: 34px;
+  height: 19px;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  position: relative;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.loop-switch .track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--line-strong);
+  transition: translate 0.15s cubic-bezier(0.16, 1, 0.3, 1), background 0.15s ease;
+}
+.loop-switch[aria-pressed='true'] { color: var(--danger); }
+.loop-switch[aria-pressed='true'] .track { border-color: var(--danger); background: var(--danger-tint); }
+.loop-switch[aria-pressed='true'] .track::after { translate: 15px 0; background: var(--danger); }
+.loop-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+@media (max-width: 720px) {
+  html.js .loopmap { grid-template-columns: minmax(0, 1fr); }
+  html.js .loop-rail { grid-template-columns: 14px minmax(0, 1fr); }
+  .loop-panel dl { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+  .loop-panel dt { padding-top: 6px; }
+}
 
 /* ================================================================
    Motion. Everything below collapses to a static, fully readable
@@ -875,6 +1056,14 @@ html.clip .copy { display: inline-block; }
   html.js .on .phase .step:nth-child(5) { animation-delay: 1.6s; }
   html.js .on .phase .hash { opacity: 0; animation: pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) forwards; animation-delay: calc(var(--w, 0) * 0.6s + 1.9s); }
 
+  /* The section's one authored moment: throwing the switch wipes each
+     refusal in from the left, top to bottom, so the rail visibly turns
+     from a happy path into a list of exits. */
+  html.js .loopmap[data-stops='on'] .loop-step .stop {
+    animation: stopin 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--s, 0) * 45ms);
+  }
+
   .scrollhint .arrow { animation: nudge 1.8s ease-in-out infinite; }
 
   @keyframes rise    { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
@@ -889,6 +1078,7 @@ html.clip .copy { display: inline-block; }
   @keyframes draw    { to { stroke-dashoffset: 0; } }
   @keyframes fadein  { to { opacity: 1; } }
   @keyframes stepon  { to { opacity: 1; } }
+  @keyframes stopin  { from { opacity: 0; clip-path: inset(0 100% 0 0); } to { opacity: 1; clip-path: inset(0 0 0 0); } }
   @keyframes nudge   { 0%, 100% { transform: rotate(45deg) translate(0, 0); } 50% { transform: rotate(45deg) translate(3px, 3px); } }
 }
 </style>
@@ -1019,20 +1209,113 @@ html.clip .copy { display: inline-block; }
 <!-- ══════════ THE LOOP AT A GLANCE ══════════ -->
 <section class="vignette" id="how">
   <p class="chapter">The shape · The loop at a glance</p>
-  <h2>Seven moves, one loop</h2>
-  <p class="intro">This is the whole flow. Each step jumps into the illustrated story below, where it happens to a real (fake) feature.</p>
+  <h2>Seven moves, and what stops each one</h2>
+  <p class="intro">The steps are the easy part — every process has steps. What makes this one a process rather than a checklist is that <strong>each move can refuse to continue.</strong> <span class="if-js">Pick a move to see what it takes and what it emits, or throw the switch to see every refusal at once.</span><span class="no-js">Every move is below, with what it takes, what it emits, and what stops it.</span></p>
 
-  <nav class="flowmap st" style="--i:0" aria-label="The ideation loop">
-    <a class="hop" href="#ch1"><span class="n">01</span>brain dump</a><span class="hop-arrow">→</span>
-    <a class="hop" href="#ch2"><span class="n">02</span>interview</a><span class="hop-arrow">→</span>
-    <a class="hop" href="#ch3"><span class="n">03</span>critics</a><span class="hop-arrow">→</span>
-    <a class="hop" href="#ch4"><span class="n">04</span>contract &amp; the fork</a><span class="hop-arrow">→</span>
-    <a class="hop" href="#ch5"><span class="n">05</span>execution waves</a><span class="hop-arrow">→</span>
-    <a class="hop" href="#ch6"><span class="n">06</span>learnings</a><span class="hop-arrow">→</span>
-    <a class="hop loopback" href="#ch7"><span class="n">07</span>the next idea ↺</a>
-  </nav>
+  <button class="loop-switch st" style="--i:0" type="button" aria-pressed="false">
+    <span class="track" aria-hidden="true"></span>
+    <span class="lbl">show what stops it</span>
+  </button>
 
-  <p class="what st" style="--i:1">Planning artifacts are HTML — built for deciding. Specs are Markdown — built for executing. The routing between an express finish and full review is recommended <em>after</em> the interview, when the evidence to choose actually exists.</p>
+  <div class="loopmap st" style="--i:1">
+    <div class="loop-rail" role="tablist" aria-orientation="vertical" aria-label="The ideation loop">
+      <span class="loop-arc" aria-hidden="true"><svg width="9" height="8" viewBox="0 0 9 8"><path d="M9 4 L0 0 L2.4 4 L0 8 Z" fill="currentColor"/></svg></span>
+
+      <button class="loop-step" type="button" role="tab" id="lt1" aria-controls="lp1" aria-selected="true">
+        <span class="n">01</span><span class="nm">brain dump</span>
+        <span class="stop">can end in “no” — and writes nothing either way</span>
+      </button>
+      <button class="loop-step" type="button" role="tab" id="lt2" aria-controls="lp2" aria-selected="false" tabindex="-1">
+        <span class="n">02</span><span class="nm">interview</span>
+        <span class="stop">a gate without evidence keeps the interview open</span>
+      </button>
+      <button class="loop-step" type="button" role="tab" id="lt3" aria-controls="lp3" aria-selected="false" tabindex="-1">
+        <span class="n">03</span><span class="nm">critics</span>
+        <span class="stop">a blocker sends the plan back before it renders</span>
+      </button>
+      <button class="loop-step" type="button" role="tab" id="lt4" aria-controls="lp4" aria-selected="false" tabindex="-1">
+        <span class="n">04</span><span class="nm">contract &amp; the fork</span>
+        <span class="stop">nothing proceeds until you approve</span>
+      </button>
+      <button class="loop-step" type="button" role="tab" id="lt5" aria-controls="lp5" aria-selected="false" tabindex="-1">
+        <span class="n">05</span><span class="nm">execution waves</span>
+        <span class="stop">five exits, and none of them commit</span>
+      </button>
+      <button class="loop-step" type="button" role="tab" id="lt6" aria-controls="lp6" aria-selected="false" tabindex="-1">
+        <span class="n">06</span><span class="nm">learnings</span>
+        <span class="stop">nothing is recorded unless you accept it</span>
+      </button>
+      <button class="loop-step" type="button" role="tab" id="lt7" aria-controls="lp7" aria-selected="false" tabindex="-1">
+        <span class="n">07</span><span class="nm">the next idea ↺</span>
+        <span class="stop none">nothing — this one is the return arrow</span>
+      </button>
+    </div>
+
+    <div class="loop-panel" role="tabpanel" id="lp1" aria-labelledby="lt1" tabindex="0">
+      <h3><span class="n">01</span> Brain dump <span class="who">you talk, <code>/ideation</code> listens</span></h3>
+      <dl>
+        <dt>takes</dt><dd>Whatever you actually have — a paragraph, a rant, three half-ideas that don't reconcile. No template and no form to fill in.</dd>
+        <dt>emits</dt><dd>A position. <strong>What's strong and what's weak, named before the first question</strong> — not a summary of what you just said.</dd>
+        <dt class="x">refuses</dt><dd class="x"><code>/ideation:brainstorm</code> is the door before this one, for deciding <em>whether</em> at all. It can conclude “no” or “not yet”, and it writes no files either way — enforced by leaving <code>Write</code>, <code>Edit</code> and <code>Bash</code> off its tool list, not promised in prose.</dd>
+      </dl>
+    </div>
+
+    <div class="loop-panel" role="tabpanel" id="lp2" aria-labelledby="lt2" tabindex="0">
+      <h3><span class="n">02</span> Interview <span class="who">one question at a time, each with a recommended answer</span></h3>
+      <dl>
+        <dt>takes</dt><dd>The dump, plus your codebase — it reads the code instead of asking you about it.</dd>
+        <dt>emits</dt><dd>Five evidence gates, each backed by a concrete artifact, and <code>contract-data.json</code> once they all read <code>ready</code>.</dd>
+        <dt class="x">refuses</dt><dd class="x">A gate that can't be evidenced <strong>keeps the interview running</strong>. Generation starts when all five are ready — not before, and not because you're impatient.</dd>
+      </dl>
+    </div>
+
+    <div class="loop-panel" role="tabpanel" id="lp3" aria-labelledby="lt3" tabindex="0">
+      <h3><span class="n">03</span> Critics <span class="who">four adversarial lenses, dispatched in parallel</span></h3>
+      <dl>
+        <dt>takes</dt><dd>The draft plan, <em>before</em> it renders — while a fix is still a one-line JSON edit rather than a regenerate loop.</dd>
+        <dt>emits</dt><dd>Findings at three severities — <code>blocker</code>, <code>notable</code>, <code>nit</code> — through scope-creep, over-engineering, hidden-dependency and success-criteria.</dd>
+        <dt class="x">refuses</dt><dd class="x">A <code>blocker</code> sends the plan back. If it exposes a genuine unknown rather than a fixable defect, <strong>the interview reopens on that gate.</strong> The critics can't edit anything themselves — read-only is enforced by their tool list.</dd>
+      </dl>
+    </div>
+
+    <div class="loop-panel" role="tabpanel" id="lp4" aria-labelledby="lt4" tabindex="0">
+      <h3><span class="n">04</span> Contract &amp; the fork <span class="who">the only place a human has to act</span></h3>
+      <dl>
+        <dt>takes</dt><dd>The critiqued plan, with every rejected alternative already recorded so it stays rejected.</dd>
+        <dt>emits</dt><dd><code>contract.html</code> to decide on, <code>contract.md</code> and specs to execute against, and a run-mode verdict — walk away, watch it run, or just run the one spec.</dd>
+        <dt class="x">refuses</dt><dd class="x"><strong>You do.</strong> Nothing proceeds until you explicitly approve, and the scope tier you pick decides what reaches the specs at all. Everything outside it becomes a future consideration rather than quietly shipping.</dd>
+      </dl>
+    </div>
+
+    <div class="loop-panel" role="tabpanel" id="lp5" aria-labelledby="lt5" tabindex="0">
+      <h3><span class="n">05</span> Execution waves <span class="who">scout → build → review ⇄ fix → commit, per phase</span></h3>
+      <dl>
+        <dt>takes</dt><dd><code>contract.md</code> and the specs. Independent phases run as a wave; two phases naming the same file are serialised even inside one.</dd>
+        <dt>emits</dt><dd>One commit per phase, each naming its spec path so a resumed run skips it. Then <code>verify.mjs</code> runs the contract's own checks and prints <code>VERIFY {slug}: commits=A/B pass=N fail=M judgment=K</code>.</dd>
+        <dt class="x">refuses</dt><dd class="x"><strong>Five ways.</strong> A scout <code>HOLD</code> under <code>--strict</code>. A build that fails its validation. A reviewer that never returns a verdict. A review still <code>FAIL</code> on the third cycle — changes left unstaged, nothing committed. And a commit with no named file refuses rather than reaching for <code>git add -A</code>.</dd>
+      </dl>
+    </div>
+
+    <div class="loop-panel" role="tabpanel" id="lp6" aria-labelledby="lt6" tabindex="0">
+      <h3><span class="n">06</span> Learnings <span class="who">push, not poll — proposed when a run finishes</span></h3>
+      <dl>
+        <dt>takes</dt><dd>What actually happened, read out of the run's own implementation notes rather than remembered.</dd>
+        <dt>emits</dt><dd>Candidate lessons, deduped against what's already recorded so the same stumble isn't filed twice.</dd>
+        <dt class="x">refuses</dt><dd class="x">Nothing is written without you. <strong>Every candidate passes accept / edit / dismiss first</strong> — a learning store nobody curates is just a log.</dd>
+      </dl>
+    </div>
+
+    <div class="loop-panel" role="tabpanel" id="lp7" aria-labelledby="lt7" tabindex="0">
+      <h3><span class="n">07</span> The next idea <span class="who">the return arrow, not a gate</span></h3>
+      <dl>
+        <dt>takes</dt><dd><code>docs/ideation/learnings.md</code> — committed and shared with the repo, so it's the team's memory rather than one machine's private state.</dd>
+        <dt>emits</dt><dd>The next interview, which applies them out loud: <strong>last project's stumble becomes this project's first question.</strong></dd>
+        <dt class="x quiet">refuses</dt><dd class="x quiet">Nothing. This is the one move that can't stop you — it just points back at <strong>02</strong>.</dd>
+      </dl>
+    </div>
+  </div>
+
+  <p class="what st" style="--i:2">Planning artifacts are HTML — built for deciding. Specs are Markdown — built for executing. The routing between an express finish and full review is recommended <em>after</em> the interview, when the evidence to choose actually exists.</p>
 </section>
 
 <!-- ══════════ INSTALL ══════════ -->
@@ -1419,6 +1702,48 @@ html.clip .copy { display: inline-block; }
         });
       });
     });
+  }
+
+  // the loop: the rail selects a panel, one switch reveals every refusal.
+  // Without JS the rail is display:none and all seven panels stay visible,
+  // so the section still reads as a document.
+  var loopmap = document.querySelector('.loopmap');
+  if (loopmap) {
+    var tabs = [].slice.call(loopmap.querySelectorAll('.loop-step'));
+    var panels = [].slice.call(loopmap.querySelectorAll('.loop-panel'));
+    var pick = function (i, focus) {
+      tabs.forEach(function (t, j) {
+        t.setAttribute('aria-selected', i === j ? 'true' : 'false');
+        t.tabIndex = i === j ? 0 : -1;
+      });
+      panels.forEach(function (p, j) { p.hidden = i !== j; });
+      if (focus) tabs[i].focus();
+    };
+    tabs.forEach(function (t, i) {
+      t.style.setProperty('--s', i);
+      t.addEventListener('click', function () { pick(i, false); });
+      t.addEventListener('keydown', function (ev) {
+        var n = null;
+        if (ev.key === 'ArrowDown' || ev.key === 'ArrowRight') n = (i + 1) % tabs.length;
+        else if (ev.key === 'ArrowUp' || ev.key === 'ArrowLeft') n = (i - 1 + tabs.length) % tabs.length;
+        else if (ev.key === 'Home') n = 0;
+        else if (ev.key === 'End') n = tabs.length - 1;
+        if (n === null) return;
+        ev.preventDefault();
+        pick(n, true);
+      });
+    });
+    pick(0, false);
+
+    var sw = document.querySelector('.loop-switch');
+    if (sw) {
+      sw.addEventListener('click', function () {
+        var on = sw.getAttribute('aria-pressed') !== 'true';
+        sw.setAttribute('aria-pressed', on ? 'true' : 'false');
+        loopmap.dataset.stops = on ? 'on' : 'off';
+        sw.querySelector('.lbl').textContent = on ? 'hide what stops it' : 'show what stops it';
+      });
+    }
   }
 
   // gate pips double as page progress
