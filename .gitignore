@@ -23,3 +23,4 @@ docs/ideation/*
 # Astro site build output and cache (the site is built by Cloudflare from source)
 site/dist/
 site/.astro/
+site/.wrangler/
