@@ -1254,7 +1254,7 @@ html.js .no-js { display: none; }
     <div class="loop-panel" role="tabpanel" id="lp1" aria-labelledby="lt1" tabindex="0">
       <h3><span class="n">01</span> Brain dump <span class="who">you talk, <code>/ideation</code> listens</span></h3>
       <dl>
-        <dt>takes</dt><dd>Whatever you actually have — a paragraph, a rant, three half-ideas that don't reconcile. No template and no form to fill in.</dd>
+        <dt>takes</dt><dd>Whatever you actually have: a paragraph, a rant, three half-ideas that don't reconcile. No template and no form to fill in.</dd>
         <dt>emits</dt><dd>A position. <strong>What's strong and what's weak, named before the first question</strong> — not a summary of what you just said.</dd>
         <dt class="x">refuses</dt><dd class="x"><code>/ideation:brainstorm</code> is the door before this one, for deciding <em>whether</em> at all. It can conclude “no” or “not yet”, and it writes no files either way — enforced by leaving <code>Write</code>, <code>Edit</code> and <code>Bash</code> off its tool list, not promised in prose.</dd>
       </dl>
@@ -1263,7 +1263,7 @@ html.js .no-js { display: none; }
     <div class="loop-panel" role="tabpanel" id="lp2" aria-labelledby="lt2" tabindex="0">
       <h3><span class="n">02</span> Interview <span class="who">one question at a time, each with a recommended answer</span></h3>
       <dl>
-        <dt>takes</dt><dd>The dump, plus your codebase — it reads the code instead of asking you about it.</dd>
+        <dt>takes</dt><dd>The dump, plus your codebase: it reads the code instead of asking you about it.</dd>
         <dt>emits</dt><dd>Five evidence gates, each backed by a concrete artifact, and <code>contract-data.json</code> once they all read <code>ready</code>.</dd>
         <dt class="x">refuses</dt><dd class="x">A gate that can't be evidenced <strong>keeps the interview running</strong>. Generation starts when all five are ready — not before, and not because you're impatient.</dd>
       </dl>
@@ -1273,8 +1273,8 @@ html.js .no-js { display: none; }
       <h3><span class="n">03</span> Critics <span class="who">four adversarial lenses, dispatched in parallel</span></h3>
       <dl>
         <dt>takes</dt><dd>The draft plan, <em>before</em> it renders — while a fix is still a one-line JSON edit rather than a regenerate loop.</dd>
-        <dt>emits</dt><dd>Findings at three severities — <code>blocker</code>, <code>notable</code>, <code>nit</code> — through scope-creep, over-engineering, hidden-dependency and success-criteria.</dd>
-        <dt class="x">refuses</dt><dd class="x">A <code>blocker</code> sends the plan back. If it exposes a genuine unknown rather than a fixable defect, <strong>the interview reopens on that gate.</strong> The critics can't edit anything themselves — read-only is enforced by their tool list.</dd>
+        <dt>emits</dt><dd>Findings through scope-creep, over-engineering, hidden-dependency and success-criteria, at three severities: <code>blocker</code>, <code>notable</code>, <code>nit</code>.</dd>
+        <dt class="x">refuses</dt><dd class="x">A <code>blocker</code> sends the plan back. If it exposes a genuine unknown rather than a fixable defect, <strong>the interview reopens on that gate.</strong> The critics can't edit anything themselves: read-only is enforced by their tool list.</dd>
       </dl>
     </div>
 
@@ -1282,7 +1282,7 @@ html.js .no-js { display: none; }
       <h3><span class="n">04</span> Contract &amp; the fork <span class="who">the only place a human has to act</span></h3>
       <dl>
         <dt>takes</dt><dd>The critiqued plan, with every rejected alternative already recorded so it stays rejected.</dd>
-        <dt>emits</dt><dd><code>contract.html</code> to decide on, <code>contract.md</code> and specs to execute against, and a run-mode verdict — walk away, watch it run, or just run the one spec.</dd>
+        <dt>emits</dt><dd><code>contract.html</code> to decide on, <code>contract.md</code> and specs to execute against, and a run-mode verdict: walk away, watch it run, or just run the one spec.</dd>
         <dt class="x">refuses</dt><dd class="x"><strong>You do.</strong> Nothing proceeds until you explicitly approve, and the scope tier you pick decides what reaches the specs at all. Everything outside it becomes a future consideration rather than quietly shipping.</dd>
       </dl>
     </div>
@@ -1301,16 +1301,16 @@ html.js .no-js { display: none; }
       <dl>
         <dt>takes</dt><dd>What actually happened, read out of the run's own implementation notes rather than remembered.</dd>
         <dt>emits</dt><dd>Candidate lessons, deduped against what's already recorded so the same stumble isn't filed twice.</dd>
-        <dt class="x">refuses</dt><dd class="x">Nothing is written without you. <strong>Every candidate passes accept / edit / dismiss first</strong> — a learning store nobody curates is just a log.</dd>
+        <dt class="x">refuses</dt><dd class="x">Nothing is written without you. <strong>Every candidate passes accept / edit / dismiss first</strong>. A learning store nobody curates is just a log.</dd>
       </dl>
     </div>
 
     <div class="loop-panel" role="tabpanel" id="lp7" aria-labelledby="lt7" tabindex="0">
       <h3><span class="n">07</span> The next idea <span class="who">the return arrow, not a gate</span></h3>
       <dl>
-        <dt>takes</dt><dd><code>docs/ideation/learnings.md</code> — committed and shared with the repo, so it's the team's memory rather than one machine's private state.</dd>
+        <dt>takes</dt><dd><code>docs/ideation/learnings.md</code>, committed and shared with the repo, so it's the team's memory rather than one machine's private state.</dd>
         <dt>emits</dt><dd>The next interview, which applies them out loud: <strong>last project's stumble becomes this project's first question.</strong></dd>
-        <dt class="x quiet">refuses</dt><dd class="x quiet">Nothing. This is the one move that can't stop you — it just points back at <strong>02</strong>.</dd>
+        <dt class="x quiet">refuses</dt><dd class="x quiet">Nothing. This is the one move that can't stop you; it just points back at <strong>02</strong>.</dd>
       </dl>
     </div>
   </div>
