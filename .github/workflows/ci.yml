@@ -35,7 +35,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # `defaults.run.working-directory` only applies to `run` steps, so this
+      # action still resolves package.json from the repo root — which has none.
+      # The version itself comes from site/package.json's `packageManager`.
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: site/package.json
 
       - uses: actions/setup-node@v4
         with:
