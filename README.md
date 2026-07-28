@@ -1,6 +1,7 @@
 # Ideation Plugin
 
-> 🌱 **[nicknisi.github.io/ideation](https://nicknisi.github.io/ideation/)** — the pitch, install, and an animated walkthrough of the whole loop, on one self-contained page.
+> 🌱 **[ideation.engineering](https://ideation.engineering/)** — the pitch, install, and an animated walkthrough of the whole loop.
+> **[ideation.engineering/guide](https://ideation.engineering/guide/)** — which command to run for your situation, what each one writes, and the five gates the interview will not skip.
 
 Transform brain dumps into structured implementation artifacts through a conversational interview. HTML is used for interactive decision-making (the contract with evidence-gate readiness, visual comparisons during the interview). Markdown is used for reference documents (specs, PRDs) consumed directly by `/ideation:execute-spec`. Includes an execution workflow for implementing specs in fresh sessions with per-component feedback loops, adversarial plan critics, a Scout/Reviewer agent pipeline, and a push-based learning loop that captures lessons at completion and applies them visibly at future intakes.
 
@@ -282,7 +283,7 @@ search too...
 
 **Result:** an HTML contract for reviewing the plan, plus Markdown specs ready for `/ideation:execute-spec`.
 
-**Prefer to watch it happen?** The [ideation site](https://nicknisi.github.io/ideation/) walks one fictional feature — a bookmark garden — through the whole loop as an animated, self-contained page: the interview scoreboard, the plan critics, the routing fork, execution waves, and the learning the next interview inherits. After cloning: `open docs/index.html`.
+**Prefer to watch it happen?** The [ideation site](https://ideation.engineering/) walks one fictional feature — a bookmark garden — through the whole loop as an animated, self-contained page: the interview scoreboard, the plan critics, the routing fork, execution waves, and the learning the next interview inherits. After cloning: `open site/public/index.html`. The command reference lives at [ideation.engineering/guide](https://ideation.engineering/guide/).
 
 ## Full Workflow Diagram
 

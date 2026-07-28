@@ -19,3 +19,7 @@ test-fixtures/**/out/
 # `docs/ideation/`: git cannot re-include a file under an ignored directory.)
 docs/ideation/*
 !docs/ideation/learnings.md
+
+# Astro site build output and cache (the site is built by Cloudflare from source)
+site/dist/
+site/.astro/

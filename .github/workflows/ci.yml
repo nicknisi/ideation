@@ -15,9 +15,35 @@ jobs:
         with:
           node-version: 24
 
-      # No npm install — this repo has no package.json and zero dependencies.
+      # No npm install — the plugin itself has no package.json and zero
+      # dependencies. Only site/ has any, and it builds in a separate job.
       - name: Run tests
         run: node --test 'workflows/*.test.mjs' 'scripts/*.test.mjs' 'test-fixtures/**/*.test.mjs'
 
       - name: Render orchestration fixture (contract-gen smoke test)
         run: node scripts/contract-gen.ts --input test-fixtures/orchestration/contract-data.json --output /tmp/ci.html
+
+  # The guide derives its command table from skills/*/SKILL.md and its gates
+  # from references/confidence-rubric.md, and throws if either disagrees with
+  # what the page claims. That makes the build the drift test — so it has to
+  # run here, or a skill could ship undocumented and nothing would notice.
+  site:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: site/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build the site (also the guide's drift check)
+        run: pnpm build

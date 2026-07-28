@@ -1,0 +1,271 @@
+---
+import Guide from '../layouts/Guide.astro';
+import { joinCommands, STAGES, type Stage } from '../data/commands';
+import { readGates } from '../lib/gates';
+
+// Both throw at build time rather than rendering a stale claim.
+const commands = joinCommands();
+const gates = readGates();
+
+const stages: Stage[] = ['whether', 'plan', 'execute'];
+const byStage = (s: Stage) => commands.filter(c => c.stage === s);
+
+/** What a project leaves on disk. Convention, so it is authored — but every
+    path here appears in a real project directory, not an idealised one. */
+const artifacts = [
+  {
+    path: 'contract-data.json',
+    note: 'The source of truth. Every other artifact is rendered from it, and execution reads this rather than the HTML.',
+    kept: true,
+  },
+  {
+    path: 'contract.html',
+    note: 'The artifact you review and approve: gate evidence, scope tiers, the phase graph, the run model, and the decision log.',
+    kept: true,
+  },
+  {
+    path: 'contract.md',
+    note: 'The same contract as text. This is the path you hand to autopilot.',
+    kept: true,
+  },
+  {
+    path: 'spec-phase-1.md …',
+    note: 'One implementation spec per phase, numbered. Each carries the File Changes tables execution reads to work out which phases collide.',
+    kept: true,
+  },
+  {
+    path: 'context-map.md',
+    note: 'Written by the scout at run time and extended by each later phase — what it found in your codebase before anything was built.',
+    kept: false,
+  },
+  {
+    path: 'implementation-notes-phase-N.html',
+    note: 'What actually happened during a phase, including what the reviewer caught. The learning loop reads these at the end of a run.',
+    kept: false,
+  },
+];
+---
+
+<Guide
+  title="ideation — field guide"
+  description="Which ideation command to run for your situation, what each one writes, and the five evidence gates the interview will not proceed without."
+>
+  <main class="mx-auto max-w-[52rem] px-5 pb-24">
+    <!-- ══════════ masthead ══════════ -->
+    <header class="pt-16 pb-10">
+      <p class="label-mono text-accent">
+        <span class="mr-2 inline-block h-px w-6 translate-y-[-4px] bg-accent"></span
+        >the field guide
+      </p>
+      <h1 class="mt-3 text-[clamp(2.1rem,6vw,3.1rem)]">Which command, and what you get</h1>
+      <p class="mt-5 max-w-[64ch] text-muted">
+        Six commands, two of which Claude can reach for on its own. They divide by the
+        question you are actually asking: <em>whether</em> to build the thing,
+        <em>how</em> to build it, or getting it <em>built</em>. This page is the reference;
+        the <a
+          class="text-accent underline decoration-line-strong underline-offset-2 hover:decoration-accent"
+          href="/">illustrated walkthrough lives on the front page</a
+        >.
+      </p>
+
+      <div
+        class="mt-7 inline-flex flex-col gap-1 rounded-(--radius-guide) border border-line-strong bg-surface-2 px-4 py-3 press"
+      >
+        <code class="font-mono text-[0.8125rem]"
+          ><span class="mr-1 text-faint">&gt;</span>/plugin marketplace add
+          nicknisi/ideation</code
+        >
+        <code class="font-mono text-[0.8125rem]"
+          ><span class="mr-1 text-faint">&gt;</span>/plugin install ideation@ideation</code
+        >
+      </div>
+    </header>
+
+    <!-- ══════════ which door ══════════ -->
+    <section aria-labelledby="doors" class="border-t-[3px] border-double border-line-strong pt-11">
+      <h2 id="doors" class="text-[clamp(1.6rem,4vw,2.1rem)]">Pick a door</h2>
+      <p class="mt-4 max-w-[64ch] text-muted">
+        In the order you would meet them. Nothing below the first group writes anything
+        until you have approved a contract.
+      </p>
+
+      {
+        stages.map(stage => (
+          <div class="mt-11">
+            <div class="flex items-baseline gap-3">
+              <h3 class="label-mono text-accent">{STAGES[stage].label}</h3>
+              <span class="h-px flex-1 bg-line"></span>
+            </div>
+            <p class="mt-2 max-w-[62ch] text-[0.9375rem] text-muted italic">
+              {STAGES[stage].blurb}
+            </p>
+
+            {byStage(stage).map(c => (
+              <article class="mt-8">
+                <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <code class="font-mono text-[1.0625rem] font-semibold text-ink">
+                    {c.command}
+                  </code>
+                  {c.argumentHint && (
+                    <code class="font-mono text-[0.8125rem] text-faint">{c.argumentHint}</code>
+                  )}
+                  {c.modelInvocable && (
+                    <span
+                      class="label-mono rounded-(--radius-guide) bg-accent-tint px-2 py-0.5 text-accent"
+                      title="No disable-model-invocation in its frontmatter, so Claude may start this itself"
+                    >
+                      claude can start this
+                    </span>
+                  )}
+                  {/* "writes no files" is only claimable when the skill
+                      actually declares allowed-tools. An absent key means every
+                      tool is available, which is a different fact. */}
+                  {!c.toolsDeclared ? (
+                    <span
+                      class="label-mono rounded-(--radius-guide) bg-wash px-2 py-0.5 text-muted"
+                      title="No allowed-tools in its frontmatter, so every tool is available"
+                    >
+                      all tools
+                    </span>
+                  ) : c.canWriteFiles ? (
+                    <span
+                      class="label-mono rounded-(--radius-guide) bg-wash px-2 py-0.5 text-muted"
+                      title={`allowed-tools includes ${c.allowedTools.filter(t => ['Write', 'Edit', 'NotebookEdit', 'Bash'].includes(t)).join(', ')}`}
+                    >
+                      writes files
+                    </span>
+                  ) : (
+                    <span
+                      class="label-mono rounded-(--radius-guide) bg-go-tint px-2 py-0.5 text-go"
+                      title="allowed-tools omits Write, Edit, NotebookEdit and Bash, so writing is impossible rather than merely discouraged"
+                    >
+                      writes no files
+                    </span>
+                  )}
+                </div>
+
+                <p class="mt-2 max-w-[64ch] text-[1.0625rem]">{c.headline}</p>
+
+                <dl class="mt-3 grid grid-cols-[5.2rem_minmax(0,1fr)] gap-x-4 gap-y-2 max-sm:grid-cols-1 max-sm:gap-y-0.5">
+                  <dt class="label-mono pt-[0.3em] text-faint max-sm:pt-2">reach for it</dt>
+                  <dd class="m-0 max-w-[62ch] text-[0.9375rem] text-muted">{c.when}</dd>
+                  <dt class="label-mono pt-[0.3em] text-faint max-sm:pt-2">you get</dt>
+                  <dd class="m-0 max-w-[62ch] text-[0.9375rem] text-muted">{c.produces}</dd>
+                  {c.caveat && (
+                    <>
+                      <dt class="label-mono pt-[0.3em] text-caution max-sm:pt-2">
+                        worth knowing
+                      </dt>
+                      <dd class="m-0 max-w-[62ch] text-[0.9375rem] text-ink">{c.caveat}</dd>
+                    </>
+                  )}
+                </dl>
+              </article>
+            ))}
+          </div>
+        ))
+      }
+    </section>
+
+    <!-- ══════════ the gates ══════════ -->
+    <section
+      aria-labelledby="gates"
+      class="mt-16 border-t-[3px] border-double border-line-strong pt-11"
+    >
+      <h2 id="gates" class="text-[clamp(1.6rem,4vw,2.1rem)]">
+        The five gates it will not skip
+      </h2>
+      <p class="mt-4 max-w-[64ch] text-muted">
+        The interview keeps asking until every one of these reads <code
+          class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]">ready</code
+        >. That is the whole reason it can refuse to generate a plan: a gate needs a
+        concrete artifact, not your confidence.
+      </p>
+
+      <ol class="mt-9 list-none space-y-7 p-0">
+        {
+          gates.map((g, i) => (
+            <li class="grid grid-cols-[2.2rem_minmax(0,1fr)] gap-x-3">
+              <span class="label-mono pt-[0.35em] text-faint">
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <div>
+                <h3 class="text-[1.0625rem]">{g.gate}</h3>
+                <p class="mt-1 max-w-[62ch] text-[0.9375rem] text-muted italic">
+                  {g.question}
+                </p>
+                <p class="mt-2 max-w-[62ch] text-[0.9375rem]">
+                  <span class="label-mono mr-2 text-go">ready when</span>
+                  {g.ready}
+                </p>
+              </div>
+            </li>
+          ))
+        }
+      </ol>
+    </section>
+
+    <!-- ══════════ what lands on disk ══════════ -->
+    <section
+      aria-labelledby="disk"
+      class="mt-16 border-t-[3px] border-double border-line-strong pt-11"
+    >
+      <h2 id="disk" class="text-[clamp(1.6rem,4vw,2.1rem)]">What lands on disk</h2>
+      <p class="mt-4 max-w-[64ch] text-muted">
+        Everything for one project lives in <code
+          class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]"
+          >docs/ideation/&lt;slug&gt;/</code
+        >. Planning artifacts are HTML because they exist to be decided on; specs are
+        Markdown because they exist to be executed.
+      </p>
+
+      <dl class="mt-9 space-y-5">
+        {
+          artifacts.map(a => (
+            <div class="grid grid-cols-[minmax(0,17rem)_minmax(0,1fr)] gap-x-5 gap-y-1 max-md:grid-cols-1">
+              <dt>
+                <code class="font-mono text-[0.875rem] font-semibold">{a.path}</code>
+                {!a.kept && (
+                  <span class="label-mono ml-2 text-faint" title="Produced during a run">
+                    run output
+                  </span>
+                )}
+              </dt>
+              <dd class="m-0 max-w-[58ch] text-[0.9375rem] text-muted">{a.note}</dd>
+            </div>
+          ))
+        }
+      </dl>
+
+      <p
+        class="mt-9 max-w-[64ch] rounded-r-(--radius-guide) border-l border-accent bg-surface-1 py-3 pr-4 pl-4 text-[0.9375rem]"
+      >
+        <span class="label-mono mr-2 text-accent">one exception</span>
+        <code class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]"
+          >docs/ideation/learnings.md</code
+        > sits above the project folders and is meant to be committed. It is the only part of
+        this the next project reads.
+      </p>
+    </section>
+
+    <footer class="mt-16 border-t border-line pt-8 text-[0.9375rem] text-muted">
+      <p>
+        <a
+          class="text-accent underline decoration-line-strong underline-offset-2 hover:decoration-accent"
+          href="/">← the illustrated walkthrough</a
+        >
+        <span class="mx-2 text-faint">·</span>
+        <a
+          class="text-accent underline decoration-line-strong underline-offset-2 hover:decoration-accent"
+          href="https://github.com/nicknisi/ideation">source &amp; releases on GitHub ↗</a
+        >
+      </p>
+      <p class="mt-3 max-w-[64ch] text-faint">
+        Every command name, argument hint, and badge on this page is read out of{' '}
+        <code class="font-mono text-[0.8125em]">skills/*/SKILL.md</code> at build time, and
+        the gates out of the rubric the interview itself uses. A skill that ships without
+        an entry here fails the build rather than going undocumented.
+      </p>
+    </footer>
+  </main>
+</Guide>
