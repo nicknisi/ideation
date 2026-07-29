@@ -1,0 +1,91 @@
+---
+/**
+ * The left gutter of one stage: a stem that draws itself as the stage
+ * scrolls past, and the ornament that terminates it.
+ *
+ * The stem is scaled from `scaleY(0)` to the stage's scroll progress, so the
+ * seven stages read as one plant growing down the page. Everything here is
+ * decorative — the meaning lives in the prose to the right.
+ */
+interface Props {
+  kind: 'seed' | 'leaf' | 'bloom';
+  /** Leaves alternate sides; the flipped one is mirrored on X. */
+  flip?: boolean;
+}
+
+const { kind, flip = false } = Astro.props;
+---
+
+<div class="relative flex justify-center">
+  {/* No transition on the stem: its scaleY is written from the scroll handler
+      every frame, so an easing curve would both lag the page and leave a
+      700ms transition perpetually restarting — the document never goes idle. */}
+  <div data-stem class="w-px origin-top bg-accent"></div>
+
+  {
+    kind === 'seed' && (
+      <svg
+        data-seed
+        viewBox="0 0 20 20"
+        width="17"
+        height="17"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        aria-hidden="true"
+        class="absolute -top-1 left-1/2 -ml-[8.5px] cursor-pointer bg-canvas text-accent opacity-100 transition-opacity duration-[400ms]"
+      >
+        <path d="M10 17c-4 0-6-3-6-6s2-8 6-8 6 5 6 8-2 6-6 6Z" />
+      </svg>
+    )
+  }
+
+  {
+    kind === 'leaf' && (
+      <svg
+        data-leaf
+        data-flip={flip ? '' : undefined}
+        viewBox="0 0 30 24"
+        width="27"
+        height="22"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        aria-hidden="true"
+        class:list={[
+          'absolute top-[22px] text-accent opacity-100 transition-[opacity,transform] duration-500 ease-out',
+          flip ? 'right-1/2 origin-bottom-right' : 'left-1/2 origin-bottom-left',
+        ]}
+      >
+        {/* The mirror happens in the SVG's own coordinate space, not via a CSS
+            `transform: scaleX(-1)`. A CSS mirror about the element's right
+            edge maps the box straight back onto the side it came from, so
+            every leaf would end up right of the stem. Doing it here leaves the
+            CSS transform free to carry the growth alone. */}
+        <g transform={flip ? 'translate(30,0) scale(-1,1)' : undefined}>
+          <path d="M1 23C1 12 9 5 24 4c1 13-8 19-23 19Z" />
+          <path d="M1 23C7 17 14 12 22 8" />
+        </g>
+      </svg>
+    )
+  }
+
+  {
+    kind === 'bloom' && (
+      <svg
+        data-bloom
+        viewBox="0 0 34 34"
+        width="30"
+        height="30"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        aria-hidden="true"
+        class="absolute -bottom-[14px] left-1/2 -ml-[15px] origin-bottom bg-canvas text-accent opacity-100 transition-[opacity,transform] duration-700"
+      >
+        <circle cx="17" cy="17" r="4" />
+        <path d="M17 13c0-4 3-6 3-6s-1 6-3 6ZM21 17c4 0 6 3 6 3s-6-1-6-3ZM17 21c0 4-3 6-3 6s1-6 3-6ZM13 17c-4 0-6-3-6-3s6 1 6 3Z" />
+      </svg>
+    )
+  }
+</div>

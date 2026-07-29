@@ -1,11 +1,17 @@
 # ideation.engineering
 
-The plugin's public site. Two pages, one deploy:
+The plugin's public site. Three pages, one deploy:
 
-| Route    | Source                | What it is                                                         |
-| -------- | --------------------- | ------------------------------------------------------------------ |
-| `/`      | `public/index.html`   | The illustrated walkthrough. Hand-written, self-contained, served verbatim. |
-| `/guide` | `src/pages/guide.astro` | The command reference, generated from the plugin's own source.    |
+| Route          | Source                        | What it is                                                                  |
+| -------------- | ----------------------------- | --------------------------------------------------------------------------- |
+| `/`            | `src/pages/index.astro`       | The overview: the contract, the seven stages, what it refuses, install.       |
+| `/walkthrough` | `src/pages/walkthrough.astro` | One invented feature — the bookmark garden — through all seven stages.        |
+| `/guide`       | `src/pages/guide.astro`       | The command reference, generated from the plugin's own source.                |
+
+`/` and `/walkthrough` share the **Industry** design system
+(`src/styles/industry.css` + `src/layouts/Industry.astro`). `/guide` still wears
+the older **field guide** world (`src/styles/global.css`). Both stylesheets
+clear Tailwind's palette, so a page must import exactly one of them.
 
 ## Local
 
@@ -20,11 +26,11 @@ pnpm exec wrangler dev   # serve dist/ through the Workers runtime, with _header
 The repo root delegates, so `pnpm dev`, `pnpm build`, `pnpm deploy` and
 `pnpm deploy:check` all work from one directory up too.
 
-`pnpm dev` and the build route identically. That was not free: the walkthrough
-originally lived in `public/index.html`, which Vite special-cases as an entry
-template, so `/` 404'd in dev while the build served it fine. Astro supports
-plain `.html` files as pages, so it lives in `src/pages/index.html` and passes
-through byte-identically.
+`pnpm dev` and the build route identically. Every page is a real Astro route
+now; the hand-written `src/pages/index.html` that used to serve `/` was retired
+when the Industry pages landed. Do not put an `index.html` back in `public/` —
+Vite special-cases it as an entry template, so `/` 404s in dev while the build
+serves it fine.
 
 ## Deploying
 
@@ -86,10 +92,34 @@ rendered "writes no files" beside the command that writes the entire contract.
 
 ## Design
 
-The visual world is inherited, not invented — the tokens in
-`src/styles/global.css` are copied verbatim from `public/index.html`: paper
-ground, ink, one cobalt accent, serif display, letterpress offset, hairline
-rules, 3px radii, graphite dark deck. Tailwind's default palette is cleared
-(`--color-*: initial`) so `bg-blue-500` is not reachable; the only colours that
-exist are the field guide's. `@theme inline` keeps utilities pointing at the CSS
-variables, so the three-state theme toggle flips at runtime.
+Two systems live here, one per stylesheet, and they never meet in one document.
+
+**Industry** (`src/styles/industry.css`) dresses `/` and `/walkthrough`: a
+drafting table. Barlow Condensed headings over Barlow body, one slate-blue
+accent, square corners everywhere, and registration marks at the corners of
+every framed object (`src/components/Blueprint.astro`). Depth comes from the
+frame, never from a shadow. Imported from a Claude Design project.
+
+**Field guide** (`src/styles/global.css`) dresses `/guide`: paper ground, ink,
+one cobalt accent, serif display, letterpress offset, 3px radii, graphite dark
+deck.
+
+Both clear Tailwind's default palette (`--color-*: initial`) so `bg-blue-500` is
+not reachable; the only colours that exist are the system's own. `@theme inline`
+keeps utilities pointing at the CSS variables, so the theme toggle flips at
+runtime rather than being baked in at build time.
+
+Two things about Industry are worth knowing before editing it:
+
+- **`--spacing: 3.4px`.** The design system's tokens are `3.4px × n`, so feeding
+  that base to Tailwind makes `p-4` *be* `--space-4` and `pt-8` *be* `--space-8`.
+  The consequence is that every numeric utility is on that scale — `size-9` is
+  30.6px, not 36px. Use explicit pixel values for fixed-size chrome.
+- **Nothing scroll-linked may read layout.** The growth animations cache their
+  geometry on load and resize and then run off `scrollY` alone, and one-shot
+  reveals use an IntersectionObserver. A `getBoundingClientRect()` in a scroll
+  handler forces a synchronous layout every frame, which is exactly what these
+  pages must not do underneath a sticky `backdrop-filter` header.
+
+Barlow is self-hosted in `public/fonts/` (latin subset, 5 faces, ~76 KB). The
+site makes no external requests — that rule predates these pages and still holds.
