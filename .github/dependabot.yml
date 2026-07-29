@@ -1,0 +1,19 @@
+version: 2
+
+# Pinning actions to SHAs stops a retargeted tag from changing what runs, but it
+# also means nothing updates on its own — a pinned SHA never picks up a fix.
+# Dependabot is the other half of that trade: it opens the bump as a reviewable
+# PR, updating both the SHA and its trailing version comment.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    # One PR for all action bumps rather than one per action. These land as
+    # `chore(ci):` so release-please keeps them out of the changelog while still
+    # rolling them into the next release.
+    groups:
+      actions:
+        patterns: ['*']
+    commit-message:
+      prefix: chore(ci)
