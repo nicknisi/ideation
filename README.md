@@ -573,18 +573,26 @@ it out of the changelog but does **not** stop it counting toward the version, so
 a run of nothing but `chore:` commits still proposes a patch release. That is
 release-please's behaviour, not a setting we chose.
 
-**Do not squash-merge into `main`.** The changelog is built from the commits that
-actually land on `main`, and release-please does not recover the individual
-commits from a squashed body — it reads the subject line and stops. Squashing a
-twenty-commit branch therefore produces a release whose entire changelog is one
-line. Rebase-merge (or a merge commit) puts each commit on `main` and gives the
-release a real set of entries. This is the one repo setting the release pipeline
-depends on.
+**One PR becomes one changelog entry.** The changelog is built from the commits
+that land on `main`, and release-please does not recover the individual commits
+from a squashed body — it reads the subject line and stops. Nothing breaks
+either way and the version bump is unaffected; what changes is granularity.
 
-For the same reason, **don't put version numbers in commit subjects.** Earlier
-releases used `feat: … (v0.19.0)` when the bump was manual; release-please owns
-the version now, and a subject like that becomes a changelog entry carrying a
-stale version string.
+So squash-merging is fine, but it makes **PR scope the unit of the changelog**.
+A twenty-commit branch squashed into `main` is one entry, which is why 0.20.0
+would have read as a single line. Splitting the same work into a handful of
+thematically coherent PRs gives that release a handful of entries — and since PR
+titles here already read as release summaries (`feat: decision log + strawman
+elicitation`), that lands closer to the hand-written "What's New" sections this
+changelog replaced than commit-level entries would.
+
+Rebase-merging is the other option: every commit lands on `main`, so a release
+gets an entry per commit. More complete, more granular, noisier.
+
+And **don't put version numbers in commit subjects.** Earlier releases used
+`feat: … (v0.19.0)` when the bump was manual; release-please owns the version
+now, and a subject like that becomes a changelog entry carrying a stale version
+string.
 
 Because the release PR is pushed with the default `GITHUB_TOKEN`, `ci.yml` does
 not re-run on it. That PR only ever contains a version string and changelog
