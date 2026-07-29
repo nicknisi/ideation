@@ -164,7 +164,12 @@
 
   --animate-sway: sway 4.5s ease-in-out infinite;
   --animate-blink: blink 1.15s steps(1) infinite;
-  --animate-thump: thump 0.55s cubic-bezier(0.2, 1.2, 0.3, 1) forwards;
+  /* The impact lives in the keyframes (1.12 → 0.94 → 1, a stamp hitting paper
+     and settling), so the timing function only has to decelerate. It used to
+     be an overshooting bezier as well, which meant two different rules each
+     adding their own rebound — the second one compounding a squash the
+     keyframes had already expressed. */
+  --animate-thump: thump 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-wiggle: wiggle 0.5s ease-in-out;
 
   /* These animate the INDEPENDENT `rotate` / `scale` properties rather than
