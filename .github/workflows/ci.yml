@@ -1,5 +1,15 @@
 name: CI
 
+# Actions are pinned to commit SHAs, not tags. A tag is mutable — whoever
+# controls the action's repo can retarget it — and pinning is what stops a
+# retargeted tag from silently changing what runs here. The trailing comment is
+# the human-readable version; bump both together when updating.
+#
+# Note that a pin is not the same as "the newest version": pnpm/action-setup's
+# `v4` deliberately points at v4.3.0, because v4.4.0 shipped a breaking Node 24
+# change that was reverted and `v4` was moved back onto the revert. Resolve what
+# the tag actually points to rather than reaching for the highest number.
+
 on:
   push:
   pull_request:
@@ -8,10 +18,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # Node >= 22.18 required: contract-gen.ts runs via native type-stripping, no tsx/tsc.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
 
@@ -36,16 +46,16 @@ jobs:
       run:
         working-directory: site
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # `defaults.run.working-directory` only applies to `run` steps, so this
       # action still resolves package.json from the repo root — which has none.
       # The version itself comes from site/package.json's `packageManager`.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
         with:
           package_json_file: site/package.json
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: pnpm

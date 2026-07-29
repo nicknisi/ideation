@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# The action maintains a long-lived release PR, force-pushing it as commits
+# land. Two runs racing that branch can leave it half-updated, so serialize.
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+permissions:
+  contents: write # commit the version bump + changelog, create the tag/release
+  pull-requests: write # open and update the release PR
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      # No checkout, no Node, no install. The action talks to the GitHub API
+      # directly — it reads the commit history and writes the release PR through
+      # REST, so nothing here needs the repo on disk.
+      #
+      # The version that actually matters lives in .claude-plugin/plugin.json:
+      # Claude Code resolves a plugin's version from that file first, and it is
+      # what gates `/plugin update` for anyone who installed from the
+      # marketplace. release-please-config.json points an `extra-files` JSON
+      # updater at it. The `simple` release type nominally owns a version.txt
+      # too, but its updater is declared `createIfMissing: false`, so with no
+      # such file in the repo it is skipped rather than created — plugin.json
+      # ends up the single source of truth, which is what we want.
+      #
+      # Pinned to a commit SHA, not `@v4`. A tag is mutable: whoever controls
+      # the action's repo can retarget it, and this job hands the result
+      # `contents: write` on our default branch. That is not hypothetical —
+      # tj-actions/changed-files was compromised exactly this way in 2025, by
+      # retargeting tags at a malicious commit. The tradeoff is that updates are
+      # now deliberate: bump the SHA and the comment together.
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          # The default GITHUB_TOKEN is deliberate. Its one limitation is that
+          # commits it pushes do not trigger other workflows, so ci.yml will not
+          # run on the release PR itself. That PR only ever contains a version
+          # string and changelog prose — both already tested on the commits that
+          # produced them — so the tradeoff is worth avoiding a PAT.
+          token: ${{ secrets.GITHUB_TOKEN }}

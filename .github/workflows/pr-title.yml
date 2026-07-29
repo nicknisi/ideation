@@ -1,0 +1,37 @@
+name: PR title
+
+# Separate from ci.yml because of `edited`. The check has to re-run when someone
+# fixes a rejected title, and `edited` is not in the default `pull_request`
+# types — but adding it to ci.yml's shared trigger would rebuild the site and
+# kick off a Cloudflare preview build every time a title typo is corrected.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+# A title can be edited several times in a row; only the last run is interesting.
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+
+      # The title is untrusted, attacker-controlled text on a fork PR, so it is
+      # passed through the environment and quoted — never interpolated into the
+      # shell command, where `$(...)` in a title would execute. `contents: read`
+      # and no secrets mean there is nothing here worth stealing anyway, which is
+      # also why this stays on `pull_request` rather than `pull_request_target`.
+      - name: Lint the PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: node scripts/lint-pr-title.mjs
