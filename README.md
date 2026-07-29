@@ -589,6 +589,19 @@ changelog replaced than commit-level entries would.
 Rebase-merging is the other option: every commit lands on `main`, so a release
 gets an entry per commit. More complete, more granular, noisier.
 
+Because the title carries that much weight, **CI lints it.** `pr-title.yml` runs
+`scripts/lint-pr-title.mjs` on every PR — including when the title is edited, so
+a fix re-runs the check — and fails if the title is not a Conventional Commit. It
+prints what the title will do (`bumps the minor version`, `listed under
+"Documentation"`) so the effect is visible before merge. The accepted types are
+read from `release-please-config.json` rather than duplicated, so the linter
+cannot start accepting a type release-please would drop.
+
+The failure it exists to prevent is a silent one: an unparseable subject is not
+an error to release-please, it is simply skipped — no version bump, no changelog
+entry, and the work ships unmentioned. A title is also the one part of a PR that
+no reviewer diffs.
+
 And **don't put version numbers in commit subjects.** Earlier releases used
 `feat: … (v0.19.0)` when the bump was manual; release-please owns the version
 now, and a subject like that becomes a changelog entry carrying a stale version
