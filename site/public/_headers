@@ -1,8 +1,10 @@
 # Cloudflare reads this from the build output root. Both Pages and Workers
 # static assets honour it.
 #
-# The site loads nothing from anywhere else — no fonts, no CDNs, no images,
-# no analytics — so the CSP can be almost entirely `self` and stay that way.
+# The site loads nothing from anywhere else — no CDNs, no images, no analytics,
+# and the only fonts are self-hosted under /fonts — so the CSP can be almost
+# entirely `self` and stay that way. `default-src 'self'` is what covers those
+# font requests; there is deliberately no separate font-src.
 # `unsafe-inline` is required for style-src and script-src because every page
 # here deliberately inlines its CSS and its handful of scripts; that is the
 # same property that makes the pages self-contained.

@@ -1,0 +1,585 @@
+---
+import Industry from '../layouts/Industry.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import Blueprint from '../components/Blueprint.astro';
+import InstallBlock from '../components/InstallBlock.astro';
+import StageOrnament from '../components/StageOrnament.astro';
+import ContractPlate from '../components/ContractPlate.astro';
+import { readVersion } from '../lib/repo';
+
+const version = `v${readVersion()}`;
+
+const NAV = [
+  { href: '#stages', label: 'Stages' },
+  { href: '#refuses', label: 'Refusals' },
+  { href: '#commands', label: 'Commands', keep: 'optional' as const },
+  { href: '/walkthrough', label: 'Walkthrough', keep: 'optional' as const },
+  { href: '/guide', label: 'Guide', keep: 'optional' as const },
+  { href: 'https://github.com/nicknisi/ideation', label: 'GitHub', keep: 'always' as const },
+];
+
+const TOC = [
+  { href: '#contract', label: 'The contract' },
+  { href: '#stages', label: 'The seven stages' },
+  { href: '#refuses', label: 'What it refuses' },
+  { href: '#commands', label: 'Commands' },
+  { href: '#writes', label: 'What it writes' },
+  { href: '#install', label: 'Install' },
+  { href: '/walkthrough', label: 'The walkthrough →' },
+];
+
+const STATS = [
+  { figure: '5', label: 'evidence gates' },
+  { figure: '4', label: 'critics, read-only' },
+  { figure: '0', label: 'files before you approve' },
+  { figure: '1', label: 'commit per phase' },
+];
+
+/** Seven stages, six of which may stop the run. The ornament is the plant
+    growing down the gutter: a seed, five leaves alternating sides, a bloom. */
+const STAGES = [
+  {
+    n: '01',
+    title: 'Brainstorm',
+    body: 'A position on whether the idea is worth building at all. Conversation only — it writes no files, enforced by its tool list.',
+    stops: 'it concludes no — and writes nothing either way.',
+    ornament: { kind: 'seed' as const },
+  },
+  {
+    n: '02',
+    title: 'Interview',
+    body: 'Five gates, each backed by an artifact rather than a confident sentence: the problem, the goals, the success criteria, the scope, and consistency with the code you already have.',
+    stops: 'a gate cannot be evidenced. It keeps asking; generation starts at five of five.',
+    ornament: { kind: 'leaf' as const, flip: false },
+  },
+  {
+    n: '03',
+    title: 'Critique',
+    body: 'Four read-only critics — scope creep, over-engineering, hidden dependencies, unfalsifiable criteria — file findings at three severities.',
+    stops: 'a blocker is filed. The plan goes back, and the interview can reopen on that gate.',
+    ornament: { kind: 'leaf' as const, flip: true },
+  },
+  {
+    n: '04',
+    title: 'Contract',
+    body: 'One document to decide on, plus the specs that will be executed against it and a routing verdict: walk away, watch it run, or run it yourself.',
+    stops: 'always. Nothing proceeds until you approve, and the tier you pick bounds the specs.',
+    ornament: { kind: 'leaf' as const, flip: false },
+  },
+  {
+    n: '05',
+    title: 'Execute',
+    body: 'Phases build in waves on an isolation branch, each reviewed before it commits, each commit naming its spec so a resumed run skips it.',
+    stops: 'five ways — including a reviewer that returns no verdict, or a commit that cannot name its files.',
+    ornament: { kind: 'leaf' as const, flip: true },
+  },
+  {
+    n: '06',
+    title: 'Harvest',
+    body: 'At most three candidate lessons from the run, deduped against what is already recorded. Accept, edit or dismiss each one.',
+    stops: 'you dismiss them. A learning store nobody curates is only a log.',
+    ornament: { kind: 'leaf' as const, flip: false },
+  },
+  {
+    n: '07',
+    title: 'Next run',
+    body: null,
+    stops: 'never. The only stage that cannot stop you — it just points back at 02.',
+    ornament: { kind: 'bloom' as const },
+    last: true,
+  },
+];
+
+const REFUSALS = [
+  {
+    title: 'No blind commits',
+    body: 'There is no <code class="font-mono text-[13px]">git add -A</code> anywhere in it. Every commit names the files it wrote; one that cannot refuses instead.',
+  },
+  {
+    title: 'No question cap',
+    body: 'The interview runs as long as the evidence takes. A cap would mean shipping an unevidenced gate, so there isn’t one — in practice it is short, because every question arrives with a recommended answer.',
+  },
+  {
+    title: 'No silent edits',
+    body: 'Critics are read-only by construction. They file findings; every fold-in lands in the decision log where you can see the reasoning and reverse it.',
+  },
+];
+
+const COMMANDS = [
+  {
+    name: '/ideation',
+    body: 'The one door. Interview, critics, contract, then the fork — you choose express or full review once the evidence is on the table.',
+  },
+  {
+    name: '/ideation:brainstorm',
+    body: 'Whether to build it at all. Pure conversation — no files, enforced by its tool list.',
+  },
+  {
+    name: '/ideation:express',
+    body: 'The same door with routing pre-answered: one confirmation, an isolation branch, straight into execution.',
+  },
+];
+
+const h2 = 'font-heading text-[15px] font-semibold tracking-[0.14em] text-neutral-700 uppercase';
+const lede = 'text-[16px] leading-[1.6] text-ink/82 max-w-[74ch]';
+const stopsLabel = 'plate-label pr-3 text-accent-700';
+---
+
+<Industry
+  title="ideation — plan real work before the code gets written"
+  description="ideation interviews your idea until every claim carries evidence, sets four adversarial critics on the plan, and produces a contract you approve before anything is built. Then your agent builds it — one reviewed commit per phase, on its own branch."
+>
+  <SiteHeader homeHref="#top" links={NAV} version={version} />
+
+  <div
+    id="top"
+    class="mx-auto grid max-w-[1340px] grid-cols-[210px_minmax(0,1fr)] gap-16 px-8 pt-13 pb-24 max-[1040px]:grid-cols-[minmax(0,1fr)] max-[1040px]:gap-8 max-[560px]:px-6"
+    data-grow
+  >
+    <aside
+      class="sticky top-[106px] grid gap-4 self-start max-[1040px]:static max-[1040px]:order-first max-[1040px]:max-w-[300px]"
+    >
+      <div class="font-heading text-[12px] font-semibold tracking-[0.14em] text-neutral-700 uppercase">
+        On this page
+      </div>
+      <nav
+        class="grid gap-3 border-l border-line pl-4 text-[14px] max-[1040px]:flex max-[1040px]:flex-wrap max-[1040px]:gap-x-6 max-[1040px]:gap-y-2 max-[1040px]:border-l-0 max-[1040px]:pl-0"
+      >
+        {
+          TOC.map(item => (
+            <a href={item.href} class="text-ink hover:text-accent-700 hover:no-underline">
+              {item.label}
+            </a>
+          ))
+        }
+      </nav>
+      <div class="font-mono text-[11px] leading-[1.7] text-neutral-700 max-[1040px]:hidden">
+        MIT · installs<br />as a plugin
+      </div>
+    </aside>
+
+    <main class="min-w-0">
+      <!-- ── Hero ─────────────────────────────────────────────────────── -->
+      <section class="relative pb-8">
+        <div
+          aria-hidden="true"
+          class="drafting-grid pointer-events-none absolute -top-5 -right-5 -left-5 h-[320px] opacity-50"
+        >
+        </div>
+
+        <h1
+          class="relative max-w-[20ch] font-heading text-[clamp(34px,7.4vw,62px)] leading-[1.04] font-semibold tracking-[-0.005em]"
+        >
+          Plan real work before the code gets written.
+        </h1>
+        <p class="relative mt-6 max-w-[68ch] text-[18px] leading-[1.6] text-ink/82">
+          ideation interviews your idea until every claim carries evidence, sets four adversarial
+          critics on the plan, and produces a contract you approve before anything is built. Then
+          your agent builds it — one reviewed commit per phase, on its own branch. Six of its seven
+          stages are allowed to stop the run.
+        </p>
+
+        <InstallBlock variant="primary" caret class="relative mt-8" />
+
+        <div
+          class="relative mt-11 flex flex-wrap gap-x-[43.5px] gap-y-4 border-t border-line pt-6 font-mono text-[12px] text-neutral-700"
+        >
+          {
+            STATS.map(stat => (
+              <span>
+                <span class="pr-[5px] font-heading text-[22px] font-semibold text-accent-700">
+                  {stat.figure}
+                </span>
+                {stat.label}
+              </span>
+            ))
+          }
+        </div>
+      </section>
+
+      <!-- ── The contract ─────────────────────────────────────────────── -->
+      <section id="contract" class="pt-16">
+        <h2 class={h2}>The contract</h2>
+        <p class:list={[lede, 'mt-3 mb-8']}>
+          Every run produces one document to decide on: the evidence behind each gate, scope tiers
+          nested so cutting one does not unravel the rest, an interactive phase graph, copyable run
+          commands, and a decision log that keeps rejected approaches rejected.
+        </p>
+
+        <figure class="m-0">
+          <Blueprint data-draw class="transition-[opacity,transform] duration-[600ms] ease-out">
+            <div
+              class="flex items-center gap-3 border-b border-line px-4 py-3 font-mono text-[11.5px] text-neutral-700"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="13"
+                height="13"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                aria-hidden="true"
+                class="flex-none text-accent"
+              >
+                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"></path>
+                <path d="M14 3v5h5"></path>
+              </svg>
+              <span class="truncate">docs/ideation/&lt;feature&gt;/contract.html</span>
+            </div>
+            {/* The design reserved a 16/10 screenshot here. Drawn rather than
+                captured, the plate sizes to its own content — forcing a
+                screenshot's proportions just left a third of the frame empty. */}
+            <ContractPlate />
+          </Blueprint>
+          <figcaption class="mt-4 font-mono text-[11px] text-neutral-700">
+            Fig. 1 — generated at the end of the interview, before any execution.
+          </figcaption>
+        </figure>
+      </section>
+
+      <!-- ── The seven stages ─────────────────────────────────────────── -->
+      <section id="stages" class="pt-19">
+        <h2 class={h2}>The seven stages</h2>
+        <p class:list={[lede, 'mt-3 mb-10']}>
+          Each stage has a defined output and defined grounds for stopping. Stopping is not error
+          handling — it is the mechanism. Scroll and the thing grows.
+        </p>
+
+        <div class="grid">
+          {
+            STAGES.map(stage => (
+              <div data-stage class="grid grid-cols-[52px_minmax(0,1fr)] gap-6">
+                <StageOrnament {...stage.ornament} />
+                {/* The rhythm between stages lives on the TEXT column, not on
+                    the grid container: grid items sit inside the padding box,
+                    so container padding would break the stem into stubs
+                    instead of one continuous plant. */}
+                <div class:list={[!stage.last && 'pb-8']}>
+                  <h3 class="flex items-baseline gap-3 font-heading text-[26px] font-semibold tracking-[0.01em]">
+                    <span class="font-mono text-[12px] text-accent-700">{stage.n}</span>
+                    {stage.title}
+                  </h3>
+                  {stage.body && (
+                    <p class="mt-2 max-w-[68ch] text-[15.5px] leading-[1.6] text-ink/82">
+                      {stage.body}
+                    </p>
+                  )}
+                  {stage.last && (
+                    <p class="mt-2 max-w-[68ch] text-[15.5px] leading-[1.6] text-ink/82">
+                      The following interview opens by naming the lesson it is applying, out loud, as
+                      its first question. <code class="font-mono text-[13px]">learnings.md</code> is
+                      committed with the repo, so it is the team's memory rather than one machine's
+                      private state.
+                    </p>
+                  )}
+                  <p
+                    class:list={[
+                      'mt-3 max-w-[68ch] text-[14.5px] leading-[1.6]',
+                      stage.last && 'text-neutral-700',
+                    ]}
+                  >
+                    <span class:list={[stopsLabel, stage.last && 'text-neutral-700']}>
+                      Stops when
+                    </span>
+                    {stage.stops}
+                  </p>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      </section>
+
+      <!-- ── What it refuses ──────────────────────────────────────────── -->
+      <section id="refuses" class="relative pt-19">
+        <div class="flex flex-wrap items-start justify-between gap-8">
+          <div>
+            <h2 class={h2}>What it refuses</h2>
+            <p class:list={[lede, 'mt-3 mb-8 max-w-[62ch]']}>
+              Three constraints that are structural rather than advisory — they are enforced by tool
+              lists and commit rules, not by good intentions.
+            </p>
+          </div>
+          <div
+            data-stamp
+            aria-hidden="true"
+            class="mt-4 flex-none -rotate-7 border-2 border-accent-700 px-4 py-2 font-heading text-[21px] font-semibold tracking-[0.2em] text-accent-700 uppercase"
+          >
+            Refused
+          </div>
+        </div>
+
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-10">
+          {
+            REFUSALS.map((refusal, i) => (
+              <Blueprint
+                data-draw
+                class="p-6 transition-[opacity,transform] duration-[600ms] ease-out"
+                style={`transition-delay: ${i * 90}ms`}
+              >
+                <h3 class="mb-3 font-heading text-[13px] font-semibold tracking-[0.14em] text-accent-700 uppercase">
+                  {refusal.title}
+                </h3>
+                <p class="text-[15px] leading-[1.6]" set:html={refusal.body} />
+              </Blueprint>
+            ))
+          }
+        </div>
+      </section>
+
+      <!-- ── Commands ─────────────────────────────────────────────────── -->
+      <section id="commands" class="pt-19">
+        <h2 class:list={[h2, 'mb-8']}>Commands</h2>
+        <div class="grid max-w-[76ch] gap-6">
+          {
+            COMMANDS.map((command, i) => (
+              <div
+                class:list={[
+                  'grid grid-cols-[200px_minmax(0,1fr)] items-baseline gap-6 max-[780px]:grid-cols-[minmax(0,1fr)] max-[780px]:gap-2',
+                  i < COMMANDS.length - 1 && 'border-b border-line pb-6',
+                ]}
+              >
+                <code class="font-mono text-[13.5px] text-accent-700">{command.name}</code>
+                <p class="text-[15px] leading-[1.6]">{command.body}</p>
+              </div>
+            ))
+          }
+          <p class="text-[14.5px] leading-[1.6] text-neutral-700">
+            Execution commands — <code class="font-mono text-[13px]">autopilot</code>,{' '}
+            <code class="font-mono text-[13px]">execute-spec</code>,{' '}
+            <code class="font-mono text-[13px]">get-goal-prompt</code> — are documented in the{' '}
+            <a href="/guide" class="text-accent-700 hover:text-accent-800 hover:underline hover:underline-offset-2">field guide</a>.
+          </p>
+        </div>
+      </section>
+
+      <!-- ── What it writes ───────────────────────────────────────────── -->
+      <section id="writes" class="pt-19">
+        <h2 class={h2}>What it writes</h2>
+        <p class:list={[lede, 'mt-3 mb-8']}>
+          Everything lands in your repository as reviewable files, committed with the code — not held
+          in a service.
+        </p>
+        <Blueprint
+          data-draw
+          class="px-8 py-6 transition-[opacity,transform] duration-[600ms] ease-out max-[560px]:px-4"
+        >
+          <pre class="m-0 overflow-x-auto font-mono text-[12.5px] leading-[1.95]">docs/ideation/
+├── learnings.md              <span class="text-neutral-700">the team's memory, curated by you</span>
+└── bookmark-garden/
+    ├── contract.html         <span class="text-neutral-700">gates, tiers, phase graph, decisions</span>
+    ├── interview.md          <span class="text-neutral-700">every question and answer, with evidence</span>
+    ├── critique.md           <span class="text-neutral-700">findings at three severities</span>
+    ├── verify.mjs            <span class="text-neutral-700">the contract's own success checks</span>
+    └── specs/
+        ├── 01-soil-schema.md
+        ├── 02-growth-stages.md
+        └── 03-garden-view.md</pre>
+        </Blueprint>
+      </section>
+
+      <!-- ── Install ──────────────────────────────────────────────────── -->
+      <section id="install" class="pt-19">
+        <h2 class={h2}>Install</h2>
+        <p class:list={[lede, 'mt-3 mb-8']}>
+          Installs as a plugin in your coding agent. Nothing to configure, no template to fill in,
+          and no service to sign into — everything it produces is a file in your repository.
+        </p>
+
+        <InstallBlock />
+
+        <p class="mt-4 font-mono text-[11.5px] leading-[1.7] text-neutral-700">
+          Two lines, paste them together — the first registers the marketplace, the second installs
+          the plugin from it.
+        </p>
+        <p class="mt-6 text-[15px] leading-[1.6]">
+          Then run <code class="font-mono text-[13px] text-accent-700">/ideation</code> and describe
+          the messy version of your idea. A worked example — one invented feature through all seven
+          stages — is on{' '}
+          <a href="/walkthrough" class="text-accent-700 hover:text-accent-800 hover:underline hover:underline-offset-2">the walkthrough page</a>.
+        </p>
+      </section>
+
+      <SiteFooter class="mt-24">
+        <span class="flex items-center gap-2 font-mono text-[11.5px]">
+          <svg
+            data-sprout
+            viewBox="0 0 24 24"
+            width="14"
+            height="14"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            aria-hidden="true"
+            class="origin-bottom text-accent"
+          >
+            <path d="M12 22V11"></path>
+            <path d="M12 11C12 7 9 4.5 5.5 4.5 5.5 8.5 8.5 11 12 11Z"></path>
+            <path d="M12 14C12 10.5 14.8 8.2 18 8.2 18 11.9 15.2 14 12 14Z"></path>
+          </svg>
+          planned with /ideation
+        </span>
+      </SiteFooter>
+    </main>
+  </div>
+
+  <script is:inline>
+    // The plant grows as you scroll. Everything is authored visible, so a
+    // reader without JS gets the whole page — this only takes it away in
+    // order to give it back on approach.
+    (function () {
+      var root = document.querySelector('[data-grow]');
+      if (!root || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      var draws = [].slice.call(root.querySelectorAll('[data-draw]'));
+      var stamp = root.querySelector('[data-stamp]');
+      var stages = [].slice.call(root.querySelectorAll('[data-stage]'));
+
+      // The mirror lives inside the SVG, so the CSS transform only ever
+      // carries growth — a leaf unfurls from wherever it meets the stem.
+      var shown = function () { return 'none'; };
+      var hidden = function (leaf) {
+        return leaf.hasAttribute('data-flip')
+          ? 'scale(0.2) rotate(24deg)'
+          : 'scale(0.2) rotate(-24deg)';
+      };
+      // Resolve each stage's ornaments once. Doing it per frame meant two
+      // querySelector calls per stage on every scroll event.
+      var parts = stages.map(function (stage) {
+        return {
+          stem: stage.querySelector('[data-stem]'),
+          seed: stage.querySelector('[data-seed]'),
+          leaf: stage.querySelector('[data-leaf]'),
+          bloom: stage.querySelector('[data-bloom]'),
+          seedLit: null,
+        };
+      });
+
+      draws.forEach(function (el) {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(10px)';
+      });
+      if (stamp) { stamp.style.opacity = '0'; stamp.style.scale = '1.12'; }
+      parts.forEach(function (p) {
+        if (p.stem) p.stem.style.transform = 'scaleY(0)';
+        if (p.seed) { p.seed.style.opacity = '0'; p.seedLit = false; }
+        if (p.leaf) { p.leaf.style.opacity = '0'; p.leaf.style.transform = hidden(p.leaf); }
+        if (p.bloom) { p.bloom.style.opacity = '0'; p.bloom.style.transform = 'scale(0.3)'; }
+      });
+
+      // Reveals fire once and never reverse, so they belong to an
+      // IntersectionObserver rather than the scroll handler — that keeps every
+      // layout read out of the frame loop (see `measure` below).
+      var reveal = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (entry) {
+            // `isIntersecting` alone loses anything the reader scrolled past
+            // before the first callback was delivered — on a fast flick that
+            // card would stay invisible until scrolled back to. Anything
+            // already above the fold counts as arrived.
+            if (!entry.isIntersecting && entry.boundingClientRect.top >= 0) return;
+            reveal.unobserve(entry.target);
+            if (entry.target === stamp) {
+              stamp.style.opacity = '1';
+              stamp.classList.add('animate-thump');
+            } else {
+              entry.target.style.opacity = '1';
+              entry.target.style.transform = 'none';
+            }
+          });
+        },
+        { rootMargin: '0px 0px -8% 0px' },
+      );
+      draws.forEach(function (el) { reveal.observe(el); });
+      if (stamp) reveal.observe(stamp);
+
+      // Stage geometry in document coordinates, measured once and again on
+      // resize. The scroll handler then needs nothing but scrollY.
+      //
+      // This matters more than it looks: a getBoundingClientRect() in the
+      // frame loop forces a synchronous layout, and a layout invalidation
+      // underneath the header's `backdrop-filter` makes Chrome re-render the
+      // blurred backdrop. Doing that every frame over a 4000px page wedges
+      // the renderer outright.
+      var metrics = [];
+      function measure() {
+        var y = window.scrollY;
+        metrics = stages.map(function (stage) {
+          var box = stage.getBoundingClientRect();
+          return { top: box.top + y, height: Math.max(box.height, 1) };
+        });
+        update();
+      }
+
+      var grown = {};
+      function update() {
+        // One scan line at 72% of the viewport: a stage's stem is drawn in
+        // proportion to how far that line has travelled through it.
+        var line = window.scrollY + window.innerHeight * 0.72;
+
+        parts.forEach(function (part, i) {
+          var m = metrics[i];
+          if (!m) return;
+          var p = Math.max(0, Math.min(1, (line - m.top) / m.height));
+
+          // The stem has no transition, so writing it every frame is exactly
+          // what we want — the scroll position IS the animation.
+          if (part.stem) part.stem.style.transform = 'scaleY(' + p + ')';
+
+          // The seed does have one, so it is only written on a real change.
+          // Re-writing a transitioned property each frame restarts a
+          // transition that then never finishes.
+          if (part.seed) {
+            var lit = p > 0.05;
+            if (lit !== part.seedLit) {
+              part.seedLit = lit;
+              part.seed.style.opacity = lit ? '1' : '0';
+            }
+          }
+
+          if (p > 0.42 && !grown[i]) {
+            grown[i] = 1;
+            if (part.leaf) { part.leaf.style.opacity = '1'; part.leaf.style.transform = shown(part.leaf); }
+            if (part.bloom) {
+              part.bloom.style.opacity = '1';
+              part.bloom.style.transform = 'scale(1)';
+              setTimeout(function () { part.bloom.classList.add('animate-sway'); }, 700);
+            }
+          }
+        });
+      }
+
+      // The source design ran an unconditional rAF loop because its preview
+      // scrolled an outer container that emitted no scroll events. A real page
+      // does emit them, so coalescing on scroll costs nothing while idle.
+      var queued = false;
+      function schedule() {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(function () { queued = false; update(); });
+      }
+      addEventListener('scroll', schedule, { passive: true });
+      // Only a resize re-measures; scrolling never touches layout.
+      addEventListener('resize', measure);
+      measure();
+      // Barlow arrives async and reflows the stages under it, so the cached
+      // offsets have to be taken again once it has landed.
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+
+      // Knock the seed and the whole plant shivers, top to bottom.
+      var seed = root.querySelector('[data-seed]');
+      if (seed) {
+        seed.addEventListener('click', function () {
+          var parts = root.querySelectorAll('[data-seed], [data-leaf], [data-bloom], [data-sprout]');
+          [].forEach.call(parts, function (el, i) {
+            el.classList.remove('animate-wiggle');
+            setTimeout(function () { el.classList.add('animate-wiggle'); }, i * 70);
+            setTimeout(function () { el.classList.remove('animate-wiggle'); }, i * 70 + 620);
+          });
+        });
+      }
+    })();
+  </script>
+</Industry>

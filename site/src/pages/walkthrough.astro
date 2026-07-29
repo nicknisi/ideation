@@ -1,0 +1,382 @@
+---
+import Industry from '../layouts/Industry.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import Blueprint from '../components/Blueprint.astro';
+import InstallBlock from '../components/InstallBlock.astro';
+import Transcript from '../components/Transcript.astro';
+import Specimen from '../components/Specimen.astro';
+
+const NAV = [
+  { href: '/', label: 'Overview' },
+  { href: '/#stages', label: 'Stages', keep: 'optional' as const },
+  { href: '/#install', label: 'Install', keep: 'optional' as const },
+  { href: 'https://github.com/nicknisi/ideation', label: 'GitHub', keep: 'always' as const },
+];
+
+const stepTitle =
+  'flex items-baseline gap-4 font-heading text-[clamp(24px,5.4vw,30px)] font-semibold';
+const stepNum = 'font-mono text-[12px] text-accent-700';
+const stepIntro = 'mt-3 mb-6 max-w-[70ch] text-[15.5px] leading-[1.6] text-ink/82';
+const tag = 'plate-label pr-3 text-accent-700';
+const mono = 'font-mono text-[13px]';
+const mark = 'bg-accent-200 text-current';
+---
+
+<Industry
+  title="One idea, all seven stages — the ideation walkthrough"
+  description="A made-up feature — a garden where your bookmarks grow when you read them and wilt when you don't — taken from a rambling paragraph to reviewed commits, through every stage of an ideation run."
+  ogType="article"
+>
+  <SiteHeader homeHref="/" links={NAV} />
+
+  <div class="mx-auto max-w-[1340px] px-8 pt-13 pb-24 max-[560px]:px-6" data-grow>
+    <section class="max-w-[74ch]">
+      <div class="font-mono text-[11.5px] tracking-[0.06em] text-neutral-700">
+        docs/ideation/bookmark-garden/
+      </div>
+      <h1 class="mt-4 font-heading text-[clamp(32px,7vw,58px)] leading-[1.04] font-semibold">
+        One idea, all seven stages.
+      </h1>
+      <p class="mt-6 text-[18px] leading-[1.6] text-ink/82">
+        A made-up feature — a garden where your bookmarks grow when you read them and wilt when you
+        don't — taken from a rambling paragraph to reviewed commits. Every transcript below is the
+        shape of a real run: the questions it asks, the findings it files, and the two places it
+        stopped.
+      </p>
+    </section>
+
+    <div
+      class="grid grid-cols-[minmax(0,1fr)_216px] items-start gap-16 pt-16 max-[1040px]:grid-cols-[minmax(0,1fr)] max-[1040px]:gap-8"
+    >
+      <main class="grid min-w-0 gap-16">
+        <!-- ── 01 ───────────────────────────────────────────────────────── -->
+        <section data-step class="min-w-0">
+          <h2 class={stepTitle}><span class={stepNum}>01</span>The brain dump</h2>
+          <p class={stepIntro}>
+            No structure required. It reads the mess and names what is strong and what is weak
+            before it asks anything.
+          </p>
+          <Transcript source="/ideation" status="intake">
+            <p class="font-mono text-[13px] leading-[1.75] text-ink/78">
+              okay so hear me out — a bookmark garden. you save a link and that plants a seed, and
+              when you go back and actually read it the thing grows. if you never touch it, <mark
+                class={mark}>it wilts</mark
+              >. seasons maybe? idk. cozy.
+            </p>
+            <div class="grid gap-2 border-t border-line pt-3">
+              <p><span class={tag}>Strong</span>a clear core loop: save → revisit → grow.</p>
+              <p>
+                <span class={tag}>Weak</span>“seasons” is a vibe, not a scope. “Wilts” has no clock.
+              </p>
+            </div>
+          </Transcript>
+        </section>
+
+        <!-- ── 02 ───────────────────────────────────────────────────────── -->
+        <section data-step class="min-w-0">
+          <h2 class={stepTitle}><span class={stepNum}>02</span>The interview</h2>
+          <p class={stepIntro}>
+            One question at a time, each arriving with a recommendation you can accept. The
+            scoreboard is visible the whole way, and every gate is backed by an artifact — the
+            schema file, the existing visit log, a check command.
+          </p>
+          <Transcript source="interview" status="gates 5/5" bodyClass="gap-6">
+            <div class="grid gap-2">
+              <p><strong class="font-bold">Q1</strong> What makes a plant grow — visits, or reading time?</p>
+              <p class="text-accent-700">
+                Recommended: visits. There is no reading-time signal in your schema, and visits are
+                already logged.
+              </p>
+              <p class="font-mono text-[12.5px] text-neutral-700">✓ accepted</p>
+            </div>
+            <div class="grid gap-2">
+              <p><strong class="font-bold">Q2</strong> When does a seed wilt?</p>
+              <p class="text-accent-700">
+                Recommended: fourteen days without a visit, computed on read rather than by a job.
+              </p>
+              <p class="font-mono text-[12.5px] text-neutral-700">
+                ✓ accepted — “make the window configurable”
+              </p>
+            </div>
+            <div
+              class="flex flex-wrap gap-x-4 gap-y-2 border-t border-line pt-4 font-mono text-[12px] text-neutral-700"
+            >
+              <span>problem ✓</span><span>goals ✓</span><span>criteria ✓</span><span>scope ✓</span
+              ><span>consistency ✓</span>
+            </div>
+          </Transcript>
+        </section>
+
+        <!-- ── 03 ───────────────────────────────────────────────────────── -->
+        <section data-step class="min-w-0">
+          <h2 class={stepTitle}><span class={stepNum}>03</span>The critics</h2>
+          <p class={stepIntro}>
+            Four read-only passes over the plan. Two blockers sent it back — and the
+            hidden-dependency finding reopened the interview on the consistency gate rather than
+            being noted and ignored.
+          </p>
+          <Transcript source="critique" status="2 blockers · 2 concerns">
+            <p>
+              <span class="pr-3 font-mono text-[11.5px] text-accent-700">scope-creep · BLOCKER</span
+              >“Seasons” appears in the goals but in no phase and no success criterion. Cut it or
+              scope it.
+            </p>
+            <p>
+              <span class="pr-3 font-mono text-[11.5px] text-accent-700"
+                >hidden-dependency · BLOCKER</span
+              >Wilting is time-based, but the plan never says <mark class={mark}
+                >where the clock lives</mark
+              > — client, server, or database.
+            </p>
+            <p class="text-ink/78">
+              <span class="pr-3 font-mono text-[11.5px] text-neutral-700"
+                >over-engineering · concern</span
+              >A wilt cron job is proposed where a computed-on-read query would do.
+            </p>
+            <p class="text-ink/78">
+              <span class="pr-3 font-mono text-[11.5px] text-neutral-700"
+                >success-criteria · concern</span
+              >“Feels cozy” is not falsifiable. Replace or drop it.
+            </p>
+          </Transcript>
+        </section>
+
+        <!-- ── 04 ───────────────────────────────────────────────────────── -->
+        <section data-step class="min-w-0">
+          <h2 class={stepTitle}><span class={stepNum}>04</span>The fork</h2>
+          <p class={stepIntro}>
+            The contract lands and the run stops. One question routes the finish, and the tier you
+            pick decides what reaches the specs at all.
+          </p>
+          <Transcript source="contract.html" status="awaiting approval">
+            <p class="text-accent-700">
+              Express recommended — all five gates went ready with no early stop, and four of six
+              success criteria carry check commands.
+            </p>
+            <div class="grid gap-2 border-t border-line pt-3">
+              <p><span class={tag}>Must</span>save → seed · visit → growth · wilt query · the garden view</p>
+              <p><span class={tag}>Should</span>a configurable wilt window</p>
+              <p class="text-ink/78">
+                <span class="plate-label pr-3 text-neutral-700">Could</span>seasons — deferred, and
+                recorded in the decision log so it stays deferred
+              </p>
+            </div>
+          </Transcript>
+        </section>
+
+        <!-- ── 05 ───────────────────────────────────────────────────────── -->
+        <section data-step class="min-w-0">
+          <h2 class={stepTitle}><span class={stepNum}>05</span>Execution</h2>
+          <p class={stepIntro}>
+            Phases commit in waves on an isolation branch. Each is reviewed before it lands, and
+            each commit names its spec, so a resumed run skips what is already done.
+          </p>
+          <Transcript
+            source="ideation/bookmark-garden"
+            status="4 phases · 4 commits"
+            bodyClass="gap-6 font-mono text-[12.5px] leading-[1.85]"
+          >
+            <div>
+              <div class="tracking-[0.06em] text-neutral-700">wave 1</div>
+              <div>
+                Phase 1 — Soil schema + visit tracking <span class="text-accent-700">✓ 5eedbed</span>
+              </div>
+            </div>
+            <div>
+              <div class="tracking-[0.06em] text-neutral-700">wave 2 · parallel</div>
+              <div>Phase 2 — Growth stages <span class="text-accent-700">✓ f01a9e5</span></div>
+              <div class="text-neutral-700">
+                review cycle 1: wilt query missed never-visited seeds → fixed, cycle 2 pass
+              </div>
+              <div>Phase 3 — Wilt query <span class="text-accent-700">✓ 7ab3c10</span></div>
+            </div>
+            <div>
+              <div class="tracking-[0.06em] text-neutral-700">wave 3</div>
+              <div>Phase 4 — The garden view <span class="text-accent-700">✓ 9a2eb00</span></div>
+            </div>
+            <div class="border-t border-line pt-3">
+              node verify.mjs — <span class="text-accent-700">6 checks, 6 pass</span>
+            </div>
+          </Transcript>
+        </section>
+
+        <!-- ── 06 ───────────────────────────────────────────────────────── -->
+        <section data-step class="min-w-0">
+          <h2 class={stepTitle}><span class={stepNum}>06</span>The harvest</h2>
+          <p class={stepIntro}>
+            The run ends and the filter asks once, for at most three candidates. Nothing reaches{' '}
+            <code class={mono}>learnings.md</code> unless you accept it.
+          </p>
+          <Transcript source="harvest" status="1 accepted · 2 dismissed">
+            <p>
+              <span class="pr-3 font-mono text-accent-700">▣</span>Time-based behavior never said
+              where the clock lives — ask it in the consistency gate.{' '}
+              <span class="font-mono text-[12px] text-accent-700">accepted</span>
+            </p>
+            <p class="text-ink/78">
+              <span class="pr-3 font-mono text-neutral-700">☐</span>The garden view needed
+              empty-state art the spec never mentioned.{' '}
+              <span class="font-mono text-[12px]">dismissed</span>
+            </p>
+            <p class="text-ink/78">
+              <span class="pr-3 font-mono text-neutral-700">☐</span>Parallel waves finished faster
+              than estimated. <span class="font-mono text-[12px]">dismissed — not a lesson</span>
+            </p>
+          </Transcript>
+        </section>
+
+        <!-- ── 07 ───────────────────────────────────────────────────────── -->
+        <section data-step class="min-w-0">
+          <h2 class={stepTitle}><span class={stepNum}>07</span>Weeks later</h2>
+          <p class={stepIntro}>
+            A new idea arrives, and the interview opens by naming what it learned last time — out
+            loud, as its first question. This is the stage that cannot stop you; it just points back
+            at 02.
+          </p>
+          <Transcript source="/ideation" status="intake · learning applied">
+            <p class="font-mono text-[13px] leading-[1.75] text-ink/78">
+              new idea — a reading-streak greenhouse. three days in a row and a flower opens. <mark
+                class={mark}>resets at midnight</mark
+              >.
+            </p>
+            <p class="text-accent-700">
+              Applying a learning from bookmark-garden: “resets at midnight” is elapsed-time
+              behavior, so I am asking where the clock lives before anything else.
+            </p>
+            <p><strong class="font-bold">Q1</strong> Whose midnight — and which process notices it?</p>
+          </Transcript>
+        </section>
+
+        <!-- ── CTA ──────────────────────────────────────────────────────── -->
+        <section class="max-w-[70ch]">
+          <h2 class="font-heading text-[clamp(24px,5.4vw,30px)] font-semibold">
+            Your idea is messier than this one.
+          </h2>
+          <p class="mt-4 mb-8 text-[16px] leading-[1.6] text-ink/82">
+            That is fine — the mess is the input. Install it, run{' '}
+            <code class="font-mono text-[13px] text-accent-700">/ideation</code>, and answer
+            honestly.
+          </p>
+          <InstallBlock variant="primary" class="max-w-[620px]" />
+        </section>
+
+        <SiteFooter>
+          <a href="/" class="font-mono text-[11.5px] text-accent-700 hover:text-accent-800 hover:underline hover:underline-offset-2">
+            ← back to the overview
+          </a>
+        </SiteFooter>
+      </main>
+
+      <aside class="sticky top-[106px] self-start max-[1040px]:static max-[1040px]:max-w-[300px]">
+        <Blueprint class="px-4 pt-6 pb-4">
+          <Specimen />
+          <div
+            class="mt-4 flex items-baseline justify-between gap-3 border-t border-line pt-4 font-mono text-[11px] tracking-[0.06em] text-neutral-700"
+          >
+            <span data-growth-label>seed</span>
+            <span data-growth-count>01/07</span>
+          </div>
+        </Blueprint>
+        <p class="mt-4 font-mono text-[10.5px] leading-[1.7] text-neutral-700">
+          Fig. A — specimen, drawn as the run proceeds. Tap it.
+        </p>
+      </aside>
+    </div>
+  </div>
+
+  <script is:inline>
+    // The specimen tracks which step you are reading: one part per stage, so
+    // scrolling the page grows the plant. Authored fully visible, so a reader
+    // without JS sees the finished drawing.
+    (function () {
+      var root = document.querySelector('[data-grow]');
+      if (!root || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      var LABELS = ['seed', 'sprout', 'two leaves', 'stem', 'branching', 'bud', 'in bloom'];
+      var draws = [].slice.call(root.querySelectorAll('[data-draw]'));
+      var parts = [].slice.call(root.querySelectorAll('[data-part]'));
+      var steps = [].slice.call(root.querySelectorAll('[data-step]'));
+      var label = root.querySelector('[data-growth-label]');
+      var count = root.querySelector('[data-growth-count]');
+      var bloom = root.querySelector('[data-bloom]');
+
+      draws.forEach(function (el) {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(10px)';
+      });
+      parts.forEach(function (part) { part.style.opacity = '0'; });
+
+      // Each transcript reveals once and never hides again, so that belongs to
+      // an IntersectionObserver — which keeps layout reads out of the scroll
+      // handler entirely.
+      var reveal = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (entry) {
+            // `isIntersecting` alone loses anything the reader scrolled past
+            // before the first callback was delivered — on a fast flick that
+            // transcript would stay invisible until scrolled back to. Anything
+            // already above the fold counts as arrived.
+            if (!entry.isIntersecting && entry.boundingClientRect.top >= 0) return;
+            reveal.unobserve(entry.target);
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'none';
+          });
+        },
+        { rootMargin: '0px 0px -8% 0px' },
+      );
+      draws.forEach(function (el) { reveal.observe(el); });
+
+      // Step offsets in document coordinates, cached so the scroll handler
+      // reads nothing but scrollY. A getBoundingClientRect() per frame forces
+      // a layout, and a layout under the header's `backdrop-filter` forces the
+      // blurred backdrop to re-render — every frame, which wedges the tab.
+      var tops = [];
+      function measure() {
+        var y = window.scrollY;
+        tops = steps.map(function (step) { return step.getBoundingClientRect().top + y; });
+        update();
+      }
+
+      var last = -1;
+      function update() {
+        // The last step whose heading has crossed the midline is the one
+        // being read; the plant is drawn up to that part.
+        var line = window.scrollY + window.innerHeight * 0.55;
+        var active = 0;
+        tops.forEach(function (top, i) { if (top <= line) active = i; });
+
+        if (active === last) return;
+        last = active;
+        parts.forEach(function (part, i) { part.style.opacity = i <= active ? '1' : '0'; });
+        if (label) label.textContent = LABELS[active];
+        if (count) count.textContent = '0' + (active + 1) + '/07';
+        if (bloom) bloom.classList.toggle('animate-sway', active === 6);
+      }
+
+      var queued = false;
+      function schedule() {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(function () { queued = false; update(); });
+      }
+      addEventListener('scroll', schedule, { passive: true });
+      addEventListener('resize', measure);
+      measure();
+      // Barlow arrives async and reflows the steps, so re-measure once it lands.
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+
+      var specimen = root.querySelector('[data-specimen]');
+      if (specimen) {
+        specimen.addEventListener('click', function () {
+          parts.forEach(function (part, i) {
+            part.style.transformOrigin = '60px 190px';
+            part.classList.remove('animate-wiggle');
+            setTimeout(function () { part.classList.add('animate-wiggle'); }, i * 55);
+            setTimeout(function () { part.classList.remove('animate-wiggle'); }, i * 55 + 500);
+          });
+        });
+      }
+    })();
+  </script>
+</Industry>

@@ -1,0 +1,301 @@
+@import 'tailwindcss';
+
+/* ═══════════════════════════════════════════════════════════════════
+   Industry — the overview and walkthrough pages, as Tailwind tokens.
+
+   A different world from the field guide (src/styles/global.css): this
+   one is a drafting table. Condensed headings, hairline rules, square
+   corners everywhere, registration marks at the corners of every framed
+   object, and one slate-blue accent. Nothing here is rounded and nothing
+   casts a shadow — depth comes from the frame, not from elevation.
+
+   Only /(index) and /walkthrough import this. /guide still imports
+   global.css and keeps its paper-and-serif world; the two never meet in
+   one document, so both are free to clear Tailwind's palette.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Self-hosted latin subsets — the site makes no external requests. */
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/barlow-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/barlow-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/barlow-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/barlow-condensed-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/barlow-condensed-600.woff2') format('woff2');
+}
+
+:root {
+  color-scheme: light;
+
+  --canvas: #f2f2f3;
+  --surface: #e9e9ea;
+  --ink: #1d1f20;
+  --accent: #5980a6;
+  --line: color-mix(in srgb, #1d1f20 16%, transparent);
+
+  /* Tonal ramps — generated in OKLCH on one shared lightness scale, so the
+     same step of any role matches the others in visual value. */
+  --neutral-100: #f5f5f8;
+  --neutral-200: #e7e7ea;
+  --neutral-300: #d4d4d7;
+  --neutral-400: #b7b7ba;
+  --neutral-500: #98989b;
+  --neutral-600: #7a7a7d;
+  --neutral-700: #5d5d60;
+  --neutral-800: #424244;
+  --neutral-900: #2b2b2d;
+
+  --accent-100: #eef6ff;
+  --accent-200: #d6ebff;
+  --accent-300: #b5d9fd;
+  --accent-400: #94bce3;
+  --accent-500: #749dc4;
+  --accent-600: #597ea3;
+  --accent-700: #416180;
+  --accent-800: #2c455d;
+  --accent-900: #1d2d3d;
+}
+
+/* The dark deck is slate, not black: the drafting table under a lamp.
+   Declared once and applied by both the explicit toggle and the system
+   preference, so a reader who never touches the control still gets it. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+:root[data-theme='dark'],
+:root:not([data-theme='light']) {
+  @media (prefers-color-scheme: dark) {
+    color-scheme: dark;
+    --canvas: #16202a;
+    --surface: #1d2b38;
+    --ink: #e8ecf0;
+    --line: color-mix(in srgb, #e8ecf0 22%, transparent);
+    --accent: #94bce3;
+    --accent-100: #22354a;
+    --accent-200: #2c455d;
+    --accent-700: #b5d9fd;
+    --accent-800: #d6ebff;
+    --neutral-700: #9aa4ae;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --canvas: #16202a;
+  --surface: #1d2b38;
+  --ink: #e8ecf0;
+  --line: color-mix(in srgb, #e8ecf0 22%, transparent);
+  --accent: #94bce3;
+  --accent-100: #22354a;
+  --accent-200: #2c455d;
+  --accent-700: #b5d9fd;
+  --accent-800: #d6ebff;
+  --neutral-700: #9aa4ae;
+}
+
+@theme inline {
+  /* Clear Tailwind's palette. The same reasoning as the field guide: if
+     `bg-blue-500` is reachable, someone reaches for it, and the point of
+     a design system is that it does not look like a default. */
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+
+  --color-accent-100: var(--accent-100);
+  --color-accent-200: var(--accent-200);
+  --color-accent-300: var(--accent-300);
+  --color-accent-400: var(--accent-400);
+  --color-accent-500: var(--accent-500);
+  --color-accent-600: var(--accent-600);
+  --color-accent-700: var(--accent-700);
+  --color-accent-800: var(--accent-800);
+  --color-accent-900: var(--accent-900);
+
+  --color-neutral-100: var(--neutral-100);
+  --color-neutral-200: var(--neutral-200);
+  --color-neutral-300: var(--neutral-300);
+  --color-neutral-400: var(--neutral-400);
+  --color-neutral-500: var(--neutral-500);
+  --color-neutral-600: var(--neutral-600);
+  --color-neutral-700: var(--neutral-700);
+  --color-neutral-800: var(--neutral-800);
+  --color-neutral-900: var(--neutral-900);
+
+  /* The system's spacing tokens are 3.4px × n, exactly. Feeding that base
+     to Tailwind means p-4 IS --space-4 (13.6px) and pt-8 IS --space-8
+     (27.2px) — the utility scale and the design tokens are one thing. */
+  --spacing: 3.4px;
+
+  --font-heading: 'Barlow Condensed', system-ui, sans-serif;
+  --font-body: 'Barlow', system-ui, sans-serif;
+  --font-mono: ui-monospace, Menlo, Consolas, monospace;
+
+  --animate-sway: sway 4.5s ease-in-out infinite;
+  --animate-blink: blink 1.15s steps(1) infinite;
+  /* The impact lives in the keyframes (1.12 → 0.94 → 1, a stamp hitting paper
+     and settling), so the timing function only has to decelerate. It used to
+     be an overshooting bezier as well, which meant two different rules each
+     adding their own rebound — the second one compounding a squash the
+     keyframes had already expressed. */
+  --animate-thump: thump 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-wiggle: wiggle 0.5s ease-in-out;
+
+  /* These animate the INDEPENDENT `rotate` / `scale` properties rather than
+     `transform`. The mirrored leaves carry `transform: scaleX(-1)`, and a
+     keyframe on `transform` would replace that mirror — flipping the leaf to
+     the wrong side for the length of the animation. Individual properties
+     compose with `transform` instead of overwriting it. */
+  @keyframes sway {
+    0%,
+    100% {
+      rotate: -3deg;
+    }
+    50% {
+      rotate: 4deg;
+    }
+  }
+  @keyframes blink {
+    0%,
+    45% {
+      opacity: 1;
+    }
+    50%,
+    95% {
+      opacity: 0;
+    }
+  }
+  @keyframes thump {
+    0% {
+      scale: 1.12;
+      opacity: 0;
+    }
+    60% {
+      scale: 0.94;
+      opacity: 1;
+    }
+    100% {
+      scale: 1;
+      opacity: 1;
+    }
+  }
+  @keyframes wiggle {
+    0%,
+    100% {
+      rotate: 0deg;
+    }
+    25% {
+      rotate: -14deg;
+    }
+    75% {
+      rotate: 14deg;
+    }
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--ink);
+    background: var(--canvas);
+    text-wrap: pretty;
+    -webkit-font-smoothing: antialiased;
+    transition:
+      background 0.35s ease,
+      color 0.35s ease;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    line-height: 1.12;
+    letter-spacing: -0.015em;
+    margin: 0;
+  }
+  /* Anchor targets clear the 58px sticky header. The design's own nav
+     jumps landed under it. */
+  :target,
+  [id] {
+    scroll-margin-top: calc(var(--spacing) * 24);
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+  :focus {
+    outline: none;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+/* The hero's drafting grid: two hairline gradients on the module size,
+   faded out downward so the page emerges from the paper. */
+@utility drafting-grid {
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 27.2px 27.2px;
+  mask-image: linear-gradient(180deg, rgb(0 0 0 / 0.9), transparent);
+}
+
+/* Uppercase condensed section label — the drawing-number voice. */
+@utility plate-label {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}

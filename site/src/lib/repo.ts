@@ -7,7 +7,7 @@
  * works in `astro dev` and `astro build` alike, and fails loudly rather than
  * silently reading nothing.
  */
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
 export function repoRoot(): string {
@@ -27,3 +27,20 @@ export function repoRoot(): string {
 
 /** A path inside the plugin repo, e.g. repoPath('skills'). */
 export const repoPath = (...parts: string[]): string => join(repoRoot(), ...parts);
+
+/**
+ * The plugin's released version, from the manifest release-please bumps.
+ *
+ * Read at build time rather than hardcoded, so the badge in the header cannot
+ * drift from what `/plugin install` actually gives you — a release bumps
+ * plugin.json and the next deploy picks it up with no edit here. Throws rather
+ * than falling back to a placeholder: a wrong version is worse than a failed
+ * build.
+ */
+export function readVersion(): string {
+  const manifest = JSON.parse(readFileSync(repoPath('.claude-plugin', 'plugin.json'), 'utf8'));
+  if (typeof manifest.version !== 'string') {
+    throw new Error('.claude-plugin/plugin.json has no string "version"');
+  }
+  return manifest.version;
+}

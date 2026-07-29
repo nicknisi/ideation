@@ -1,0 +1,30 @@
+---
+import Blueprint from './Blueprint.astro';
+
+/**
+ * A framed transcript from a run: a status bar naming the command and where
+ * it got to, then the exchange itself.
+ */
+interface Props {
+  /** What produced this output — the command or the stage. */
+  source: string;
+  /** Where the run stood when it printed this. */
+  status: string;
+  /** Gap between rows in the body; transcripts vary in density. */
+  bodyClass?: string;
+}
+
+const { source, status, bodyClass = 'gap-4' } = Astro.props;
+---
+
+<Blueprint data-draw class="transition-[opacity,transform] duration-[550ms] ease-out">
+  <div
+    class="flex items-center justify-between gap-4 border-b border-line px-4 py-3 font-mono text-[11px] tracking-[0.06em] text-neutral-700"
+  >
+    <span class="truncate">{source}</span>
+    <span class="flex-none">{status}</span>
+  </div>
+  <div class:list={['grid p-6 text-[14.5px] leading-[1.7] max-[560px]:p-4', bodyClass]}>
+    <slot />
+  </div>
+</Blueprint>

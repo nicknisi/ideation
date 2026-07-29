@@ -1,0 +1,58 @@
+---
+import Blueprint from './Blueprint.astro';
+
+interface Props {
+  /** The hero's framed call to action, or the quieter one further down. */
+  variant?: 'primary' | 'secondary';
+  /** Blinking terminal caret after the second line. Hero only. */
+  caret?: boolean;
+  class?: string;
+}
+
+const { variant = 'secondary', caret = false, class: className = '' } = Astro.props;
+
+const LINES = ['/plugin marketplace add nicknisi/ideation', '/plugin install ideation@ideation'];
+// One clipboard payload, both lines — pasted together they register the
+// marketplace and install from it in a single go.
+const payload = LINES.join('\n');
+
+const button =
+  'flex-none px-6 font-heading text-[14px] font-semibold cursor-pointer transition-colors ' +
+  'max-[780px]:w-full max-[780px]:min-h-[44px] ' +
+  (variant === 'primary'
+    ? 'border-accent bg-accent text-canvas hover:bg-accent-600 active:bg-accent-700'
+    : 'border-line text-ink hover:bg-ink/7 active:bg-ink/14');
+---
+
+<div class:list={['flex max-w-[640px] items-stretch gap-3 max-[780px]:flex-wrap', className]}>
+  <div
+    class="grid min-w-0 flex-1 gap-2 overflow-x-auto border border-line p-4 font-mono text-[13.5px] leading-[1.5]"
+  >
+    {
+      LINES.map((line, i) => (
+        <code class="whitespace-nowrap">
+          <span class="pr-3 text-accent-700 select-none">$</span>
+          {line}
+          {caret && i === LINES.length - 1 && (
+            <span
+              aria-hidden="true"
+              class="ml-[3px] inline-block h-[15px] w-[7px] animate-blink bg-accent align-middle"
+            />
+          )}
+        </code>
+      ))
+    }
+  </div>
+
+  {
+    variant === 'primary' ? (
+      <Blueprint as="button" type="button" data-copy={payload} class={button}>
+        <span data-copy-label>copy both</span>
+      </Blueprint>
+    ) : (
+      <button type="button" data-copy={payload} class:list={['border', button]}>
+        <span data-copy-label>copy both</span>
+      </button>
+    )
+  }
+</div>

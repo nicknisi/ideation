@@ -1,0 +1,100 @@
+---
+import '../styles/industry.css';
+
+interface Props {
+  title: string;
+  description: string;
+  ogType?: 'website' | 'article';
+}
+
+const { title, description, ogType = 'website' } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+
+// The sprout, in the accent — the same mark the header draws.
+const favicon =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235980a6' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M12 22V11'/%3E%3Cpath d='M12 11C12 7 9 4.5 5.5 4.5 5.5 8.5 8.5 11 12 11Z'/%3E%3Cpath d='M12 14C12 10.5 14.8 8.2 18 8.2 18 11.9 15.2 14 12 14Z'/%3E%3C/svg%3E";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonical} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href={favicon} />
+    {
+      /* Preload only the two faces above the fold — the condensed heading
+         and the body regular. The rest arrive with swap. */
+    }
+    <link
+      rel="preload"
+      href="/fonts/barlow-condensed-600.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="preload" href="/fonts/barlow-400.woff2" as="font" type="font/woff2" crossorigin />
+    <title>{title}</title>
+
+    {
+      /* Resolve the theme before first paint so there is no flash. Same
+         storage key as /guide, so a reader's choice carries across both.
+         An absent key means "follow the system" — we resolve it here and
+         write it to the element, but deliberately do NOT persist it, so
+         the guide's three-state control still reads auto as auto. */
+    }
+    <script is:inline>
+      (function () {
+        var t = null;
+        try {
+          t = localStorage.getItem('ideation-theme');
+        } catch (e) {}
+        if (t !== 'light' && t !== 'dark') {
+          t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.dataset.theme = t;
+      })();
+    </script>
+  </head>
+
+  <body class="min-h-screen font-body text-ink">
+    <slot />
+
+    <script is:inline>
+      // Two delegated behaviours for the whole page, bound once.
+      (function () {
+        document.addEventListener('click', function (event) {
+          var toggle = event.target.closest('[data-theme-toggle]');
+          if (toggle) {
+            var next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+            document.documentElement.dataset.theme = next;
+            try {
+              localStorage.setItem('ideation-theme', next);
+            } catch (e) {}
+            return;
+          }
+
+          var copy = event.target.closest('[data-copy]');
+          if (!copy) return;
+          var label = copy.querySelector('[data-copy-label]');
+          var restore = label.textContent;
+          var done = function () {
+            label.textContent = 'copied ✓';
+            clearTimeout(copy._t);
+            copy._t = setTimeout(function () {
+              label.textContent = restore;
+            }, 1400);
+          };
+          if (navigator.clipboard) navigator.clipboard.writeText(copy.dataset.copy).then(done, function () {});
+          else done();
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,92 @@
+---
+/**
+ * Fig. 1 — a miniature of the contract the interview generates.
+ *
+ * The design called for a screenshot of a real contract.html here. Drawing it
+ * instead keeps the page self-contained (no image request, no asset to go
+ * stale when the artifact's layout changes) and lets it re-theme with the
+ * rest of the page. It shows the bookmark-garden run — the same invented
+ * feature the walkthrough follows, so the two pages describe one example
+ * rather than two.
+ */
+const gates = [
+  { name: 'problem', evidence: 'the visit log that already exists' },
+  { name: 'goals', evidence: 'save → revisit → grow, one loop' },
+  { name: 'criteria', evidence: '4 of 6 carry check commands' },
+  { name: 'scope', evidence: 'seasons cut, recorded as deferred' },
+  { name: 'consistency', evidence: 'schema.ts · bookmarks.visits' },
+];
+
+const tiers = [
+  { tier: 'Must', items: 'save → seed · visit → growth · wilt query · garden view', dim: false },
+  { tier: 'Should', items: 'a configurable wilt window', dim: false },
+  { tier: 'Could', items: 'seasons — deferred', dim: true },
+];
+---
+
+<div class="grid gap-6 p-6 max-[560px]:p-4">
+  <div class="flex items-baseline justify-between gap-4 border-b border-line pb-3">
+    <span class="font-heading text-[15px] font-semibold tracking-[0.04em]">BOOKMARK GARDEN</span>
+    <span class="font-mono text-[10px] text-accent-700">express recommended</span>
+  </div>
+
+  <div class="grid gap-6 max-[560px]:gap-4 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+    <div class="grid content-start gap-2">
+      <div class="plate-label text-[10px] text-neutral-700">Gates 5/5</div>
+      {
+        gates.map(gate => (
+          <div class="flex items-baseline gap-2 text-[11px] leading-[1.5]">
+            <span class="font-mono text-accent-700">✓</span>
+            <span class="w-[68px] flex-none font-mono">{gate.name}</span>
+            <span class="min-w-0 truncate text-neutral-700">{gate.evidence}</span>
+          </div>
+        ))
+      }
+    </div>
+
+    <div class="grid content-start gap-2 max-[560px]:hidden">
+      <div class="plate-label text-[10px] text-neutral-700">Scope</div>
+      {
+        tiers.map(tier => (
+          <div class:list={['text-[11px] leading-[1.5]', tier.dim && 'text-neutral-700']}>
+            <span
+              class:list={[
+                'plate-label pr-2 text-[10px]',
+                tier.dim ? 'text-neutral-700' : 'text-accent-700',
+              ]}
+            >
+              {tier.tier}
+            </span>
+            {tier.items}
+          </div>
+        ))
+      }
+    </div>
+  </div>
+
+  {/* The phase graph: wave 2 runs its two phases in parallel. */}
+  <div class="grid gap-3 border-t border-line pt-4">
+    <div class="plate-label text-[10px] text-neutral-700">Phases · 3 waves</div>
+    <div class="flex items-center gap-2 font-mono text-[10px]">
+      <span class="grid size-[26px] flex-none place-items-center border border-accent text-accent-700">
+        01
+      </span>
+      <span class="h-px w-4 flex-none bg-line"></span>
+      <span class="grid flex-none gap-1">
+        <span class="grid size-[26px] place-items-center border border-accent text-accent-700">
+          02
+        </span>
+        <span class="grid size-[26px] place-items-center border border-accent text-accent-700">
+          03
+        </span>
+      </span>
+      <span class="h-px w-4 flex-none bg-line"></span>
+      <span class="grid size-[26px] flex-none place-items-center border border-accent text-accent-700">
+        04
+      </span>
+      <span class="ml-auto truncate text-neutral-700 max-[560px]:hidden">
+        node verify.mjs — 6 checks
+      </span>
+    </div>
+  </div>
+</div>
