@@ -158,9 +158,25 @@ During execute-spec, the agent keeps a running `implementation-notes-phase-{N}.h
 
 One file per phase. Opens in your browser automatically after execution. If the agent followed the spec without any judgment calls, no file is created.
 
+## Open Questions and Resuming
+
+An interview doesn't always get to close every gate in one sitting. Some gates are blocked on work the interview can't do: a fact nobody in the room has, something that has to be built before it can be judged, a decision waiting on input that doesn't exist yet, or an errand someone has to run.
+
+When that happens the gate stays `not-ready` and the contract records the **open question** that would close it, each carrying the gate it blocks, how it closes (`research`, `prototype`, `decision`, `task`), and any other questions it waits on. A gate blocked on a written open question is a legitimate stopping point, so the session ends with a contract instead of looping on a question it can't answer.
+
+Point ideation at that project again and it resumes: gates already `ready` are not re-interviewed, and it asks only the open questions whose blockers have closed.
+
+```
+Resuming Bookmark Garden: 3/5 gates ready — 2 open questions
+```
+
+A question only gets written if you can phrase it precisely enough to hand to someone else unchanged. Anything vaguer leaves the gate `not-ready` with the gap named in its evidence, and no question.
+
 ## Contract Lineage
 
 Contracts track revision history via a `Supersedes` link. When re-running ideation on the same project, the prior **Approved** `contract.html` is renamed to `contract-{date}.html` (and the sibling `contract.md` to `contract-{date}.md`) and the new contract references it, creating a traceable revision chain. Draft contracts are replaced in place — interview revisions and the same-session Draft→Approved flip don't accumulate snapshot files; only approved commitments earn lineage.
+
+Lineage and resuming answer different questions: lineage records that a commitment changed, resuming picks up an interview that never finished. A Draft with open questions is the second case, so re-entering it replaces the draft rather than snapshotting it.
 
 ## Evidence Gates
 
