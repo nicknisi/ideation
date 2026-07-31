@@ -14,6 +14,23 @@ permissions:
   contents: write # commit the version bump + changelog, create the tag/release
   pull-requests: write # open and update the release PR
 
+# `pull-requests: write` is necessary and not sufficient. Repo Settings →
+# Actions → General → Workflow permissions has a separate "Allow GitHub Actions
+# to create and approve pull requests" toggle that gates PR *creation* outright,
+# whatever the token scopes say. With it off, this job fails at the last step
+# with "GitHub Actions is not permitted to create or approve pull requests" and
+# nothing about the token or this block explains why.
+#
+#   gh api repos/OWNER/REPO/actions/permissions/workflow
+#   # → can_approve_pull_request_reviews must be true
+#
+# It is one toggle for two capabilities, so turning it on also lets a workflow
+# approve PRs. Accepted here because the alternative is a PAT, which the token
+# note below rejects for its own reasons, and because the only action holding
+# these permissions is pinned to a SHA. Keep `default_workflow_permissions` at
+# `read`: this workflow declares what it needs, so the repo-wide default has no
+# reason to be write.
+
 jobs:
   release-please:
     runs-on: ubuntu-latest
