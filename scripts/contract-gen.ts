@@ -41,6 +41,20 @@ interface DecisionItem {
   reason: string;
 }
 
+interface OpenQuestion {
+  /** Stable kebab-case id; other entries point at it in blockedBy */
+  id: string;
+  /** The question, phrased precisely enough to hand to someone else as-is */
+  question: string;
+  /** Which gate stays open until this closes — a gates.dimensions key */
+  gate: string;
+  /** How it closes: an Explore agent, a spike, an AskUserQuestion, or
+      out-of-band work a human has to go do */
+  type: 'research' | 'prototype' | 'decision' | 'task';
+  /** Ids of entries that must close first. Absent = takeable now. */
+  blockedBy?: string[];
+}
+
 interface GateDimension {
   key: string;
   label: string;
@@ -145,6 +159,9 @@ interface ContractData {
   /** Alternatives weighed and turned down (interview rejections +
       critic-blocker fixes). Absent or empty = section suppressed. */
   decisions?: DecisionItem[];
+  /** Gates the interview could not close, each naming the out-of-band work
+      that would close it. Absent or empty = section suppressed. */
+  openQuestions?: OpenQuestion[];
   execution: {
     strategy: string;
     phases: Phase[];
@@ -420,6 +437,8 @@ function buildRunhead(d: ContractData, f: Facts, paths: ContractPaths): string {
     ['done', 'Done when'],
   ];
   if ((d.decisions ?? []).length) links.push(['decisions', 'Decisions']);
+  if ((d.openQuestions ?? []).length)
+    links.push(['open-questions', 'Open questions']);
   // No "Run it" entry: nothing ever carried `id="run"`, and the run commands
   // live in the `run-model` band that already has its own link above. Pointing
   // this at the sticky header instead just scrolled the reader back to the top.
@@ -1303,6 +1322,55 @@ ${items
   );
 }
 
+// --- Open questions ------------------------------------------------------
+
+/** The ids in `blockedBy` that are still open, resolved against the entries
+    actually present. A closed question is dropped from the array, and the
+    interview engine has no rule telling the writer to also scrub that id out
+    of every entry pointing at it — so a stale id here is expected, not a
+    defect in the data. Reading takeability from presence keeps the two
+    renderers honest: a question whose blockers have all closed renders as
+    takeable without anyone having to remember to prune. */
+function stillBlocking(items: OpenQuestion[], it: OpenQuestion): string[] {
+  const present = new Set(items.map(q => q.id));
+  return (it.blockedBy ?? []).filter(id => id && present.has(id));
+}
+
+/** Not a wash band: `decisions` above is washed and `.band` carries its own
+    border-top, so a plain band is what separates the two. */
+function buildOpenQuestions(d: ContractData): string {
+  const items = Array.isArray(d.openQuestions) ? d.openQuestions : [];
+  if (items.length === 0) return '';
+  const gateLabel = (key: string) =>
+    d.gates.dimensions.find(g => g.key === key)?.label ?? key;
+  return band(
+    'open-questions',
+    `${secHead(
+      'open-questions',
+      'What is still open, and what would close it',
+      'Each of these is a gate the interview could not close, paired with the work that closes it. A resumed interview asks these and nothing else.',
+      `×${items.length}`,
+    )}
+      <ul class="openqs">
+${items
+  .map(it => {
+    const waiting = stillBlocking(items, it);
+    const wait = waiting.length
+      ? ` · <span class="openq-wait">waiting on</span> ${waiting
+          .map(id => `<code>${esc(id)}</code>`)
+          .join(', ')}`
+      : '';
+    return `        <li class="openq">
+          <span class="openq-type">${esc(it.type)}</span>
+          <h3>${esc(it.question)}</h3>
+          <p class="openq-meta"><code class="openq-id">${esc(it.id)}</code> · Blocks ${esc(gateLabel(it.gate))}${wait}</p>
+        </li>`;
+  })
+  .join('\n')}
+      </ul>`,
+  );
+}
+
 // --- Run it --------------------------------------------------------------
 
 function buildCommands(
@@ -1494,6 +1562,24 @@ function mdDecisions(d: ContractData): string {
   return ['## Decisions Considered and Rejected', '', ...body].join('\n');
 }
 
+/** Unlike mdDecisions, an empty list emits nothing at all. Decisions record
+    absence explicitly because a spec consumer must tell silence from a missing
+    section; no consumer reads open questions out of a spec. */
+function mdOpenQuestions(d: ContractData): string {
+  const items = Array.isArray(d.openQuestions) ? d.openQuestions : [];
+  if (items.length === 0) return '';
+  const gateLabel = (key: string) =>
+    d.gates.dimensions.find(g => g.key === key)?.label ?? key;
+  const body = items.map(it => {
+    const waiting = stillBlocking(items, it);
+    const wait = waiting.length
+      ? `; waiting on ${waiting.map(id => `\`${id}\``).join(', ')}`
+      : '';
+    return `- \`${it.id}\` **${it.question}** — ${it.type}, blocks ${gateLabel(it.gate)}${wait}`;
+  });
+  return ['## Open Questions', '', ...body].join('\n');
+}
+
 /** ASCII dependency graph. Mirrors buildPipeline's edge semantics: declared
     prereqs, or an implicit sequential chain when no phase declares any.
     Multi-parent phases render under their first prereq; the annotation names
@@ -1612,6 +1698,9 @@ function mdExecutionPlan(d: ContractData, paths: ContractPaths): string {
 }
 
 function buildMarkdown(d: ContractData, paths: ContractPaths): string {
+  // Conditional spread, not a bare entry: sections.join would otherwise leave
+  // a stray blank block on every contract with no open questions.
+  const oq = mdOpenQuestions(d);
   const sections = [
     mdHeader(d),
     mdProblem(d),
@@ -1619,6 +1708,7 @@ function buildMarkdown(d: ContractData, paths: ContractPaths): string {
     mdCriteria(d),
     mdScope(d),
     mdDecisions(d),
+    ...(oq ? [oq] : []),
     mdExecutionPlan(d, paths),
     '---',
     '_This contract was generated from brain dump input. Review and approve before proceeding to specification._',
@@ -1936,6 +2026,7 @@ ${buildPlan(d, f)}
 ${buildRunModel(d, f)}
 ${buildSuccess(d, f, paths)}
 ${buildDecisionLog(d)}
+${buildOpenQuestions(d)}
 ${buildCommands(d, f, paths)}
 ${buildClose(d, f, paths)}
     </main>

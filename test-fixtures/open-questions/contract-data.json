@@ -1,0 +1,121 @@
+{
+  "projectName": "Open Questions Fixture",
+  "slug": "open-questions",
+  "date": "2026-07-31",
+  "status": "Draft",
+  "supersedes": null,
+  "gates": {
+    "dimensions": [
+      {
+        "key": "problem",
+        "label": "Problem Clarity",
+        "status": "ready",
+        "evidence": "The fixture exists solely to exercise the openQuestions renderers in both output formats."
+      },
+      {
+        "key": "goals",
+        "label": "Goal Definition",
+        "status": "not-ready",
+        "evidence": "Blocked: whether a mid-wave failure prints an actionable resume line cannot be judged without seeing one."
+      },
+      {
+        "key": "criteria",
+        "label": "Success Criteria",
+        "status": "not-ready",
+        "evidence": "Blocked: the runtime's per-step timeout ceiling is unknown, so no criterion can name a bound."
+      },
+      {
+        "key": "scope",
+        "label": "Scope Boundaries",
+        "status": "not-ready",
+        "evidence": "Blocked: skip-vs-fail accounting decides whether propagation handling is in scope at all."
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "status": "not-ready",
+        "evidence": "Blocked: exit-code-vs-crash reporting has to be observed before the two claims can be reconciled."
+      }
+    ]
+  },
+  "problem": [
+    "A synthetic project that holds the one contract shape the orchestration fixture cannot: a Draft with open questions against gates that are genuinely not ready. It renders the openQuestions section in contract.html and contract.md, and it is the only place the four question types, a takeable entry, a singly-blocked entry, a multiply-blocked entry, and a stale blockedBy id all appear together."
+  ],
+  "goals": [
+    "Exercise buildOpenQuestions and mdOpenQuestions across every branch they have, including the stale-id path where blockedBy names an entry that has already closed."
+  ],
+  "successCriteria": [
+    {
+      "criterion": "The open-questions section renders in both outputs, and a blockedBy id naming a closed entry does not render as still-waiting.",
+      "check": {
+        "cmd": "node scripts/contract-gen.ts --input test-fixtures/open-questions/contract-data.json --output /tmp/oq-fixture.html --md-output /tmp/oq-fixture.md && grep -q 'aria-labelledby=\"open-questions-h\"' /tmp/oq-fixture.html && ! grep -qE '^- .skip-vs-fail-accounting.*already-closed' /tmp/oq-fixture.md",
+        "expect": "exits 0"
+      }
+    }
+  ],
+  "scope": {
+    "mvp": [
+      {
+        "item": "One entry per question type, with the blocking shapes the renderers branch on",
+        "reason": "The renderers branch on type and on blockedBy; a fixture missing a branch tests nothing about it"
+      }
+    ],
+    "full": [],
+    "stretch": [],
+    "future": [],
+    "outOfScope": [
+      {
+        "item": "Execution phases",
+        "reason": "A Draft with open gates has no execution plan yet, and the graph tests own phase wiring in the orchestration fixture"
+      }
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "A second fixture rather than open questions added to the orchestration fixture",
+      "rejected": "Extending test-fixtures/orchestration/contract-data.json",
+      "reason": "That fixture is Approved with 5/5 gates ready, which is exactly the state an open question contradicts. graph.test.mjs and wave-planner.test.mjs also assert on it, so mutating its gates to make the shape legal would put the schema example and the engine tests in conflict."
+    },
+    {
+      "decision": "A deliberately stale id in blockedBy",
+      "rejected": "Only ever referencing entries that are present",
+      "reason": "The engine drops a closed entry from the array and never scrubs that id from entries pointing at it, so stale ids are the normal steady state. A fixture without one would let a renderer regress to reporting a takeable question as blocked."
+    }
+  ],
+  "openQuestions": [
+    {
+      "id": "runtime-step-timeout",
+      "question": "What is the Workflow runtime's per-step timeout ceiling inside a parallel wave?",
+      "gate": "criteria",
+      "type": "research"
+    },
+    {
+      "id": "resume-line-readability",
+      "question": "Does a mid-wave failure print a resume line an operator can act on without opening the log?",
+      "gate": "goals",
+      "type": "prototype"
+    },
+    {
+      "id": "exit-code-vs-crash",
+      "question": "Does the harness surface a step's exit code 1 distinctly from a crashed step?",
+      "gate": "consistency",
+      "type": "task",
+      "blockedBy": ["runtime-step-timeout"]
+    },
+    {
+      "id": "skip-vs-fail-accounting",
+      "question": "Should a phase skipped by propagation count against the run's exit status, or only against its summary?",
+      "gate": "scope",
+      "type": "decision",
+      "blockedBy": [
+        "runtime-step-timeout",
+        "resume-line-readability",
+        "already-closed-elsewhere"
+      ]
+    }
+  ],
+  "execution": {
+    "strategy": "Sequential",
+    "phases": []
+  }
+}

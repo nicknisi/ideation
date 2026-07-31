@@ -1557,6 +1557,68 @@ body {
   font-weight: 600;
 }
 
+/* ── Open questions ────────────────────────────────────────── */
+
+.openqs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.openq {
+  break-inside: avoid;
+  padding: var(--s4) 0;
+  border-top: 1px solid var(--line);
+}
+.openq:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.openq h3 {
+  margin: var(--s2) 0 var(--s2);
+  font-family: var(--font-serif);
+  font-size: var(--t-small);
+  font-weight: 600;
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+/* A label on a kind, not an eyebrow over a section — the four kinds are the
+   thing the reader routes on. */
+.openq-type {
+  font-family: var(--font-mono);
+  font-size: var(--t-meta);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.openq-meta {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--t-meta);
+  line-height: 1.6;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+/* Blocked entries are marked by the word, coloured to be findable in a scan. */
+.openq-wait {
+  color: var(--caution);
+  font-weight: 600;
+}
+/* An id is a handle the next session types back in, so it is mono. No chip:
+   padding would open a gap before the comma that separates two of them. */
+.openq-meta code {
+  font-family: var(--font-mono);
+  font-size: 0.95em;
+  color: var(--ink);
+}
+/* The entry's own id leads its meta line, and the ids after "waiting on" are
+   references to other entries. Same mono treatment would make the two
+   indistinguishable, so the leading one carries the weight: it is the label
+   a reader scans for when resolving somebody else's "waiting on". */
+.openq-id {
+  font-weight: 600;
+}
+
 /* ── Commands ──────────────────────────────────────────────── */
 
 .runbar {
@@ -2023,6 +2085,7 @@ body {
   .close,
   .lrow,
   .decision,
+  .openq,
   .crit,
   .pnode {
     break-inside: avoid;
