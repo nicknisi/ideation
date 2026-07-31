@@ -5,6 +5,12 @@ ideation projects. Intake reads this file so recurring gaps inform future
 questioning and spec generation. Each entry is dated and cites its
 evidence; treat entries as hints, never as a substitute for gate evidence.
 
+## 2026-07-31 — docs-site
+
+- **Pattern**: Work that replaces what an existing contract described, without going through ideation itself, leaves that contract permanently failing and nothing marks it as retired.
+  **Evidence**: A hand-done rebuild (d49f16c) replaced the VitePress site at `docs/` with an Astro app in `site/`. All 5 of the docs-site contract's `cmd` criteria then failed on paths that no longer exist (`docs/index.md`, `docs/.vitepress/config.*`, a `docs:build` script), and one ux-dejank criterion went with it (`docs/workflow-example.html`, deleted in the same rebuild). Six red checks, zero code regressions. The contract's own `supersedes` field is the mechanism for this and nothing set it, because the replacing work produced no contract to point at.
+  **Spec/interview implication**: At intake, when the work replaces or rebuilds something an existing `docs/ideation/*/contract-data.json` describes, say so and set `supersedes` on the new contract. When the replacing work is small enough to skip ideation, retire the old contract instead of leaving it to fail. A red criterion on shipped work has four possible verdicts — regressed, false, stale, superseded — and only the first means fix the code; assuming the first wastes the triage.
+
 ## 2026-07-23 — ux-dejank
 
 - **Pattern**: ~~The Agent tool is unavailable inside workflow-engine subagent contexts, so scout and reviewer always degrade to inline exploration or the validation-only fallback there.~~ **RETIRED 2026-07-25** — the constraint is real and permanent, but the consequence was an architecture bug, not a fact to plan around.
