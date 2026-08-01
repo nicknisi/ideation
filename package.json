@@ -2,6 +2,9 @@
   "name": "ideation-plugin",
   "private": true,
   "packageManager": "pnpm@11.10.0",
+  "pi-subagents": {
+    "agents": ["agents"]
+  },
   "scripts": {
     "test": "node --test 'workflows/*.test.mjs' 'scripts/*.test.mjs' 'test-fixtures/**/*.test.mjs'",
     "dev": "pnpm -C site dev",
