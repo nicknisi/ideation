@@ -1,5 +1,6 @@
 {
   "name": "ideation-plugin",
+  "version": "0.22.0",
   "private": true,
   "packageManager": "pnpm@11.10.0",
   "dependencies": {
