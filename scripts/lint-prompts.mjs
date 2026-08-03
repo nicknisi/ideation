@@ -117,21 +117,27 @@ function anchorTargetFile(line, fromFile, root) {
   return fromFile;
 }
 
-/** Strip fenced code blocks and inline code — anchors live in prose, not code. */
+/** Strip fenced code blocks and inline code — anchors live in prose, not code.
+ *  Fences are blanked, not deleted: violation line numbers are computed from
+ *  the stripped text, so the strip must preserve the file's line structure. */
 function proseOnly(text) {
   return text
-    .replace(/```[\s\S]*?(?:```|$)/g, '')
+    .replace(/```[\s\S]*?(?:```|$)/g, block => block.replace(/[^\n]/g, ''))
     .replace(/`[^`\n]*`/g, '');
+}
+
+/** Heading index for every corpus file — built once per run, shared across lintFile calls. */
+function buildHeadingIndex(corpus) {
+  return new Map(corpus.map(f => [f, indexHeadings(readFileSync(f, 'utf8'))]));
 }
 
 /**
  * Lint one corpus file. Returns violations as
  * `{ file, line, ref, reason }` objects.
  */
-export function lintFile(path, corpus, root = ROOT) {
+export function lintFile(path, corpus, root = ROOT, headings = buildHeadingIndex(corpus)) {
   const text = readFileSync(path, 'utf8');
   const lines = text.split('\n');
-  const headings = new Map(corpus.map(f => [f, indexHeadings(readFileSync(f, 'utf8'))]));
   const rel = relative(root, path);
   const violations = [];
   const fail = (line, ref, reason) => violations.push({ file: rel, line, ref, reason });
@@ -229,8 +235,9 @@ export function lintFile(path, corpus, root = ROOT) {
 /** Lint the whole corpus; returns every violation, sorted by file then line. */
 export function lintCorpus(root = ROOT) {
   const corpus = collectCorpus(root);
+  const headings = buildHeadingIndex(corpus);
   return corpus
-    .flatMap(f => lintFile(f, corpus, root))
+    .flatMap(f => lintFile(f, corpus, root, headings))
     .sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
 }
 

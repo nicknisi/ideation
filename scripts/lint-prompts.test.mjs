@@ -139,6 +139,32 @@ describe('lint-prompts fixtures', () => {
     }
   });
 
+  it('an italic-anchor violation after a fenced code block keeps its real line number', () => {
+    // The fence strip must preserve line structure: deleting the fence's
+    // newlines shifts every violation below it up by the fence's height.
+    const root = makeCorpus({
+      'references/engine.md': readReplacingWhenToStop(),
+      'skills/alpha/references/local.md': [
+        '# Local',
+        '',
+        '```',
+        'first code line',
+        'second code line',
+        '```',
+        '',
+        'See *When to stop* before ending.',
+      ].join('\n'),
+    });
+    try {
+      const v = lintCorpus(root);
+      assert.equal(v.length, 1);
+      assert.equal(v[0].line, 8);
+      assert.match(v[0].reason, /no heading "When to stop"/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('SKILL.md frontmatter missing name or description fails', () => {
     const root = makeCorpus({
       'skills/alpha/SKILL.md': '---\nname: alpha\n---\n\n# Alpha\n',
