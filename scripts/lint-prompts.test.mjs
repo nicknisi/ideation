@@ -170,6 +170,27 @@ function readReplacingWhenToStop() {
   ].join('\n');
 }
 
+describe('path handling', () => {
+  it('resolves references in a corpus root containing spaces', () => {
+    // fileURLToPath territory: new URL().pathname stays percent-encoded, and
+    // every join downstream of it 404s in a spaced checkout. Lock the API
+    // boundary — collectCorpus/lintCorpus take root — against that class.
+    const root = mkdtempSync(join(tmpdir(), 'lint prompts spaced-'));
+    try {
+      mkdirSync(join(root, 'skills/alpha'), { recursive: true });
+      mkdirSync(join(root, 'references'), { recursive: true });
+      writeFileSync(
+        join(root, 'skills/alpha/SKILL.md'),
+        '---\nname: alpha\ndescription: fixture\n---\n\n# Alpha\n\nSee `${CLAUDE_PLUGIN_ROOT}/references/engine.md`.\n',
+      );
+      writeFileSync(join(root, 'references/engine.md'), '# Engine\n');
+      assert.deepEqual(lintCorpus(root), []);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('the live prompt corpus is clean', () => {
   it('lintCorpus(repo) returns zero violations', () => {
     assert.deepEqual(lintCorpus(ROOT), []);

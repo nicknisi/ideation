@@ -289,6 +289,42 @@ describe('exit code', () => {
   });
 });
 
+describe('malformed criteria', () => {
+  // A null/non-object criterion used to crash outright; the tolerant parser
+  // briefly converted it to a judgment criterion instead — printed, never
+  // counted, and invisible to /goal's completion predicate. Reject loudly.
+  function runCapturingStderr(args) {
+    const err = [];
+    const errFn = console.error;
+    console.error = (...a) => err.push(a.join(' '));
+    try {
+      const { code } = run(args);
+      return { code, err: err.join('\n') };
+    } finally {
+      console.error = errFn;
+    }
+  }
+
+  it('a null criterion exits 1 with a readable error naming the index', () => {
+    const path = contract([
+      null,
+      { criterion: 'ok', check: { cmd: 'true', expect: '' } },
+    ]);
+    const { code, err } = runCapturingStderr([path]);
+    assert.equal(code, 1);
+    assert.match(err, /successCriteria\[0\] is null/);
+    assert.match(err, /expected a string or a \{ criterion, check \} object/);
+  });
+
+  it('array and numeric criteria are rejected the same way', () => {
+    const path = contract([['not', 'an', 'object'], 42]);
+    const { code, err } = runCapturingStderr([path]);
+    assert.equal(code, 1);
+    assert.match(err, /successCriteria\[0\] is an array/);
+    assert.match(err, /successCriteria\[1\] is number/);
+  });
+});
+
 describe('--list', () => {
   it('enumerates criteria and kinds without running anything', () => {
     const sentinel = join(scratch, 'must-not-exist');

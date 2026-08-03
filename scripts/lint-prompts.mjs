@@ -22,10 +22,13 @@
 // script can resolve without prose judgment; loose numeric references and
 // emphasis italics are out of scope by design.
 
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = join(dirname(new URL(import.meta.url).pathname), '..');
+// fileURLToPath, not new URL().pathname — the latter stays percent-encoded,
+// so a checkout path with spaces resolves to a nonexistent `%20` directory.
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 /** Every markdown file under skills/ and references/ — the prompt corpus. */
 export function collectCorpus(root = ROOT) {
@@ -232,7 +235,18 @@ export function lintCorpus(root = ROOT) {
 }
 
 // Only run the CLI when executed directly, so the test file can import.
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+// Real paths on both sides — the raw `file://` + argv[1] comparison breaks on
+// percent-encoded characters (spaces) and on symlinked invocations; this is
+// the same entry-guard idiom as wave-planner.mjs and verify.mjs.
+if (process.argv[1]) {
+  const real = p => {
+    try {
+      return realpathSync(p);
+    } catch {
+      return resolve(p);
+    }
+  };
+  if (real(resolve(process.argv[1])) === real(fileURLToPath(import.meta.url))) {
   const corpus = collectCorpus();
   const violations = lintCorpus();
 
@@ -250,4 +264,5 @@ if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
   console.error('the next reader following a pointer to nothing. Fix the reference or, if the');
   console.error('move was deliberate, update every mention in the same change.');
   process.exit(1);
+  }
 }

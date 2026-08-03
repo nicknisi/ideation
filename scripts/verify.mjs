@@ -316,6 +316,27 @@ function main(argv) {
     return 1;
   }
 
+  // Malformed criteria are not a legacy shape — the tolerant parser covers
+  // strings and { criterion, check } objects, and anything else used to crash
+  // outright. Crash cleanly instead: a malformed entry silently normalized to
+  // a judgment criterion (printed, never counted) can hand /goal a false
+  // green on a contract nobody actually verified.
+  const malformed = (data.successCriteria ?? [])
+    .map((c, i) => ({ c, i }))
+    .filter(
+      ({ c }) =>
+        typeof c !== 'string' &&
+        (c === null || typeof c !== 'object' || Array.isArray(c)),
+    );
+  if (malformed.length > 0) {
+    for (const { c, i } of malformed) {
+      console.error(
+        `verify: ${dataPath} successCriteria[${i}] is ${c === null ? 'null' : Array.isArray(c) ? 'an array' : typeof c} — expected a string or a { criterion, check } object.`,
+      );
+    }
+    return 1;
+  }
+
   // --advise runs nothing and touches nothing — it is safe to call at the
   // routing question, before a single phase has executed.
   if (adviseOnly) {

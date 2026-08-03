@@ -113,13 +113,15 @@ repo use consistent relative paths; no resolution or normalization).
 
 ## Step 5: Handle the Summary
 
-The engine returns `{ completed, noops, failed, skipped, results }`. Print all four buckets.
+The engine returns `{ completed, noops, failed, skipped, results }` — plus an optional `error` field. Print all four buckets.
+
+**If the summary carries `error`:** planning itself failed (dependency cycle, unknown prereq, duplicate phase title) — every bucket is empty and no phase ran. This is a run-level failure, never an empty success: report the `error` message verbatim and stop. Interactive: fix the manifest (the message names the offending titles) and re-run from Step 1. Unattended: report and halt — do not proceed to the Completion Report, and do not treat empty buckets as a finished run.
 
 - **`noops` are done, not failed.** A NO-OP phase produced a genuinely empty diff (the repo already satisfies its spec) — review was skipped, nothing was committed, and dependents were not blocked. Treat `completed + noops` as the set needing no further work; re-dispatching a no-op phase loops forever.
 - **Each entry in `results` carries `reviewStatus`** (`passed` / `validation-only` / `failed` / `skipped-empty-diff` / `not-run`), a `warnings` array that leads its `summary` string, and `reviewCycles`. Any `reviewStatus` other than `passed` on a committed phase means unreviewed or partially reviewed code landed — that must reach the Completion Report, never be collapsed into a bare PASS.
 - **Effort tracks risk** (informational — the engine handles it): a phase with `risk: "high"` runs its build and fix stages at `effort: 'high'`; review always runs at `effort: 'high'`. `risk` comes straight from `contract-data.json`, so it is worth passing through accurately.
 
-**If `failed` is empty:** proceed to the Completion Report.
+**If `failed` is empty** (and no `error`): proceed to the Completion Report.
 
 **If `failed` is non-empty:** this is the failure gate. Present it via `AskUserQuestion`:
 

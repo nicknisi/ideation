@@ -192,6 +192,9 @@ the two composed functions but not the composition itself.
   "noops": ["Phase title", "..."], // result === "NO-OP" — empty diff, nothing to commit
   "failed": ["Phase title", "..."], // result === "FAIL" (or null agent result)
   "skipped": ["Phase title", "..."], // blocked by an upstream failure
+  "error": "...", // OPTIONAL — present only when planning itself failed (cycle,
+  // unknown prereq, duplicate title): every bucket is empty and no phase ran.
+  // Consumers must treat this as a run-level failure, never an empty success.
   "results": [
     {
       "title": "...",
