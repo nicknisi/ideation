@@ -137,6 +137,14 @@ describe('legacy string normalization', () => {
     assert.equal(normalizeCheck(undefined), undefined);
     assert.equal(normalizeCriterion('bare string criterion').check, undefined);
   });
+
+  it('tolerates a null criterion instead of crashing', () => {
+    // A null inside successCriteria used to take verify down with a TypeError
+    // reading `raw.criterion` — and verify's exit code is what a /goal's
+    // done-when consumes, so a crash is the ultimate misreadable red.
+    assert.deepEqual(normalizeCriterion(null), { criterion: 'null' });
+    assert.deepEqual(normalizeCriterion(undefined), { criterion: 'undefined' });
+  });
 });
 
 describe('validateCheck rejects prose in the executable slot', () => {

@@ -83,6 +83,10 @@ export function normalizeCheck(raw) {
 
 export function normalizeCriterion(raw) {
   if (typeof raw === 'string') return { criterion: raw };
+  // null / undefined / numbers in a published contract's successCriteria would
+  // otherwise crash verify outright — and verify's exit code is what a /goal's
+  // done-when consumes. Stringify instead. Tolerant by design.
+  if (!raw || typeof raw !== 'object') return { criterion: String(raw) };
   return { criterion: raw.criterion, check: normalizeCheck(raw.check) };
 }
 

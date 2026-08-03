@@ -77,6 +77,18 @@ export function computeWaves(phases, completed = []) {
 
   const titles = new Set(phases.map(p => p.title));
 
+  // Validate titles are unique — a Set silently dedupes, and every downstream
+  // structure keys by title, so two same-titled phases would dispatch
+  // concurrently in one working tree and summarize as a clean double-PASS.
+  if (titles.size !== phases.length) {
+    const seen = new Set();
+    const dupes = new Set();
+    for (const p of phases) (seen.has(p.title) ? dupes : seen).add(p.title);
+    throw new Error(
+      `Duplicate phase title(s): ${[...dupes].join(', ')} — phase titles must be unique.`,
+    );
+  }
+
   // Validate prereq titles resolve.
   for (const p of phases) {
     for (const dep of p.prereqs ?? []) {
@@ -239,6 +251,14 @@ function runCli(argv) {
     parsed = JSON.parse(payload);
   } catch (err) {
     process.stderr.write(`Malformed JSON: ${err.message}\n`);
+    process.exit(1);
+  }
+
+  // 'null', '[]', '42', '"str"' all parse fine but are not manifests — reject
+  // with the CLI's clean error format instead of a TypeError stack trace (or
+  // worse: `[]` reads as an empty manifest and silently plans zero waves).
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    process.stderr.write(`Expected a manifest object with a "phases" array.\n`);
     process.exit(1);
   }
 
