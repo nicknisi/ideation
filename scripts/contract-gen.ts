@@ -363,7 +363,7 @@ interface Facts {
 
 function deriveFacts(d: ContractData): Facts {
   const phases = d.execution.phases ?? [];
-  const waves = computeWaves(phases);
+  const waves = computePhaseDepths(phases);
   const criteria = (d.successCriteria ?? []).map(asCriterion);
   const cmds = criteria.filter(c => isCmd(c.check));
   const risk = { high: 0, medium: 0, low: 0 };
@@ -840,8 +840,10 @@ ${tier('stretch', 'Stretch — only if time allows', d.scope.stretch)}
 // --- Plan: the graph and the ledger --------------------------------------
 
 /** Wave (column) per phase: longest prereq chain depth.
-    When no phase declares prereqs, the plan is an implicit sequential chain. */
-function computeWaves(phases: Phase[]): number[] {
+    When no phase declares prereqs, the plan is an implicit sequential chain.
+    Display-depth for the graph layout — deliberately NOT the dispatch planner
+    in `workflows/wave-planner.mjs`; different output, different cycle semantics. */
+function computePhaseDepths(phases: Phase[]): number[] {
   const anyPrereqs = phases.some(p => p.prereqs && p.prereqs.length > 0);
   if (!anyPrereqs) return phases.map((_, i) => i);
 

@@ -6,7 +6,6 @@ node_modules/
 .claude/settings.local.json
 .impeccable/
 PRODUCT.md
-DESIGN.md
 # The impeccable skill installs a full copy of itself into all three of these.
 # This repo publishes a plugin to a marketplace: a stray `git add -A` would
 # vendor ~50 files of someone else's skill into it. Ignored, not deleted.

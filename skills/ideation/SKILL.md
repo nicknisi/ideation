@@ -304,7 +304,7 @@ spec-phase-{n}.md                  # Per-phase delta or full spec
 - `confidence-rubric.md` — evidence-gate criteria for readiness and spec feedback quality
 - `feedback-loop-guide.md` — component-type mapping and design criteria for spec feedback loops
 
-**Skill references** — these live at `${CLAUDE_PLUGIN_ROOT}/skills/ideation/references/`, a different base from the shared refs above; bare `references/...` mentions in this file resolve there. HTML (interactive): `references/html-guide.md` (component library, design tokens, constraints — for ephemeral comparison artifacts only; `contract.html` comes exclusively from `scripts/contract-gen.ts`). Markdown: `references/prd-template.md`, `references/spec-template.md`.
+**Skill references** — these live at `${CLAUDE_PLUGIN_ROOT}/skills/ideation/references/`, a different base from the shared refs above; bare `references/...` mentions in this file resolve there. HTML (interactive): `references/html-guide.md` (components, constraints — for ephemeral comparison artifacts only; `contract.html` comes exclusively from `scripts/contract-gen.ts`; tokens are owned by `DESIGN.md`). Markdown: `references/prd-template.md`, `references/spec-template.md`.
 
 **Examples** (filled-in artifacts for a bookmark feature — reference for tone, structure, detail): `examples/contract-example.md`, `examples/prd-example.md`, `examples/spec-example.md`.
 

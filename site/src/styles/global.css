@@ -3,10 +3,11 @@
 /* ═══════════════════════════════════════════════════════════════════
    The ideation field guide, as Tailwind theme tokens.
 
-   These values are the committed visual world, copied verbatim from the
-   marketing page (public/index.html): paper ground, ink, ONE cobalt
-   accent, serif display, letterpress offset chips, hairline rules, 3px
-   radii, graphite dark deck — never navy.
+   These values are the committed visual world; DESIGN.md (repo root)
+   is the token authority, and this file is one of its two canonical
+   declarations (the other is scripts/contract-gen.css): paper ground,
+   ink, ONE cobalt accent, serif display, letterpress offset chips,
+   hairline rules, 3px radii, graphite dark deck — never navy.
 
    Tailwind's default palette is cleared on purpose. If `bg-blue-500` is
    reachable someone will reach for it, and the whole point of this world

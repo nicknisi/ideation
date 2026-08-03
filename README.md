@@ -104,7 +104,7 @@ Shared (`references/`):
 
 Skill-specific:
 
-- `html-guide.md` - HTML component library, design tokens, and constraints (for ephemeral comparison/visualization artifacts; `contract.html` is rendered only by `scripts/contract-gen.ts`)
+- `html-guide.md` - components and constraints for ephemeral comparison/visualization artifacts (`contract.html` is rendered only by `scripts/contract-gen.ts`)
 - `prd-template.md` - PRD template
 - `spec-template.md` - Implementation spec template (includes feedback loops and failure modes)
 
@@ -350,12 +350,6 @@ flowchart TD
 
     AH -->|"next phase"| M
 
-    style IDEATION fill:#1a1a2e,stroke:#e94560,color:#fff
-    style EXECUTE fill:#1a1a2e,stroke:#0f3460,color:#fff
-    style SCOUT fill:#16213e,stroke:#e94560,color:#fff
-    style BUILD fill:#16213e,stroke:#0f3460,color:#fff
-    style REVIEW fill:#16213e,stroke:#53a653,color:#fff
-    style REVIEWER fill:#0a1628,stroke:#53a653,color:#fff
 ```
 
 ### Reading the Diagram
