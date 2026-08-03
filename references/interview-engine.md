@@ -119,13 +119,13 @@ When exploring the codebase during the interview, look for:
 
 Track readiness internally across 5 evidence gates (each `ready` / `not-ready`, see `${CLAUDE_PLUGIN_ROOT}/references/confidence-rubric.md` for the gate question, evidence required, and ready-when criteria for each):
 
-| Gate             | Question                                                       |
-| ---------------- | -------------------------------------------------------------- |
-| Problem Clarity  | Do I understand what problem we're solving and why it matters? |
-| Goal Definition  | Are the goals specific and measurable?                         |
-| Success Criteria | Can I write tests or validation steps for "done"?              |
-| Scope Boundaries | Do I know what's in and out of scope?                          |
-| Consistency      | Are there contradictions I need resolved?                      |
+| Gate             | Question                                                                |
+| ---------------- | ----------------------------------------------------------------------- |
+| Problem Clarity  | Do I understand what problem we're solving, who has it, and why it matters? |
+| Goal Definition  | Are the goals specific and measurable?                                  |
+| Success Criteria | Can every stated goal be checked pass/fail today?                       |
+| Scope Boundaries | Do I know what's in and out of scope?                                   |
+| Consistency      | Are there contradictions I need resolved?                               |
 
 **When unsure whether the evidence is sufficient, the gate is `not-ready`.** One extra question costs seconds; a bad contract costs hours.
 

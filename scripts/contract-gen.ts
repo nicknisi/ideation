@@ -165,7 +165,6 @@ interface ContractData {
   execution: {
     strategy: string;
     phases: Phase[];
-    agentTeamPrompt?: string;
   };
 }
 
@@ -1421,18 +1420,7 @@ ${f.phases
   .join('\n')}
           </div>
         </div>
-      </details>${
-        d.execution.agentTeamPrompt
-          ? `
-
-      <details class="fold">
-        <summary>Agent team prompt (parallel execution)</summary>
-        <div class="fold-body">
-          ${cmdField('agent-team-prompt', d.execution.agentTeamPrompt, true)}
-        </div>
-      </details>`
-          : ''
-      }`,
+      </details>`,
   );
 }
 
@@ -1466,9 +1454,8 @@ function buildClose(d: ContractData, f: Facts, paths: ContractPaths): string {
 // --- Markdown Builders ---
 //
 // contract.md is the generator's second output (via --md-output): the same
-// ContractData rendered in the hand-authored structure the repo's existing
-// contracts use (skills/ideation/references/contract-template.md documents
-// it). The structure is a deliberate legacy compatibility contract —
+// ContractData rendered in the structure the repo's existing contracts use.
+// The structure is a deliberate legacy compatibility contract —
 // autopilot's fallback parser (when contract-data.json is absent) reads the
 // Execution Plan's graph and /ideation:execute-spec lines plus the
 // **Approval** header line, and get-goal-prompt uses the file as a locator
@@ -1684,16 +1671,6 @@ function mdExecutionPlan(d: ContractData, paths: ContractPaths): string {
     '',
     mdExecutionSteps(d, paths),
   );
-  if (d.execution.agentTeamPrompt) {
-    parts.push(
-      '',
-      '### Agent Team Prompt',
-      '',
-      '```',
-      d.execution.agentTeamPrompt,
-      '```',
-    );
-  }
   return parts.join('\n');
 }
 

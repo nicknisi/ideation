@@ -6,9 +6,7 @@ Use this rubric to judge brain dump readiness before generating a contract. Read
 
 **When unsure whether the evidence is sufficient, the gate is `not-ready`.** One extra question costs seconds; a bad contract costs hours. Do not mark a gate ready to move faster.
 
-## Question cadence
-
-One focused question per turn by default. Batch up to 4 questions in a single `AskUserQuestion` call **only when the questions are independent** — i.e., they target different gates and none depends on the answer to another. (`AskUserQuestion` supports 1–4 questions.) Never batch questions that chain logically; ask those one at a time so each answer informs the next.
+Question cadence is owned by `interview-engine.md` core rule 1.
 
 ## Gates
 
@@ -137,7 +135,7 @@ When asking clarifying questions:
 - **Offer options**: "Is offline support A) critical for MVP, B) nice-to-have phase 1, or C) future consideration?"
 - **Reference context**: "You mentioned 'tags are better than folders.' Should tags be user-created, predefined, or both?"
 - **Prioritize**: Target a not-ready gate first.
-- **Chain logically**: Questions should build understanding, not jump around. Chained questions are asked one at a time (see Question cadence).
+- **Chain logically**: Questions should build understanding, not jump around. Chained questions are asked one at a time (see `interview-engine.md` core rule 1).
 
 ### Don't:
 

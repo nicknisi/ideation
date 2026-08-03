@@ -73,7 +73,7 @@ Assemble the manifest exactly per `${CLAUDE_PLUGIN_ROOT}/workflows/README.md`:
 ```
 
 - `prereqs` are **phase titles** — pass `contract-data.json`'s values straight through; do not remap to indices.
-- `strict: true` (express contracts only) makes the engine run each phase fail-closed, because no human reviewed the specs. The decision-point semantics live in **execute-spec's headless/strict resolution matrix** (`${CLAUDE_PLUGIN_ROOT}/skills/execute-spec/SKILL.md`) — do not restate them here. Omit or set `false` for interactively approved contracts.
+- `strict: true` (express contracts only) makes the engine run each phase fail-closed, because no human reviewed the specs. The decision-point semantics live in **the gate-behavior table** (`${CLAUDE_PLUGIN_ROOT}/workflows/README.md`) — do not restate them here. Omit or set `false` for interactively approved contracts.
 - Before invoking, sanity-check that every `prereqs` entry matches some phase `title` (or a `completedPhases` entry), and that no two phases share a `title`. If a title doesn't resolve or appears twice, it's a manifest bug — report it rather than dispatching a broken graph (the engine will otherwise throw "Unknown prereq" or "Duplicate phase title(s)").
 - **`agentNames` (pi only — omit in Claude Code):** the engine dispatches scout/reviewer/builder stages by `agentType`, and the names differ by harness. Claude Code plugin-scopes them as `ideation:scout` / `ideation:reviewer` / `general-purpose` — these are the engine's defaults, so a CC manifest omits `agentNames` entirely. In pi, the workflow agentType registry uses bare local names and rejects colons, so pass `{ "agentNames": { "scout": "scout", "reviewer": "reviewer", "builder": "worker" } }`. The agents must be registered in pi's workflow agent registry (`.pi/agents/`, `~/.pi/agent/agents/`, or `~/.pi/agents/`) for the stages to bind their tools and prompts — an unregistered name falls back to default tools with no role prompt, losing read-only enforcement on scout/reviewer.
 
@@ -109,7 +109,7 @@ repo use consistent relative paths; no resolution or normalization).
 4. Tell the user before it starts: how many phases, how many already skipped, and that you'll pause only if a phase fails.
 5. **Capture the returned `runId`** — you need it for same-session resume.
 
-**If the `Workflow` tool is unavailable** (feature not enabled in this Claude Code, or the pi `workflow` tool is absent): degrade gracefully — tell the user, then walk the phases yourself in dependency order using `/ideation:execute-spec <specPath>` per phase (the contract's per-phase commands), committing each before the next. For express contracts, carry the `--strict` semantics into this path too (per execute-spec's resolution matrix). This is the legacy manual path.
+**If the `Workflow` tool is unavailable** (feature not enabled in this Claude Code, or the pi `workflow` tool is absent): degrade gracefully — tell the user, then walk the phases yourself in dependency order using `/ideation:execute-spec <specPath>` per phase (the contract's per-phase commands), committing each before the next. For express contracts, carry the `--strict` semantics into this path too (per the gate-behavior table in `${CLAUDE_PLUGIN_ROOT}/workflows/README.md`). This is the legacy manual path.
 
 ## Step 5: Handle the Summary
 
@@ -187,21 +187,16 @@ with no interactive user) — never prompt, never write
 `docs/ideation/learnings.md`; the run's notes wait for the interview engine's
 unmined-notes surfacing at the next interactive intake.
 
-On a watched run, after the Completion Report, aggregate this run's phase notes
-— every `{projectDir}/implementation-notes-phase-*.html` the run produced — and
-apply the learning filter in
-`${CLAUDE_PLUGIN_ROOT}/references/learning-filter.md`, bounded to this project.
-The filter yields **up to 3** candidates. Zero candidates → silence (no prompt,
-no output). Otherwise ask ONE `AskUserQuestion` offering accept/edit/dismiss per
-candidate (a single `multiSelect` question: selected = accept, "Other" = edit,
-none = dismiss), and write accepted entries to `docs/ideation/learnings.md` per
-the lifecycle rules in the filter reference.
+On a watched run, after the Completion Report, run the Learning Capture step —
+aggregate this run's phase notes and apply the filter — per
+`${CLAUDE_PLUGIN_ROOT}/references/learning-filter.md`, the single owner of the
+procedure and the `learnings.md` lifecycle.
 
 ## Key Principles
 
 1. **The engine orchestrates; the skill prepares and gates.** Wave planning, parallelism, and result handling are deterministic JS in `workflows/execute-contract.mjs`. This skill builds the `args`, runs the git pre-pass, and handles the human-in-the-loop moments the sandbox can't.
 2. **No wave math, no `RESULT:` parsing here.** Pass `prereqs` through untouched; read the structured summary the engine returns.
 3. **The contract is the source of truth** — phase order, dependencies, and spec paths all come from `contract-data.json` (`contract.md` Execution Plan as fallback).
-4. **Subagents get clean contexts** — the engine runs each phase as five sibling agent stages (scout → build → review ⇄ fix → commit), each a fresh-context agent; the build stage runs execute-spec's build+verify halves as `--headless`, or `--headless --strict` when the manifest sets `strict` (semantics: execute-spec's resolution matrix). No phase inherits another's context.
+4. **Subagents get clean contexts** — the engine runs each phase as five sibling agent stages (scout → build → review ⇄ fix → commit), each a fresh-context agent; the build stage runs execute-spec's build+verify halves as `--headless`, or `--headless --strict` when the manifest sets `strict` (semantics: the gate-behavior table in `workflows/README.md`). No phase inherits another's context.
 5. **Gate on failures, not successes** — the happy path is fully hands-off; the engine runs everything still reachable and only the skill pauses, after the run, when something failed.
 6. **Already-committed phases are durable** — each phase commits independently. The git pre-pass makes resume work across sessions; `resumeFromRunId` makes it instant within a session.

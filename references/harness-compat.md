@@ -29,7 +29,7 @@ The skills dispatch agents by name. Claude Code plugin-scopes agents as `<plugin
 | `subagent_type: ideation:reviewer` | plugin-scoped `ideation:reviewer` | `reviewer` via `subagent` |
 | `subagent_type: general-purpose` | CC built-in `general-purpose` | `worker` via `subagent` |
 
-**Translation rule (pi):** drop the `ideation:` prefix; dispatch the bare local name via the `subagent` tool (the Claude Code compat shim maps `Agent` → `subagent`). Same agent, same prompt, same inputs.
+**Translation rule (pi):** drop the `ideation:` prefix; dispatch the bare local name via the `subagent` tool. Same agent, same prompt, same inputs.
 
 **Engine `agentType` names** (scout/reviewer/builder stages inside `execute-contract.mjs`): the engine reads `args.agentNames` with CC defaults, so a CC manifest omits it. A pi manifest passes `{ "agentNames": { "scout": "scout", "reviewer": "reviewer", "builder": "worker" } }`. The agents must also be registered in pi's **workflow agent registry** (separate from pi-subagents' agent discovery) for the stages to bind their tools + prompts — the registry scans `<cwd>/.pi/agents/`, `~/.pi/agent/agents/`, and `~/.pi/agents/`, not package `agents/` dirs. An unregistered name still dispatches with a prose hint (`Act as workflow subagent type: scout`) but **loses its tool binding** — the read-only scout and reviewer run with full tools. The autopilot skill copies the agent files to `.pi/agents/` before invoking the engine to prevent this; see § 3.
 
@@ -39,9 +39,9 @@ The plugin declares three pi extensions as `dependencies` in `package.json` and 
 
 | Extension | Provides | Used by | Without it |
 |-----------|----------|---------|------------|
-| `npm:pi-subagents` | the `subagent` tool (the `Agent` shim maps to it) + agent discovery via the `pi-subagents` field | brainstorm (`Explore`), ideation (plan critics), execute-spec (scout, reviewer, wave dispatch) | every agent dispatch fails |
-| `npm:@quintinshaw/pi-dynamic-workflows` | the `workflow` tool (the `Workflow` shim maps to it) | autopilot, express, get-goal-prompt | autopilot degrades to manual per-phase execution |
-| `npm:@juicesharp/rpiv-ask-user-question` | the `ask_user_question` tool (the `AskUserQuestion` shim maps to it) | ideation (every gate, routing, failure-gate), execute-spec (HOLD/abort questions) | every interactive decision point fails |
+| `npm:pi-subagents` | the `subagent` tool + agent discovery via the `pi-subagents` field | brainstorm (`Explore`), ideation (plan critics), execute-spec (scout, reviewer, wave dispatch) | every agent dispatch fails |
+| `npm:@quintinshaw/pi-dynamic-workflows` | the `workflow` tool | autopilot, express, get-goal-prompt | autopilot degrades to manual per-phase execution |
+| `npm:@juicesharp/rpiv-ask-user-question` | the `ask_user_question` tool | ideation (every gate, routing, failure-gate), execute-spec (HOLD/abort questions) | every interactive decision point fails — if no ask-user-question tool is available, ask in plain text with lettered options and state your recommendation — never skip the question |
 
 If you already have any of these installed at the user level, the bundled copy loads alongside it — tools overwrite (same name), skills collide with a warning (first wins). You can remove the user-level install to avoid the redundancy.
 
@@ -49,7 +49,7 @@ If you already have any of these installed at the user level, the bundled copy l
 
 ## What does NOT differ
 
-- `${CLAUDE_PLUGIN_ROOT}` path resolution — a pi extension rewrites these in `read`/`bash` tool calls. Skills write `${CLAUDE_PLUGIN_ROOT}/…` as in CC.
+- `${CLAUDE_PLUGIN_ROOT}` path resolution — resolved in Nick's setup by the user-level `claude-plugin-root.ts` pi extension (sets the env var, rewrites the token in tool calls); not bundled with the plugin. Without it: resolve `${CLAUDE_PLUGIN_ROOT}` relative to the skill's own directory (two levels up from `skills/{name}/`); never read the environment variable, which may be unset or point at a different package. Skills write `${CLAUDE_PLUGIN_ROOT}/…` as in CC.
 - Skill frontmatter (`name`, `description`, `allowed-tools`, `disable-model-invocation`, `argument-hint`) — parsed identically by both harnesses. Unknown fields are ignored.
 - The `pi` manifest in `package.json` — CC ignores it; pi uses it to load the three extension dependencies and discover `skills/`. The `pi-subagents` field (separate from the `pi` manifest) tells pi-subagents where to find `agents/`.
 - All script paths (`scripts/contract-gen.ts`, `scripts/verify.mjs`, `workflows/*.mjs`) — identical, run via `node` in both.

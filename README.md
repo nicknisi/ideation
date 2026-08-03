@@ -94,16 +94,17 @@ Specs and PRDs are Markdown — readable as-is and consumed directly by `/ideati
 
 **Bundled references:**
 
-Shared (plugin root):
+Shared (`references/`):
 
 - `interview-engine.md` - Shared interview engine (Phases 1-2), including the intake exploration sweep
 - `confidence-rubric.md` - Evidence-gate criteria for readiness assessment and spec feedback quality
 - `feedback-loop-guide.md` - Component-type mapping and design criteria for feedback loops
+- `harness-compat.md` - Claude Code / pi harness translation matrix
+- `learning-filter.md` - The learnings.md lifecycle: classify, generalize, dedupe, retire
 
 Skill-specific:
 
 - `html-guide.md` - HTML component library, design tokens, and constraints (for ephemeral comparison/visualization artifacts; `contract.html` is rendered only by `scripts/contract-gen.ts`)
-- `contract-template.md` - Markdown contract template (the HTML contract has no template — it is generator output)
 - `prd-template.md` - PRD template
 - `spec-template.md` - Implementation spec template (includes feedback loops and failure modes)
 
@@ -182,13 +183,13 @@ Lineage and resuming answer different questions: lineage records that a commitme
 
 Readiness is no longer a number. The skill judges your brain dump across 5 **gates**, each either `ready` or `not-ready`. A gate is `ready` only when a concrete artifact exists — a goal written as a pass/fail statement, an explicit scope boundary — not when a score is asserted.
 
-| Gate             | Gate question                                                    |
-| ---------------- | ---------------------------------------------------------------- |
-| Problem Clarity  | Do I understand what problem we're solving, who has it, and why? |
-| Goal Definition  | Are the goals specific and measurable?                           |
-| Success Criteria | Can every stated goal be checked pass/fail today?                |
-| Scope Boundaries | Do I know what's in and out of scope?                            |
-| Consistency      | Are there contradictions I need resolved?                        |
+| Gate             | Gate question                                                             |
+| ---------------- | ------------------------------------------------------------------------- |
+| Problem Clarity  | Do I understand what problem we're solving, who has it, and why it matters? |
+| Goal Definition  | Are the goals specific and measurable?                                    |
+| Success Criteria | Can every stated goal be checked pass/fail today?                         |
+| Scope Boundaries | Do I know what's in and out of scope?                                     |
+| Consistency      | Are there contradictions I need resolved?                                 |
 
 **Proceed-to-contract rule:** all 5 gates `ready`, _or_ the user explicitly ends the interview ("stop" / "wrap up") — in which case the `not-ready` gates are recorded as such in the contract. Each gate carries a one-sentence `evidence` citation: the artifact that makes it ready, or the gap that keeps it not-ready.
 
@@ -281,7 +282,7 @@ flowchart TD
         G -->|"Straight to specs"| I["Generate Specs<br/><i>with feedback loops</i>"]
         I --> J["Self-Review<br/>Feedback Quality"]
         J -->|"Weak"| I
-        J -->|"Strong/Adequate"| K["Write Execution Plan<br/><i>phase track,<br/>commands, agent team prompt</i>"]
+        J -->|"Strong/Adequate"| K["Write Execution Plan<br/><i>phase track,<br/>commands</i>"]
         K --> L["📄 Artifacts in<br/>docs/ideation/project/"]
     end
 
@@ -552,6 +553,31 @@ themselves are unchanged and keep their Claude Code tool format. Skill frontmatt
 
 Nothing here is conditional at load time. A skill reads the same in both harnesses and
 names the translation inline where it dispatches an agent or the engine.
+
+## One owner, derive or drift-test
+
+Every piece of knowledge in this repo has exactly one owner. Everything else either derives
+from it mechanically or points at it — never restates it. The failure this exists to prevent
+is a silent one: two prose copies of the same rule diverge, and the skill an agent reads
+decides which behavior it has. Prose drift changes agent behavior, so prose gets the same
+treatment as code.
+
+Current owners:
+
+| Knowledge           | Owner                            | Backed by                                                              |
+| ------------------- | -------------------------------- | ---------------------------------------------------------------------- |
+| Check semantics     | `scripts/verify.mjs`             | `scripts/verify.test.mjs`                                              |
+| Planner             | `workflows/wave-planner.mjs`     | `workflows/wave-planner.test.mjs` (incl. the engine-mirror drift suite) |
+| Gates               | `references/confidence-rubric.md` | `site/src/lib/gates.ts` (build throws unless exactly 5 gates parse)    |
+| Goal string         | `scripts/contract-gen.ts`        | `scripts/contract-gen.test.mjs`                                        |
+| Express semantics   | `skills/ideation/SKILL.md`       | — (prose owner; the express alias carries no section references)       |
+| Gate behavior       | `workflows/README.md`            | `workflows/execute-contract.smoke.test.mjs` covers the engine row-by-row |
+| Harness translation | `references/harness-compat.md`   | — (prose owner; the guide page renders from it at build time)          |
+| Question cadence    | `references/interview-engine.md` | — (prose owner; core rule 1)                                           |
+| Learning capture    | `references/learning-filter.md`  | — (prose owner; both skills point here)                                |
+
+When you add knowledge, add it to its owner. When you catch yourself restating a rule in a
+second file, that's the signal one of the two copies is in the wrong place.
 
 ## Working on this repo
 
