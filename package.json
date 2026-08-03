@@ -2,6 +2,24 @@
   "name": "ideation-plugin",
   "private": true,
   "packageManager": "pnpm@11.10.0",
+  "dependencies": {
+    "pi-subagents": "^0.40.0",
+    "@quintinshaw/pi-dynamic-workflows": "^3.5.0",
+    "@juicesharp/rpiv-ask-user-question": "^2.3.1"
+  },
+  "pi": {
+    "extensions": [
+      "node_modules/pi-subagents/index.ts",
+      "node_modules/@quintinshaw/pi-dynamic-workflows/extensions/workflow.ts",
+      "node_modules/@juicesharp/rpiv-ask-user-question/index.ts"
+    ],
+    "skills": [
+      "./skills",
+      "node_modules/pi-subagents/skills",
+      "node_modules/@quintinshaw/pi-dynamic-workflows/skills/workflow-authoring",
+      "node_modules/@quintinshaw/pi-dynamic-workflows/skills/workflow-patterns"
+    ]
+  },
   "pi-subagents": {
     "agents": ["agents"]
   },
