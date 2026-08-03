@@ -20,7 +20,9 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -98,6 +100,54 @@ const engineAgentTypes = (src) => {
 const stageAgents = block => collect(block, /agent:\s*'([^']+)'/g);
 const stageOutcomes = block =>
   collect(block, /\['chip[\w-]*',\s*'([^']+)'\]/g);
+
+describe('malformed criteria — renderer and executor reject the same file', () => {
+  // verify.mjs rejects malformed successCriteria at acceptance time; the
+  // generator must reject them too, or it hands out a /goal whose done
+  // condition (a verify run) can never be satisfied. Same predicate, one
+  // owner: malformedCriterionError lives in verify.mjs.
+  const GENPATH = join(dir, 'contract-gen.ts');
+
+  function runGen(args) {
+    const scratch = mkdtempSync(join(tmpdir(), 'contract-gen-malformed-'));
+    const input = join(scratch, 'contract-data.json');
+    writeFileSync(
+      input,
+      JSON.stringify({
+        projectName: 'T',
+        slug: 't',
+        date: '2026-08-03',
+        status: 'Draft',
+        successCriteria: [null],
+      }),
+    );
+    try {
+      const r = spawnSync(process.execPath, [GENPATH, ...args(input, scratch)], {
+        encoding: 'utf8',
+      });
+      return { code: r.status, err: r.stderr };
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
+    }
+  }
+
+  it('render exits 1 naming the criterion index', () => {
+    const { code, err } = runGen((input, scratch) => [
+      '--input',
+      input,
+      '--output',
+      join(scratch, 'contract.html'),
+    ]);
+    assert.equal(code, 1);
+    assert.match(err, /successCriteria\[0\] is null/);
+  });
+
+  it('--print-goal exits 1 the same way — no goal for an unverifiable contract', () => {
+    const { code, err } = runGen(input => ['--input', input, '--print-goal']);
+    assert.equal(code, 1);
+    assert.match(err, /successCriteria\[0\] is null/);
+  });
+});
 
 describe('run model — outcome chips', () => {
   const BLOCK = stagesBlock(GEN);

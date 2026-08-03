@@ -17,6 +17,7 @@ import {
   committablePhases,
   isJudgment,
   isStaticCheck,
+  malformedCriterionError,
   normalizeCriterion,
   summarizeCriteria,
   validateCheck,
@@ -2050,6 +2051,21 @@ if (!('gates' in parsed) && 'confidence' in parsed) {
 
 const data = parsed as unknown as ContractData;
 const paths = contractPaths(data, values.input);
+
+// Render-time rejection of malformed criteria — null, arrays, numbers. Same
+// predicate verify.mjs applies at acceptance time (it owns check semantics),
+// so a contract that cannot verify also cannot render and cannot print a
+// /goal whose done condition delegates to that same verify run.
+const malformed = (data.successCriteria ?? [])
+  .map((c, i) => malformedCriterionError(c, i))
+  .filter(Boolean) as string[];
+if (malformed.length) {
+  console.error(
+    `contract-data.json has ${malformed.length} malformed successCriteria entr${malformed.length === 1 ? 'y' : 'ies'}:\n` +
+      malformed.map(e => `  ${e}`).join('\n'),
+  );
+  process.exit(1);
+}
 
 // Render-time rejection of prose in the executable slot. Errors are collected
 // and reported together — one fix pass, not one per run — and name the

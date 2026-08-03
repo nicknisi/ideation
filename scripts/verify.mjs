@@ -81,6 +81,19 @@ export function normalizeCheck(raw) {
   return { cmd: trimmedCmd, expect: rest.join('—').trim() };
 }
 
+/** Malformed criteria are not a legacy shape — strings and { criterion, check }
+    objects are the only valid forms, and anything else used to crash outright.
+    Returns a readable error string naming the index, or null when the entry is
+    well-formed. Shared with contract-gen.ts so the renderer and the executor
+    reject the same file: a contract that renders but cannot verify hands /goal
+    a done condition it can never satisfy. */
+export function malformedCriterionError(raw, index) {
+  if (typeof raw === 'string') return null;
+  if (raw !== null && typeof raw === 'object' && !Array.isArray(raw)) return null;
+  const kind = raw === null ? 'null' : Array.isArray(raw) ? 'an array' : typeof raw;
+  return `successCriteria[${index}] is ${kind} — expected a string or a { criterion, check } object.`;
+}
+
 export function normalizeCriterion(raw) {
   if (typeof raw === 'string') return { criterion: raw };
   // null / undefined / numbers in a published contract's successCriteria would
@@ -316,24 +329,14 @@ function main(argv) {
     return 1;
   }
 
-  // Malformed criteria are not a legacy shape — the tolerant parser covers
-  // strings and { criterion, check } objects, and anything else used to crash
-  // outright. Crash cleanly instead: a malformed entry silently normalized to
-  // a judgment criterion (printed, never counted) can hand /goal a false
+  // Crash cleanly on malformed criteria: a malformed entry silently normalized
+  // to a judgment criterion (printed, never counted) can hand /goal a false
   // green on a contract nobody actually verified.
   const malformed = (data.successCriteria ?? [])
-    .map((c, i) => ({ c, i }))
-    .filter(
-      ({ c }) =>
-        typeof c !== 'string' &&
-        (c === null || typeof c !== 'object' || Array.isArray(c)),
-    );
+    .map((c, i) => malformedCriterionError(c, i))
+    .filter(Boolean);
   if (malformed.length > 0) {
-    for (const { c, i } of malformed) {
-      console.error(
-        `verify: ${dataPath} successCriteria[${i}] is ${c === null ? 'null' : Array.isArray(c) ? 'an array' : typeof c} — expected a string or a { criterion, check } object.`,
-      );
-    }
+    for (const err of malformed) console.error(`verify: ${dataPath} ${err}`);
     return 1;
   }
 
