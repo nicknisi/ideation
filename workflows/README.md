@@ -92,6 +92,7 @@ stringified one):
   "slug": "kebab-slug",
   "projectDir": "docs/ideation/<slug>/",
   "strict": false, // optional; true → phases dispatch as execute-spec --headless --strict
+  "agentNames": { "scout": "…", "reviewer": "…", "builder": "…" }, // optional; harness override
   "phases": [
     {
       "title": "Phase title (must match prereq references exactly)",
@@ -116,6 +117,17 @@ stringified one):
   each spec's **File Changes** tables. It declares the paths a phase touches so the
   engine can serialize file-conflicting phases (see below). Omitting it (or `[]`)
   reproduces the pre-`files` behavior exactly.
+- **`agentNames`** is optional and exists for harness portability. The engine
+  dispatches its scout/reviewer/builder stages by `agentType`, and those names are
+  harness-specific: Claude Code plugin-scopes the two registered agents
+  (`ideation:scout`, `ideation:reviewer`) and ships a `general-purpose` builtin,
+  while pi's workflow agent registry rejects colons and uses bare local names. The
+  defaults are the Claude Code strings, so omitting the field reproduces the
+  pre-`agentNames` behavior exactly, and each key overrides on its own. Under pi
+  the skill sends `{ "scout": "scout", "reviewer": "reviewer", "builder": "worker" }`.
+  An unregistered name still dispatches, but with default tools and no role prompt,
+  which is how read-only enforcement on scout and reviewer gets lost. Full harness
+  matrix: `references/harness-compat.md` § 2.
 
 ### Wave overlap serialization
 

@@ -587,7 +587,7 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
     {
       label: `scout:${title}`,
       phase: phaseLabel,
-      agentType: 'ideation:scout',
+      agentType: agentNames.scout,
       schema: SCOUT_RESULT_SCHEMA,
     },
   );
@@ -620,7 +620,7 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
   const buildRes = await safeAgent(buildPrompt(phase, a, scout), {
     label: `build:${title}`,
     phase: phaseLabel,
-    agentType: 'general-purpose',
+    agentType: agentNames.builder,
     schema: BUILD_RESULT_SCHEMA,
     ...effortFor(phase.risk),
   });
@@ -667,7 +667,7 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
       {
         label: `review:${title}#${cycle}`,
         phase: phaseLabel,
-        agentType: 'ideation:reviewer',
+        agentType: agentNames.reviewer,
         schema: REVIEW_RESULT_SCHEMA,
         // Always high, whatever the phase risk: review is where a miss is
         // expensive, and it is the only stage nothing downstream re-checks.
@@ -686,7 +686,7 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
       {
         label: `fix:${title}#${cycle}`,
         phase: phaseLabel,
-        agentType: 'general-purpose',
+        agentType: agentNames.builder,
         schema: FIX_RESULT_SCHEMA,
         ...effortFor(phase.risk),
       },
@@ -763,7 +763,7 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
     {
       label: `commit:${title}`,
       phase: phaseLabel,
-      agentType: 'general-purpose',
+      agentType: agentNames.builder,
       schema: COMMIT_RESULT_SCHEMA,
     },
   );
@@ -829,6 +829,21 @@ const a =
         }
       })()
     : (args ?? {});
+
+// Agent type names differ by harness. Claude Code plugin-scopes them as
+// `ideation:scout` / `ideation:reviewer` and ships a `general-purpose` builtin;
+// pi's workflow agentType registry uses bare local names (`scout`, `reviewer`,
+// `worker`) and rejects colons. Defaults are the CC strings so a manifest that
+// omits `agentNames` is byte-identical to the old hardcoded behavior; pi passes
+// `{ agentNames: { scout: 'scout', reviewer: 'reviewer', builder: 'worker' } }`
+// in the autopilot manifest (Step 3). Each is overridable individually.
+// `a` is optional-chained for the same reason `a?.phases` below is: a JSON-string
+// `args` of "null" parses to null, and this runs before the diagnostic log().
+const agentNames = {
+  scout: a?.agentNames?.scout ?? 'ideation:scout',
+  reviewer: a?.agentNames?.reviewer ?? 'ideation:reviewer',
+  builder: a?.agentNames?.builder ?? 'general-purpose',
+};
 log(
   `args received as ${typeof args}; phases=${
     Array.isArray(a?.phases) ? a.phases.length : 'none'

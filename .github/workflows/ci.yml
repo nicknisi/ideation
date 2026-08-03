@@ -25,11 +25,13 @@ jobs:
         with:
           node-version: 24
 
-      # Still no install step. The root package.json declares scripts and a
-      # packageManager and nothing else — zero dependencies — and `node --run`
-      # is Node's own script runner, so this needs no package manager at all.
-      # Using the script rather than repeating the command keeps CI and a local
-      # `pnpm test` from drifting apart.
+      # No install step needed for tests. The root package.json declares
+      # pi-extension dependencies (pi-subagents, pi-dynamic-workflows,
+      # rpiv-ask-user-question) for pi runtime, but the test suite exercises
+      # the engine and scripts directly with `node --test`, never loading the
+      # extensions. `node --run test` is Node's own script runner, so this
+      # needs no package manager at all. Using the script rather than
+      # repeating the command keeps CI and a local `pnpm test` from drifting.
       - name: Run tests
         run: node --run test
 

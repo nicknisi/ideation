@@ -2,10 +2,15 @@
 import Guide from '../layouts/Guide.astro';
 import { joinCommands, STAGES, type Stage } from '../data/commands';
 import { readGates } from '../lib/gates';
+import { readCompatTable, readHarnesses } from '../lib/harness';
 
-// Both throw at build time rather than rendering a stale claim.
+// All of these throw at build time rather than rendering a stale claim.
 const commands = joinCommands();
 const gates = readGates();
+const engineCompat = readCompatTable('The Workflow tool');
+const agentCompat = readCompatTable('Agent \\(subagent\\) names');
+const depCompat = readCompatTable('Pi extension dependencies');
+const harnesses = readHarnesses();
 
 const stages: Stage[] = ['whether', 'plan', 'execute'];
 const byStage = (s: Stage) => commands.filter(c => c.stage === s);
@@ -248,6 +253,111 @@ const artifacts = [
       </p>
     </section>
 
+    <!-- ══════════ where it runs ══════════ -->
+    <section
+      aria-labelledby="harnesses"
+      class="mt-16 border-t-[3px] border-double border-line-strong pt-11"
+    >
+      <h2 id="harnesses" class="text-[clamp(1.6rem,4vw,2.1rem)]">Where it runs</h2>
+      <p class="mt-4 max-w-[64ch] text-muted">
+        {harnesses.join(' and ')}. The same skills, agents, references, and scripts in both
+        — nothing is conditional at load time. Three things carry a translation, and each
+        skill names it inline at the point it dispatches.
+      </p>
+
+      <h3 class="label-mono mt-9 text-accent">the engine</h3>
+      <div class="mt-4 space-y-4">
+        {
+          engineCompat.rows.map(row => (
+            <div class="rounded-(--radius-guide) border border-line bg-surface-1 px-4 py-3">
+              <p class="m-0 flex flex-wrap items-baseline gap-x-3">
+                <span class="font-semibold">{row[0]}</span>
+                <code class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]">
+                  {row[1].replaceAll('`', '')}
+                </code>
+              </p>
+              <p class="m-0 mt-2 max-w-[58ch] text-[0.9375rem] text-muted">
+                {row[2]
+                  .split(/`([^`]+)`/g)
+                  .map((part, i) =>
+                    i % 2 === 1 ? (
+                      <code class="rounded-[2px] bg-wash px-1 font-mono text-[0.875em]">
+                        {part}
+                      </code>
+                    ) : (
+                      part
+                    ),
+                  )}
+              </p>
+            </div>
+          ))
+        }
+      </div>
+
+      <h3 class="label-mono mt-9 text-accent">agent names</h3>
+      <dl class="mt-4 space-y-4">
+        {
+          agentCompat.rows.map(row => (
+            <div class="grid grid-cols-[minmax(0,17rem)_minmax(0,1fr)] gap-x-5 gap-y-1 max-md:grid-cols-1">
+              <dt>
+                <code class="font-mono text-[0.875rem] font-semibold">
+                  {row[0].replaceAll('`', '')}
+                </code>
+              </dt>
+              <dd class="m-0 max-w-[58ch] text-[0.9375rem] text-muted">
+                {agentCompat.headers.slice(1).map((h, i) => (
+                  <span class="block">
+                    <span class="label-mono mr-2 text-faint">{h}</span>
+                    {row[i + 1].replaceAll('`', '')}
+                  </span>
+                ))}
+              </dd>
+            </div>
+          ))
+        }
+      </dl>
+
+      <h3 class="label-mono mt-9 text-accent">pi installation</h3>
+      <p class="mt-4 max-w-[64ch] text-muted">
+        One command — <code class="font-mono text-[0.875rem]">pi install git:github.com/nicknisi/ideation</code> —
+        brings in the three pi extensions the plugin needs, declared as
+        <code class="font-mono text-[0.875rem]">dependencies</code> and loaded via the
+        <code class="font-mono text-[0.875rem]">pi</code> manifest. Claude Code has the
+        tools built in and ignores the manifest.
+      </p>
+      <div class="mt-4 space-y-3">
+        {
+          depCompat.rows.map(row => (
+            <div class="rounded-(--radius-guide) border border-line bg-surface-1 px-4 py-3">
+              <p class="m-0 flex flex-wrap items-baseline gap-x-3">
+                <code class="font-mono text-[0.875rem] font-semibold">{row[0]}</code>
+                <span class="text-[0.875rem] text-muted">→ {row[1]}</span>
+              </p>
+              <p class="m-0 mt-1 text-[0.875rem] text-faint">
+                Without it: {row[3]}
+              </p>
+            </div>
+          ))
+        }
+      </div>
+
+      <p
+        class="mt-9 max-w-[64ch] rounded-r-(--radius-guide) border-l border-accent bg-surface-1 py-3 pr-4 pl-4 text-[0.9375rem]"
+      >
+        <span class="label-mono mr-2 text-accent">third difference</span>
+        The engine's own stage agents take their names from the manifest, so a pi run passes
+        <code class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]"
+          >agentNames</code
+        > and a Claude Code run omits it. The full matrix, including what does{' '}
+        <em>not</em> differ, is{' '}
+        <a
+          class="text-accent underline decoration-line-strong underline-offset-2 hover:decoration-accent"
+          href="https://github.com/nicknisi/ideation/blob/main/references/harness-compat.md"
+          >references/harness-compat.md ↗</a
+        >.
+      </p>
+    </section>
+
     <footer class="mt-16 border-t border-line pt-8 text-[0.9375rem] text-muted">
       <p>
         <a
@@ -267,9 +377,10 @@ const artifacts = [
       </p>
       <p class="mt-3 max-w-[64ch] text-faint">
         Every command name, argument hint, and badge on this page is read out of{' '}
-        <code class="font-mono text-[0.8125em]">skills/*/SKILL.md</code> at build time, and
-        the gates out of the rubric the interview itself uses. A skill that ships without
-        an entry here fails the build rather than going undocumented.
+        <code class="font-mono text-[0.8125em]">skills/*/SKILL.md</code> at build time, the
+        gates out of the rubric the interview itself uses, and the harness tables out of{' '}
+        <code class="font-mono text-[0.8125em]">references/harness-compat.md</code>. A skill
+        that ships without an entry here fails the build rather than going undocumented.
       </p>
     </footer>
   </main>

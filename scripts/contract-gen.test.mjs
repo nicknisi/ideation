@@ -56,9 +56,27 @@ function engineEnumValues(src) {
   return out;
 }
 
-/** Every agentType the engine actually dispatches. */
-const engineAgentTypes = src =>
-  new Set(collect(src, /agentType:\s*'([^']+)'/g));
+/** Every agentType the engine actually dispatches.
+ *
+ *  The engine reads names from `agentNames` (defaults: ideation:scout,
+ *  ideation:reviewer, general-purpose) and dispatches `agentNames.scout` etc.
+ *  Resolve those references to their default strings so this stays a drift check
+ *  against the contract-gen page, which documents the default (Claude Code) names. */
+const engineAgentTypes = (src) => {
+  const defaults = {
+    scout: 'ideation:scout',
+    reviewer: 'ideation:reviewer',
+    builder: 'general-purpose',
+  };
+  for (const m of src.matchAll(/(scout|reviewer|builder):\s*a\.agentNames\?\.\1\s*\?\?\s*'([^']+)'/g)) {
+    defaults[m[1]] = m[2];
+  }
+  const out = new Set();
+  for (const m of src.matchAll(/agentType:\s*agentNames\.(scout|reviewer|builder)/g)) {
+    out.add(defaults[m[1]]);
+  }
+  return out;
+};
 
 const stageAgents = block => collect(block, /agent:\s*'([^']+)'/g);
 const stageOutcomes = block =>

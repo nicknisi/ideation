@@ -259,6 +259,36 @@ describe('execute-contract — per-phase stage pipeline', () => {
     assert.equal(calls[3].opts.agentType, 'general-purpose');
   });
 
+  it('args.agentNames retargets every dispatched agentType (pi harness)', async () => {
+    const { calls } = await run(
+      oneArgs({
+        agentNames: { scout: 'scout', reviewer: 'reviewer', builder: 'worker' },
+      }),
+    );
+    assert.deepEqual(
+      calls.map(c => c.opts.agentType),
+      ['scout', 'worker', 'reviewer', 'worker'],
+    );
+  });
+
+  it('a partial agentNames leaves the untouched stages on their defaults', async () => {
+    // Every key is independent: overriding the builder must not silently
+    // un-register the scout and reviewer, which is where read-only is enforced.
+    const { calls } = await run(oneArgs({ agentNames: { builder: 'worker' } }));
+    assert.deepEqual(
+      calls.map(c => c.opts.agentType),
+      ['ideation:scout', 'worker', 'ideation:reviewer', 'worker'],
+    );
+  });
+
+  it('a JSON-string args of "null" degrades instead of throwing', async () => {
+    // agentNames resolves before the diagnostic log(), so a non-object `a` there
+    // would crash the run before anything could report why.
+    const { summary, calls } = await run('null');
+    assert.deepEqual(summary.completed, []);
+    assert.equal(calls.length, 0);
+  });
+
   it('hands the scout map to the builder, which must persist it and not commit', async () => {
     const { of } = await run(oneArgs());
     const build = of('build')[0].prompt;

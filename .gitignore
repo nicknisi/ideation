@@ -20,12 +20,12 @@ test-fixtures/**/out/
 docs/ideation/*
 !docs/ideation/learnings.md
 
-# The root package.json declares scripts and a packageManager and nothing else —
-# zero dependencies — so a root lockfile locks nothing (`importers: { .: {} }`).
-# CI and the docs both use `node --run test`, which never writes one, but
-# `pnpm test` regenerates it on every run, so ignoring it is what stops it
-# reappearing in `git status` forever. Leading slash on purpose:
-# `site/pnpm-lock.yaml` is real and tracked, and a bare pattern would swallow it.
+# The root package.json declares pi-extension dependencies (pi-subagents,
+# pi-dynamic-workflows, rpiv-ask-user-question) so a single `pi install` brings
+# them in. The lockfile is a local build artifact — pi's git-clone install
+# regenerates it in its managed directory, and CI uses `node --run test` which
+# never writes one. Leading slash on purpose: `site/pnpm-lock.yaml` is real and
+# tracked, and a bare pattern would swallow it.
 /pnpm-lock.yaml
 
 # Astro site build output and cache (the site is built by Cloudflare from source)
