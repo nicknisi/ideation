@@ -97,12 +97,12 @@ repo use consistent relative paths; no resolution or normalization).
 
 ## Step 4: Invoke the Engine
 
-1. Resolve the engine's **absolute path** — run `echo "$CLAUDE_PLUGIN_ROOT/workflows/execute-contract.mjs"` via `Bash` and confirm the file exists.
+1. Resolve the engine's **absolute path** — run `echo ${CLAUDE_PLUGIN_ROOT}/workflows/execute-contract.mjs` via `Bash` and confirm the file exists.
 2. **pi only — register the stage agents in the workflow registry.** The workflow engine's `agentType` registry is separate from pi-subagents' agent discovery: it scans `<cwd>/.pi/agents/`, `~/.pi/agent/agents/`, and `~/.pi/agents/` — not package `agents/` dirs. So `scout` and `reviewer` (the names you pass in `agentNames`) won't resolve, and the engine silently degrades: the stages keep a prose hint (`Act as workflow subagent type: scout`) but **lose their tool binding** — the read-only scout and reviewer run with full tools (Write/Edit), and the reviewer is no longer independent of the diff it reviews. That is a design invariant, not a crash. To prevent it, copy the agent files into the project's `.pi/agents/` before invoking:
    ```bash
-   mkdir -p .pi/agents && cp "$CLAUDE_PLUGIN_ROOT"/agents/{scout,reviewer}.md .pi/agents/
+   mkdir -p .pi/agents && cp ${CLAUDE_PLUGIN_ROOT}/agents/{scout,reviewer}.md .pi/agents/
    ```
-   Project-local `.pi/agents/` wins collisions, is visible in the repo, and is removable. Verify they resolve: `ls .pi/agents/scout.md .pi/agents/reviewer.md`. (Claude Code skips this step — its workflow engine bridges to the plugin agent registry directly.)
+   Project-local `.pi/agents/` wins collisions, is visible in the repo, and is removable. Verify they resolve: `ls .pi/agents/scout.md .pi/agents/reviewer.md`. The builder (`worker`) is deliberately not copied — an unregistered builder degrades to default tools with a prose hint, which matches what CC's `general-purpose` is anyway (full tools, no role prompt). (Claude Code skips this step — its workflow engine bridges to the plugin agent registry directly.)
 3. Call the **`Workflow`** tool with `args` set to the manifest object from Step 3 (pass it as an actual JSON value, **not** a stringified one). The parameter signature differs by harness — both run the same `execute-contract.mjs`:
    - **Claude Code:** pass `scriptPath` set to that absolute path. The engine runs in the background and notifies on completion; watch progress with `/workflows`.
    - **pi:** the `workflow` tool has no `scriptPath` parameter — `read` the file at that path and pass its full contents as `script` (with `args`), and set `background: false` so the result returns synchronously to this turn (you need it for the failure gate in Step 5). The engine is pi-dynamic-workflows-compatible: it declares `export const meta`, uses only the `agent()`/`parallel()`/`phase()`/`log()`/`args` globals that pi's workflow runtime injects, and has zero imports.

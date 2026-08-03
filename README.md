@@ -579,7 +579,8 @@ dependencies, and only the site build needs them.
 
 If you would rather not use pnpm, `node --run test` and
 `node --test 'workflows/*.test.mjs' 'scripts/*.test.mjs' 'test-fixtures/**/*.test.mjs'`
-both work directly.
+both work directly. To regenerate the committed lockfile after changing a
+dependency range: `npm i --package-lock-only`.
 
 ### Releasing
 

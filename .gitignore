@@ -22,9 +22,10 @@ docs/ideation/*
 
 # The root package.json declares pi-extension dependencies (pi-subagents,
 # pi-dynamic-workflows, rpiv-ask-user-question) so a single `pi install` brings
-# them in. The lockfile is a local build artifact — pi's git-clone install
-# regenerates it in its managed directory, and CI uses `node --run test` which
-# never writes one. Leading slash on purpose: `site/pnpm-lock.yaml` is real and
+# them in. package-lock.json is committed to pin the floating ^ ranges — pi's
+# git-clone install runs `npm install`, which respects the lockfile for
+# reproducible installs. CI uses `node --run test`, which never loads the
+# extensions. Leading slash on purpose: `site/pnpm-lock.yaml` is real and
 # tracked, and a bare pattern would swallow it.
 /pnpm-lock.yaml
 
