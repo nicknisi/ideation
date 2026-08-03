@@ -453,7 +453,7 @@ All 4 phases complete.
 
 ### get-goal-prompt
 
-Generate a `/goal` command that runs the project **unattended** by driving `/ideation:autopilot`. The `/goal` is a durability wrapper — it keeps autopilot going across hours/sessions and recovers from failed phases — while autopilot's Workflow engine does the dependency-ordered dispatch. Copies the command to your clipboard; paste to start.
+Generate a `/goal` command that runs the project **unattended** by driving `/ideation:autopilot`. The `/goal` is a durability wrapper — it keeps autopilot going across hours/sessions and re-runs failed phases on the next turn — while autopilot's Workflow engine does the dependency-ordered dispatch. Copies the command to your clipboard; paste to start.
 
 **Usage:**
 
@@ -476,7 +476,7 @@ Generate a `/goal` command that runs the project **unattended** by driving `/ide
 **When to use this vs. plain autopilot:**
 
 - **`/ideation:autopilot`** — run it now and watch; lighter, interactive.
-- **`get-goal-prompt` → `/goal`** — start it and walk away; durable across sessions, self-heals on failure. Same engine underneath.
+- **`get-goal-prompt` → `/goal`** — start it and walk away; durable across sessions, re-runs failed phases each turn. Same engine underneath.
 
 ## Execution model (engine · wrapper · unit)
 
@@ -485,7 +485,7 @@ Execution is layered — three roles, one engine underneath:
 | Role        | What                                                                                                                                                                              | Reach for it when                                  |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | **Engine**  | `/ideation:autopilot` — drives the deterministic [Workflow](workflows/README.md) that plans dependency waves, dispatches phases in parallel, and returns schema-validated results | You want to run the project and watch it           |
-| **Wrapper** | A `/goal` from `get-goal-prompt` — a durability layer that _drives_ autopilot across hours/sessions and recovers from failures                                                    | You want to start it and walk away (unattended)    |
+| **Wrapper** | A `/goal` from `get-goal-prompt` — a durability layer that _drives_ autopilot across hours/sessions and re-runs failed phases each turn                                                    | You want to start it and walk away (unattended)    |
 | **Unit**    | `/ideation:execute-spec` — executes one phase (scout → build → verify-review-fix → commit)                                                                                        | You want fine-grained, one-phase-at-a-time control |
 
 The wrapper drives the engine; the engine dispatches the unit. The graph shape
