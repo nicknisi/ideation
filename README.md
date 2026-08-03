@@ -539,14 +539,11 @@ That's it. The three pi extensions the plugin uses — [`pi-subagents`](https://
 ## Harness support
 
 The plugin targets **Claude Code** and runs in **pi**. Skills, agents, references, and
-scripts are the same files in both; three things differ, and
-[`references/harness-compat.md`](references/harness-compat.md) is the full matrix.
-
-| | Claude Code | pi |
-| --- | --- | --- |
-| Workflow engine | `Workflow` tool, `scriptPath` + `args`, runs in the background (`/workflows`) | `workflow` tool, no `scriptPath` — read [`workflows/execute-contract.mjs`](workflows/execute-contract.mjs) and pass its contents as `script`, `background: false` |
-| Agent names | plugin-scoped: `ideation:scout`, `ideation:reviewer`, plus the `Explore` and `general-purpose` builtins | colons are illegal — bare `scout`, `reviewer`, `plan-critic`, `worker`, dispatched via `subagent` |
-| Engine `agentType` | the defaults; the manifest omits `agentNames` | manifest carries `agentNames` ([`workflows/README.md`](workflows/README.md#args-contract)) |
+scripts are the same files in both; three things carry a translation, and each skill
+names it inline at the point it dispatches. The full matrix — the Workflow tool API,
+agent names, pi extension dependencies, and what does *not* differ — lives in
+[`references/harness-compat.md`](references/harness-compat.md), and the guide page
+renders it from that file at build time so the two cannot drift.
 
 Agent discovery in pi comes from the `pi-subagents` field in `package.json`, which
 points at [`agents/`](agents/); Claude Code ignores the unknown field. The agent files

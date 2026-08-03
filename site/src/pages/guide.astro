@@ -2,7 +2,7 @@
 import Guide from '../layouts/Guide.astro';
 import { joinCommands, STAGES, type Stage } from '../data/commands';
 import { readGates } from '../lib/gates';
-import { readCompatTable, readHarnesses } from '../lib/harness';
+import { readCompatTable, readHarnesses, cellByHeader } from '../lib/harness';
 
 // All of these throw at build time rather than rendering a stale claim.
 const commands = joinCommands();
@@ -271,13 +271,13 @@ const artifacts = [
           engineCompat.rows.map(row => (
             <div class="rounded-(--radius-guide) border border-line bg-surface-1 px-4 py-3">
               <p class="m-0 flex flex-wrap items-baseline gap-x-3">
-                <span class="font-semibold">{row[0]}</span>
+                <span class="font-semibold">{cellByHeader(engineCompat, row, 'Harness')}</span>
                 <code class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]">
-                  {row[1].replaceAll('`', '')}
+                  {cellByHeader(engineCompat, row, 'Tool').replaceAll('`', '')}
                 </code>
               </p>
               <p class="m-0 mt-2 max-w-[58ch] text-[0.9375rem] text-muted">
-                {row[2]
+                {cellByHeader(engineCompat, row, 'How to invoke')
                   .split(/`([^`]+)`/g)
                   .map((part, i) =>
                     i % 2 === 1 ? (
@@ -301,7 +301,7 @@ const artifacts = [
             <div class="grid grid-cols-[minmax(0,17rem)_minmax(0,1fr)] gap-x-5 gap-y-1 max-md:grid-cols-1">
               <dt>
                 <code class="font-mono text-[0.875rem] font-semibold">
-                  {row[0].replaceAll('`', '')}
+                  {cellByHeader(agentCompat, row, 'Skill reference').replaceAll('`', '')}
                 </code>
               </dt>
               <dd class="m-0 max-w-[58ch] text-[0.9375rem] text-muted">
@@ -330,11 +330,11 @@ const artifacts = [
           depCompat.rows.map(row => (
             <div class="rounded-(--radius-guide) border border-line bg-surface-1 px-4 py-3">
               <p class="m-0 flex flex-wrap items-baseline gap-x-3">
-                <code class="font-mono text-[0.875rem] font-semibold">{row[0]}</code>
-                <span class="text-[0.875rem] text-muted">→ {row[1]}</span>
+                <code class="font-mono text-[0.875rem] font-semibold">{cellByHeader(depCompat, row, 'Extension')}</code>
+                <span class="text-[0.875rem] text-muted">→ {cellByHeader(depCompat, row, 'Provides')}</span>
               </p>
               <p class="m-0 mt-1 text-[0.875rem] text-faint">
-                Without it: {row[3]}
+                Without it: {cellByHeader(depCompat, row, 'Without it')}
               </p>
             </div>
           ))

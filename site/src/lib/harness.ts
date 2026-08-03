@@ -28,6 +28,29 @@ const cells = (line: string): string[] =>
     .map(c => c.trim());
 
 /**
+ * Read a cell by its column header name. Throws if the header is missing — so
+ * a column rename in the markdown breaks the build rather than silently
+ * rendering the wrong cell (positional `row[n]` access would swap content
+ * silently on a column reorder). The header match is case-sensitive and
+ * strips inline backticks so `\`Tool\`` matches `Tool`.
+ */
+export function cellByHeader(
+  table: CompatTable,
+  row: CompatRow,
+  headerName: string,
+): string {
+  const idx = table.headers.findIndex(h => h.replace(/`/g, '').trim() === headerName);
+  if (idx === -1) {
+    throw new Error(
+      `harness-compat.md table has no "${headerName}" column. ` +
+        `Available: ${table.headers.join(', ')}. ` +
+        `A column was renamed or reordered; update the page or the markdown.`,
+    );
+  }
+  return row[idx];
+}
+
+/**
  * The first pipe table under the `## <n>. …` section whose title starts with
  * `titlePrefix`. Throws rather than rendering an empty table.
  */
@@ -71,8 +94,8 @@ export function readCompatTable(titlePrefix: string): CompatTable {
  * Asserted against § 1's table so the page's prose cannot outlive the support.
  */
 export function readHarnesses(): string[] {
-  const { rows } = readCompatTable('The Workflow tool');
-  const names = rows.map(r => r[0]);
+  const table = readCompatTable('The Workflow tool');
+  const names = table.rows.map(r => cellByHeader(table, r, 'Harness'));
   if (names.length !== 2) {
     throw new Error(
       `expected 2 harnesses in harness-compat.md § 1, found ${names.length}: ` +
