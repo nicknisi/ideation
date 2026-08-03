@@ -1,6 +1,6 @@
 {
   "name": "ideation-plugin",
-  "version": "0.22.0",
+  "version": "0.23.0",
   "private": true,
   "packageManager": "pnpm@11.10.0",
   "dependencies": {
@@ -22,7 +22,9 @@
     ]
   },
   "pi-subagents": {
-    "agents": ["agents"]
+    "agents": [
+      "agents"
+    ]
   },
   "scripts": {
     "test": "node --test 'workflows/*.test.mjs' 'scripts/*.test.mjs' 'test-fixtures/**/*.test.mjs'",
