@@ -1,0 +1,310 @@
+{
+  "projectName": "UX De-Jank & Learning Loop",
+  "slug": "ux-dejank",
+  "date": "2026-07-23",
+  "status": "Approved",
+  "approvedOn": "2026-07-23",
+  "approvedBy": "Nick Nisi",
+  "supersedes": null,
+  "gates": {
+    "dimensions": [
+      {
+        "key": "problem",
+        "label": "Problem Clarity",
+        "status": "ready",
+        "evidence": "Field research across six comparable tools plus a same-day end-to-end express run identified five concrete friction points; learnings.md has never been created despite the plugin being its own heaviest user."
+      },
+      {
+        "key": "goals",
+        "label": "Goal Definition",
+        "status": "ready",
+        "evidence": "Five goals, each naming an observable artifact: routing question, generator-emitted contract.md, scoreboard line, summary confirmation, push-based learning capture."
+      },
+      {
+        "key": "criteria",
+        "label": "Success Criteria",
+        "status": "ready",
+        "evidence": "Fifteen of sixteen criteria carry runnable checks (generator render + greps + engine tests); the routing/whimsy judgment call is named as such."
+      },
+      {
+        "key": "scope",
+        "label": "Scope Boundaries",
+        "status": "ready",
+        "evidence": "User multi-selected all four jank items plus retro absorb+delete; express survives as pre-commit alias; exclusions (new agents, auto-saved learnings, critic changes) recorded with reasons."
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "status": "ready",
+        "evidence": "The retro deletion propagates to every reference including both plugin manifests; the express/ideation section-reference coupling is dissolved by the thin-alias rewrite and verified by a no-step-citation check."
+      }
+    ]
+  },
+  "problem": [
+    "The plugin's entry surface forces the ceremony decision before the information exists: users choose /ideation:ideation vs /ideation:express before the interview, yet the interview is identical in both and gate confidence plus criteria verifiability — the exact inputs for that choice — only exist after it. Six user-facing skills compound the surface-area problem.",
+    "The contract exists in three representations, one of them hand-authored: contract-data.json renders contract.html mechanically, but contract.md is hand-mirrored by the model, inviting drift, and the express skill needs ordering rules just to keep re-runs archiving cleanly. The plugin's own over-engineering critic flagged the unread third copy.",
+    "The interview gives no progress feedback — one-question-per-turn is correct elicitation, but the user cannot see how many gates remain, making interviews feel unbounded. The express confirmation has the opposite problem: a wall of terminal text (a 12-row criteria table plus tiers plus digest) duplicating what the rendered contract already shows.",
+    "The learning loop is structurally dead: /ideation:retro is pull-based (must be remembered at the moment of least motivation), empty-input-prone (clean runs produce nothing, training users it is pointless), and silently consumed (intake reads learnings.md invisibly). Field evidence is decisive — every adopted mechanism (Devin knowledge suggestions, Windsurf memories, Claude Code auto-memory) moved capture off the user, and Cursor removed its approval-gated Memories feature entirely. learnings.md has never been created in this repo."
+  ],
+  "goals": [
+    "/ideation is the single default front door: identical interview, then a post-interview routing recommendation (express-style single confirmation vs full interactive review) derived from gate evidence and criteria verifiability; /ideation:express survives as a pre-commit alias that skips the routing question.",
+    "contract.md becomes generator output: contract-gen.ts renders it from contract-data.json alongside contract.html, preserving the exact structure autopilot's fallback parser and get-goal-prompt consume; neither skill hand-mirrors it again.",
+    "The interview shows a one-line gate scoreboard after each answer (e.g. 'Gates: 3/5 ready — open: criteria, scope'), inherited by both skills from the shared engine.",
+    "The express-style confirmation is a terminal summary (criteria counts, top checks, one line per critic lens) with full detail living in the rendered contract.",
+    "The learning loop goes push-based: interactive completions propose up to 3 candidate learnings with one accept/edit/dismiss question, intake visibly attributes any learning it applies and surfaces unmined implementation notes from prior unattended runs, and /ideation:retro is deleted with all references updated."
+  ],
+  "successCriteria": [
+    {
+      "criterion": "Generator emits contract.md from contract-data.json alongside the HTML",
+      "check": {
+        "cmd": "node scripts/contract-gen.ts --input test-fixtures/orchestration/contract-data.json --output /tmp/uxd.html --md-output /tmp/uxd.md && grep -q '## Execution Plan' /tmp/uxd.md",
+        "expect": "exits 0"
+      }
+    },
+    {
+      "criterion": "Generated contract.md smoke test (runs after the previous criterion's render): title heading, Approval header line, dependency-graph fence, per-phase execute-spec lines, and decision log section all present",
+      "check": {
+        "cmd": "grep -qE '^# .+ Contract' /tmp/uxd.md && grep -q '\\*\\*Approval\\*\\*' /tmp/uxd.md && grep -qi 'dependency graph' /tmp/uxd.md && grep -q 'blocked by' /tmp/uxd.md && [ $(grep -c '/ideation:execute-spec ' /tmp/uxd.md) -ge 4 ] && grep -qi 'decisions considered' /tmp/uxd.md",
+        "expect": "exits 0 (orchestration fixture has 4 phases, 3 with prereqs)"
+      }
+    },
+    {
+      "criterion": "Both skills instruct generating contract.md via the generator, not hand-mirroring",
+      "check": {
+        "cmd": "grep -qi 'md-output' skills/ideation/SKILL.md && grep -qi 'md-output' skills/express/SKILL.md",
+        "expect": "exits 0"
+      }
+    },
+    {
+      "criterion": "Ideation SKILL.md contains the post-interview routing step recommending express-style vs full review from gate/verifiability evidence",
+      "check": {
+        "cmd": "grep -qiE 'recommend.*(express|full review)' skills/ideation/SKILL.md",
+        "expect": "exits 0"
+      }
+    },
+    {
+      "criterion": "Express SKILL.md is rewritten as a pre-commit alias over the shared flow",
+      "check": {
+        "cmd": "grep -qi 'pre-commit' skills/express/SKILL.md",
+        "expect": "exits 0"
+      }
+    },
+    {
+      "criterion": "Interview engine contains the gate scoreboard instruction, in the shared engine only",
+      "check": {
+        "cmd": "grep -qi 'scoreboard' references/interview-engine.md && ! grep -riq 'scoreboard' skills/ideation/SKILL.md skills/express/SKILL.md",
+        "expect": "exits 0"
+      }
+    },
+    {
+      "criterion": "/ideation:retro is deleted",
+      "check": {
+        "cmd": "test ! -e skills/retro",
+        "expect": "exits 0"
+      }
+    },
+    {
+      "criterion": "No dangling retro references anywhere in skills, references, README, or the plugin manifests",
+      "check": {
+        "cmd": "! grep -rq 'ideation:retro' skills/ references/ README.md .claude-plugin/",
+        "expect": "exits 0"
+      }
+    },
+    {
+      "criterion": "Push-based learning capture carries its behavioral contract (up to 3 candidates, accept/edit/dismiss) in both execution skills",
+      "check": {
+        "cmd": "grep -qiE 'accept/edit/dismiss|up to 3' skills/execute-spec/SKILL.md && grep -qiE 'accept/edit/dismiss|up to 3' skills/autopilot/SKILL.md",
+        "expect": "exits 0"
+      }
+    },
+    {
+      "criterion": "The confirmation instruction describes the summary form (counts, top checks, one line per lens), not an inline criteria table",
+      "check": {
+        "cmd": "grep -qiE 'one line per lens|top checks' skills/ideation/SKILL.md",
+        "expect": "exits 0"
+      }
+    },
+    {
+      "criterion": "Intake visibly attributes applied learnings and surfaces unmined notes",
+      "check": {
+        "cmd": "grep -qiE 'applying learning|unmined' references/interview-engine.md",
+        "expect": "exits 0"
+      }
+    },
+    {
+      "criterion": "The shared learning-filter reference carries the full learnings.md lifecycle: dedupe amendments, retirement, entry format",
+      "check": {
+        "cmd": "grep -qi 'also seen in' references/learning-filter.md && grep -qi 'retire' references/learning-filter.md && grep -qi 'pattern' references/learning-filter.md",
+        "expect": "exits 0"
+      }
+    },
+    {
+      "criterion": "No step-number citations into ideation Phase 3 remain in the express alias (the coupling is structurally gone)",
+      "check": {
+        "cmd": "! grep -qE 'Phase 3 step [0-9]|steps 3.4' skills/express/SKILL.md",
+        "expect": "exits 0"
+      }
+    },
+    {
+      "criterion": "Engine test suites pass and plugin version is 0.19.0",
+      "check": {
+        "cmd": "node --test test-fixtures/orchestration/graph.test.mjs workflows/wave-planner.test.mjs workflows/execute-contract.smoke.test.mjs && grep -q '\"version\": \"0.19.0\"' .claude-plugin/plugin.json",
+        "expect": "exits 0"
+      }
+    },
+    {
+      "criterion": "Animated HTML workflow example exists, is self-contained, and animates",
+      "check": {
+        "cmd": "test -f docs/workflow-example.html && grep -qi '@keyframes' docs/workflow-example.html && ! grep -qi '<script src=' docs/workflow-example.html && ! grep -riq 'workflow-example.md' skills/ references/ README.md",
+        "expect": "exits 0"
+      }
+    },
+    {
+      "criterion": "The routing recommendation and scoreboard read naturally in a dry-run interview transcript, the trimmed confirmation still carries the load-bearing content, and the workflow example is genuinely detailed, fun, and whimsical",
+      "check": {
+        "judgment": "Manual read-through of the dry-run transcript, the trimmed confirmation, and docs/workflow-example.html."
+      }
+    }
+  ],
+  "scope": {
+    "mvp": [
+      { "item": "contract-gen.ts --md-output: render contract.md from contract-data.json (title, Approval header, gates, problem, goals, criteria with checks, scope, decision log, dependency graph, execution plan with per-phase commands), reworking the sibling-md lineage block — the mtime heuristic assumes hand-authored md written after the html; generator-emitted pairs archive together", "reason": "Kills the hand-mirrored third representation; md structure stays parser-compatible as a deliberate legacy/durability contract (fallback for json-less projects, glob locator, human-readable record)" },
+      { "item": "Ideation Phase 5.3 and express Phase 5 step 3 rewritten to invoke the generator for contract.md", "reason": "Production side of goal 2; deletes the express ordering rule for md-before-html archiving" },
+      { "item": "Post-interview routing step in ideation Phase 3: after gates resolve, recommend express-style single confirmation vs full review (heuristic: all gates ready without early stop + majority of criteria carry checks favors express); user chooses", "reason": "Moves the ceremony decision to where the information exists" },
+      { "item": "Express SKILL.md rewritten as a THIN pre-commit alias (~10-20 lines): points at /ideation's shared flow with the routing question pre-answered and the clean-tree check run at intake; ideation's routing path becomes the single owner of express semantics (single confirmation, approvalMode, isolation branch, strict)", "reason": "Preserves muscle memory and upfront walk-away commitment while dissolving the express↔ideation section-reference sync tax entirely — no parallel implementation remains to drift" },
+      { "item": "Learning loop absorb: retro's FULL learnings.md lifecycle — generalization filter, bootstrap header, entry format, dedupe 'Also seen in' amendments, retirement discipline — moves to ONE shared reference (references/learning-filter.md) invoked at two moments: interactive completion (candidates bounded to the just-finished project, up to 3, one accept/edit/dismiss question, silent when zero qualify) and intake (attribution line for applied learnings + bounded surfacing of unmined notes from this repo's project dirs); delete skills/retro", "reason": "Push-based capture per field evidence; the lifecycle survives written once (partial relocation would let learnings.md rot with duplicates and stale entries), and the unmined-notes intake path preserves retro's coverage of unattended-run notes that deleting the command would otherwise orphan" }
+    ],
+    "full": [
+      { "item": "Gate scoreboard one-liner in the shared interview engine", "reason": "Progress visibility; inherited by both skills automatically" },
+      { "item": "Tighter express-style confirmation: terminal summary with counts and top checks, full table lives in the rendered contract", "reason": "The informed gate stays informed without the wall of text" },
+      { "item": "README and workflow docs updated: one-door flow, retro removal, express-as-alias; version bump to 0.19.0", "reason": "Docs must describe the new surface; single version location" }
+    ],
+    "stretch": [
+      { "item": "Animated HTML workflow example (docs/workflow-example.html): a detailed, fun, whimsical end-to-end walkthrough of the one-door 0.19 flow — interview, scoreboard, routing, execution, learning capture — self-contained (no external assets), replacing references/workflow-example.md with all resource-list references updated", "reason": "User-requested upgrade at approval: the walkthrough is human-facing documentation and deserves a rendered, animated treatment rather than a markdown rewrite" }
+    ],
+    "outOfScope": [
+      { "item": "New agents, phases, or roles", "reason": "BMAD is the ceremony-maximum cautionary tale; this project reduces surface, never adds" },
+      { "item": "Auto-writing learnings without user approval", "reason": "Silent file writes erode trust; capture always passes through one accept/edit/dismiss question" },
+      { "item": "Changes to plan-critic, scout, or reviewer agents", "reason": "The consumption pipeline shipped in 0.18.0 and is out of this project's blast radius" },
+      { "item": "External memory-system integration (Horizon, auto-memory)", "reason": "The plugin stays portable and file-based; learnings.md remains the store" },
+      { "item": "Deleting or renaming execute-spec, autopilot, or get-goal-prompt", "reason": "They are the execution layer, invoked by artifacts rather than chosen by users; the surface-area problem is the planning fork, not the execution stack" }
+    ],
+    "future": [
+      "AskUserQuestion previews for the routing choice (side-by-side express vs full sketches)",
+      "Session-metrics-style stats on learning reuse (which entries actually changed interviews)"
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "Absorb retro into completion capture and intake attribution, then delete the command",
+      "rejected": "Dropping the learning loop entirely, or keeping /ideation:retro as-is",
+      "reason": "Field evidence shows pull-based retro ceremonies are never used (Cursor removed its equivalent; every adopted mechanism is push-based), but retro's generalization filter and dedupe/retire discipline are sound — only the trigger and visibility are broken."
+    },
+    {
+      "decision": "Keep /ideation:express as a pre-commit alias over the shared flow",
+      "rejected": "Deleting the express command for a single-command surface",
+      "reason": "Zero migration cost, preserves the ability to commit to walk-away mode upfront, and /ideation still becomes the default door."
+    },
+    {
+      "decision": "Move the ceremony choice to a post-interview routing recommendation",
+      "rejected": "Keeping the pre-interview ideation-vs-express fork",
+      "reason": "Gate confidence and criteria verifiability are the routing inputs and they only exist after the interview; both skills already share the identical interview."
+    },
+    {
+      "decision": "contract.md becomes generator output from contract-data.json",
+      "rejected": "Continuing to hand-mirror contract.md from the template",
+      "reason": "Hand-mirroring is drift-prone (flagged by the plugin's own over-engineering critic); a generated md turns parser compatibility into a testable output contract."
+    },
+    {
+      "decision": "In the /ideation path the clean-tree check runs at routing time, not before the interview",
+      "rejected": "Running the express Phase 0 tree check before every /ideation interview",
+      "reason": "A clean tree is only needed if the user routes to immediate isolated execution, which is unknown pre-interview; the cost is one stash prompt after routing."
+    },
+    {
+      "decision": "Unattended runs never auto-capture learnings; the next interactive intake surfaces unmined notes",
+      "rejected": "Auto-appending unreviewed learnings from headless completions",
+      "reason": "Silent file writes erode trust and violate the accept/edit/dismiss contract; push-at-next-touch keeps capture human-approved without resurrecting a dead command."
+    },
+    {
+      "decision": "Express-style confirmation becomes a terminal summary with detail in the rendered contract",
+      "rejected": "Keeping the full criteria table and digest inline in the terminal",
+      "reason": "The 12-row wall duplicates the artifact the flow just rendered; the gate stays informed via counts, top checks, and one line per critic lens."
+    },
+    {
+      "decision": "Express alias is a thin pointer (~10-20 lines) into /ideation's routing path, which solely owns express semantics",
+      "rejected": "Keeping express as a parallel skill file overriding ideation sections by reference",
+      "reason": "Over-engineering critic: the parallel file's only remaining function post-routing is pre-answering one question, while its section-reference coupling taxes every future ideation edit — the same coupling that required hard constraints twice in one day."
+    },
+    {
+      "decision": "The generalization/dedupe/retire filter is written once in a shared reference and invoked at completion (bounded to the just-finished project) and intake (bounded unmined-notes scan)",
+      "rejected": "Duplicating the filter logic inside execute-spec, autopilot, and the interview engine",
+      "reason": "Three hot-path copies of mining logic would drift; one reference, two invocation points keeps the discipline testable and the intake scan cost bounded."
+    },
+    {
+      "decision": "Zero qualifying candidates at completion produces no prompt and no output",
+      "rejected": "Always showing the capture question after interactive runs",
+      "reason": "A mandatory prompt on clean runs recreates exactly the empty-input fatigue the problem statement condemns in retro."
+    },
+    {
+      "decision": "The retro-reference sweep includes both .claude-plugin manifest descriptions",
+      "rejected": "Sweeping only skills/, references/, and README",
+      "reason": "Success-criteria critic blocker: plugin.json and marketplace.json both advertise /ideation:retro; without them in scope the plugin ships describing a command it no longer has while the check passes green."
+    },
+    {
+      "decision": "The full learnings.md lifecycle (bootstrap, entry format, dedupe amendments, retirement) relocates wholesale to the shared reference",
+      "rejected": "Relocating only the generalization filter and leaving lifecycle rules to die with the retro command",
+      "reason": "Hidden-dependency critic blocker: retro is the sole producer of learnings.md and intake is a format-dependent consumer; partial relocation lets the file rot with duplicates and stale entries — the exact decay retro existed to prevent."
+    },
+    {
+      "decision": "Generated contract.md keeps full parser-compatible structure as a deliberate legacy compatibility contract",
+      "rejected": "A minimal human-readable md, since the fallback parser never fires for generator-produced projects (contract-data.json always exists)",
+      "reason": "The structure is free at render time, keeps pre-JSON projects and the json-deleted recovery path working, and one smoke criterion is cheap; the live roles (locator, human record) get it for free."
+    },
+    {
+      "decision": "Lineage archiving treats generator-emitted html+md as a pair archived together",
+      "rejected": "Keeping the sibling-md mtime heuristic unchanged",
+      "reason": "The heuristic exists because hand-authored md was written after the html; when one invocation emits both, mtimes are near-equal and the comparison is meaningless — the archive step must handle the pair explicitly."
+    },
+    {
+      "decision": "The workflow example becomes a self-contained animated HTML page replacing references/workflow-example.md",
+      "rejected": "Rewriting the markdown walkthrough in place",
+      "reason": "User direction at contract approval: the walkthrough is human-facing and no skill instruction reads the md file, so the rendered treatment costs nothing downstream; resource lists must drop the dangling md reference."
+    }
+  ],
+  "execution": {
+    "strategy": "Sequential",
+    "phases": [
+      {
+        "title": "Generator emits contract.md",
+        "risk": "medium",
+        "blocking": true,
+        "specPath": "docs/ideation/ux-dejank/spec-phase-1.md",
+        "notes": "contract-gen.ts --md-output renderer with parser-compatible structure; ideation 5.3 and express Phase 5 step 3 switch to generator invocation; fixture render checks"
+      },
+      {
+        "title": "Post-interview routing",
+        "risk": "high",
+        "blocking": true,
+        "prereqs": ["Generator emits contract.md"],
+        "specPath": "docs/ideation/ux-dejank/spec-phase-2.md",
+        "notes": "Ideation Phase 3 gains the routing step and absorbs express semantics as its express-route path; express SKILL.md collapses to a thin pre-commit pointer (section-reference sync constraint dissolves); tighter confirmation; clean-tree timing"
+      },
+      {
+        "title": "Learning loop and polish",
+        "risk": "medium",
+        "blocking": false,
+        "prereqs": ["Post-interview routing"],
+        "specPath": "docs/ideation/ux-dejank/spec-phase-3.md",
+        "notes": "Shared learning-filter reference (written once); completion capture in execute-spec/autopilot bounded to the finished project, silent on zero; intake attribution + bounded unmined-notes surfacing; delete skills/retro and all references INCLUDING both .claude-plugin manifest descriptions; gate scoreboard; README/docs; version 0.19.0"
+      },
+      {
+        "title": "Whimsical workflow example",
+        "risk": "low",
+        "blocking": false,
+        "prereqs": ["Learning loop and polish"],
+        "specPath": "docs/ideation/ux-dejank/spec-phase-4.md",
+        "notes": "Self-contained animated HTML walkthrough of the finished one-door flow at docs/workflow-example.html; delete references/workflow-example.md and update every resource-list mention"
+      }
+    ]
+  }
+}

@@ -18,6 +18,9 @@ test-fixtures/**/out/
 # `docs/ideation/`: git cannot re-include a file under an ignored directory.)
 docs/ideation/*
 !docs/ideation/learnings.md
+# The ux-dejank dogfood run is published history — a real run, kept unedited —
+# linked from the README's Example section and the site walkthrough.
+!docs/ideation/ux-dejank/
 
 # The root package.json declares pi-extension dependencies (pi-subagents,
 # pi-dynamic-workflows, rpiv-ask-user-question) so a single `pi install` brings

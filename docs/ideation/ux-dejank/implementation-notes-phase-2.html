@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Implementation Notes — Phase 2</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fg: #1a1a1a;
+        --bg: #ffffff;
+        --muted: #6b6b6b;
+        --rule: #e2e2e2;
+        --accent: #0b6e4f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #e6e6e6;
+          --bg: #131313;
+          --muted: #9a9a9a;
+          --rule: #333;
+          --accent: #4cc9a4;
+        }
+      }
+      body {
+        margin: 0 auto;
+        max-width: 46rem;
+        padding: 2rem 1.25rem 4rem;
+        font: 16px/1.55 system-ui, -apple-system, sans-serif;
+        color: var(--fg);
+        background: var(--bg);
+      }
+      header.doc-header {
+        border-bottom: 1px solid var(--rule);
+        padding-bottom: 1rem;
+        margin-bottom: 2rem;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin: 0 0 0.25rem;
+      }
+      .doc-meta {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin: 0;
+      }
+      .note-entry {
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+      }
+      .note-entry h3 {
+        margin: 0 0 0.75rem;
+        font-size: 1.05rem;
+        color: var(--accent);
+      }
+      dt {
+        font-weight: 600;
+        margin-top: 0.6rem;
+      }
+      dd {
+        margin: 0.15rem 0 0;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.85em;
+        background: color-mix(in srgb, var(--fg) 8%, transparent);
+        padding: 0.1em 0.3em;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="doc-header">
+      <h1>Implementation Notes — Phase 2</h1>
+      <p class="doc-meta">UX De-Jank &amp; Learning Loop · Post-interview routing · 2026-07-23</p>
+    </header>
+    <main class="doc-content">
+      <section class="note-entry">
+        <h3>Express alias — kept a one-clause <code>--md-output</code> mention</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>
+            The spec's alias sketch (clean-tree check, follow ideation, scope guard) contains no
+            generator language, but the contract's criterion 3 checks
+            <code>grep -qi 'md-output' skills/express/SKILL.md</code> — a project-level criterion
+            Phase 1 made pass. No later phase touches the alias's generator wording, so dropping
+            it here would leave the final contract validation failing.
+          </dd>
+          <dt>Decision</dt>
+          <dd>
+            The alias's intro line lists the artifacts the delegated flow still produces,
+            including "generator-rendered <code>contract.html</code> + <code>contract.md</code>
+            via <code>--md-output</code>". One clause, no section citation, criterion preserved.
+          </dd>
+          <dt>Alternative</dt>
+          <dd>
+            The literal spec sketch with no md-output mention — rejected because it knowingly
+            regresses a contract success criterion this project is measured against.
+          </dd>
+        </dl>
+      </section>
+
+      <section class="note-entry">
+        <h3>Express alias — <code>allowed-tools</code> frontmatter retained</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>
+            The spec preserves "name, description, argument-hint, disable-model-invocation" and
+            targets under ~30 lines including frontmatter. It is silent on
+            <code>allowed-tools</code> (13 lines of the file), and the 0.18.0 file never had an
+            <code>argument-hint</code> to preserve.
+          </dd>
+          <dt>Decision</dt>
+          <dd>
+            Kept <code>allowed-tools</code> verbatim. The alias's session executes the whole
+            delegated ideation flow, so dropping the pre-approved tool list would change
+            permission-prompt behavior — and the phase's rollout note promises "behavior is
+            equivalent by construction". The file still lands at 27 lines.
+          </dd>
+          <dt>Alternative</dt>
+          <dd>
+            Dropping <code>allowed-tools</code> for an even thinner file — rejected: line count
+            is a target, tool pre-approval is behavior.
+          </dd>
+        </dl>
+      </section>
+
+      <section class="note-entry">
+        <h3>Routing step — run-mode question placement</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>
+            Component 1 specifies step 7 as "one <code>AskUserQuestion</code> with tier and
+            route", while the File Changes row describes the absorbed express semantics as a
+            "single tier+run-mode confirmation" (express 0.18.0's Phase 4 shape). Both cannot be
+            literally true in one call: run mode is only meaningful after the express route is
+            chosen, and AskUserQuestion cannot branch mid-call.
+          </dd>
+          <dt>Decision</dt>
+          <dd>
+            On the plain <code>/ideation</code> path, step 7 asks tier + route (Component 1's
+            explicit design) and the Express finish path asks run mode as its own question. When
+            the alias pre-commits the route, the run-mode question folds into step 7's call in
+            place of the answered routing question — reproducing 0.18.0's one consolidated
+            tier + run-mode confirmation exactly on the path that advertised it.
+          </dd>
+          <dt>Alternative</dt>
+          <dd>
+            Asking run mode unconditionally as a third question in step 7 — rejected: it is
+            meaningless on the full-review route (5.4's handoff menu owns that choice there) and
+            would present a dead question to most users.
+          </dd>
+        </dl>
+      </section>
+
+      <section class="note-entry">
+        <h3>Routing step — "Start over" option absorbed into "Needs changes"</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>
+            The 0.18.0 approval question offered five options including "Start over —
+            fundamentally off track, re-interview". The spec's key decision enumerates exactly
+            three routing options: express finish, full review, needs changes.
+          </dd>
+          <dt>Decision</dt>
+          <dd>
+            Followed the spec's enumeration. The re-interview escape survives inside the
+            "Needs changes" handling ("fundamental misunderstanding → back to the interview
+            loop"), so no capability is lost — only the dedicated button.
+          </dd>
+          <dt>Alternative</dt>
+          <dd>
+            Keeping "Start over" as a fourth routing option — rejected: the spec's option list is
+            explicit, and AskUserQuestion renders an "Other" affordance for freeform answers
+            anyway.
+          </dd>
+        </dl>
+      </section>
+
+      <section class="note-entry">
+        <h3>Docs — README still describes the pre-interview two-door model</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>
+            README's feature list and <code>express</code> section describe 0.18.0 express
+            (its own Phase 0–6 flow, four collapsed gates) rather than the new thin alias and
+            post-interview routing. The spec's failure-modes table anticipates this: "Acceptable
+            within this phase — Phase 3 owns README; note it in implementation notes if
+            observed."
+          </dd>
+          <dt>Decision</dt>
+          <dd>Observed and left untouched, per the spec. Phase 3 owns the README pass.</dd>
+          <dt>Alternative</dt>
+          <dd>
+            Editing README here — rejected: outside this phase's File Changes, and Phase 3 would
+            re-edit the same sections for the retro sweep.
+          </dd>
+        </dl>
+      </section>
+    </main>
+  </body>
+</html>

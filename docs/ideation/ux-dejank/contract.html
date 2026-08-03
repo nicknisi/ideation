@@ -1,0 +1,1544 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>UX De-Jank &amp; Learning Loop — Mission Brief</title>
+    <script>
+      // Apply a saved forced theme before first paint to avoid a flash
+      try {
+        const saved = localStorage.getItem('ideation-contract-theme');
+        if (saved === 'light' || saved === 'dark')
+          document.documentElement.dataset.theme = saved;
+      } catch {}
+    </script>
+    <style>
+/* Command Deck — Contract Design Tokens & Components
+   Dark-first instrument panel with a co-equal light deck.
+   Cyan-teal telemetry accent; go/caution/danger status trio.
+   Inlined into generated HTML by contract-gen.ts at runtime.
+
+   Anchors: Linear (dark density + restraint), Grafana panels
+   (status rails, dense data), flight-telemetry go/no-go boards.
+   Explicitly NOT: neon glow, scanlines, fake terminal chrome. */
+
+:root {
+  /* Auto: follow the system. The header toggle forces a deck by setting
+     data-theme, which pins color-scheme and resolves every light-dark(). */
+  color-scheme: light dark;
+
+  /* ── Tokens: light-dark(light deck, dark deck) ──
+     OKLCH-derived, hued toward the cyan accent (~h230).
+     Dark deck is canonical; the light deck is co-equal, AA-verified. */
+  --bg: light-dark(#eef1f4, #0a0f16);
+  --surface-1: light-dark(#f9fafb, #101723);
+  --surface-2: light-dark(#ffffff, #161f2e);
+  --line: light-dark(#d4dce3, #243140);
+  --line-strong: light-dark(#aab8c4, #38485a);
+  --ink: light-dark(#16202b, #e6edf3);
+  --muted: light-dark(#46545f, #a2b2c2);
+  --faint: light-dark(#5b6b7a, #8295a8);
+
+  --accent: light-dark(#0a6d89, #56c8ea);
+  --accent-down: light-dark(#0a5e76, #3ba8c9);
+  --accent-tint: light-dark(#ddeef4, #11313f);
+
+  --go: light-dark(#137455, #46d49c);
+  --caution: light-dark(#8c6000, #e9b65a);
+  --danger: light-dark(#b62b50, #f5839b);
+  --go-tint: light-dark(#dff3ea, #0d2b21);
+  --caution-tint: light-dark(#f6ecd4, #2e2410);
+  --danger-tint: light-dark(#fae3e9, #331620);
+
+  /* ── Type ──────────────────────────────────────
+     Mono carries structure (headers, labels, data);
+     sans carries prose. Fixed rem scale, product register. */
+  --font-mono:
+    'Berkeley Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, Consolas,
+    monospace;
+  --font-sans:
+    system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial,
+    sans-serif;
+  --text-label: 0.6875rem; /* 11px mono labels   */
+  --text-meta: 0.75rem; /*    12px mono metadata */
+  --text-data: 0.8125rem; /*  13px mono data     */
+  --text-body: 1rem; /*       16px sans prose    */
+  --text-title: 1.25rem; /*   20px panel moments */
+  --text-display: 2.5rem; /*  40px project name  */
+
+  /* ── Space (4pt base) ─────────────────────────── */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 64px;
+
+  --radius: 6px;
+  --radius-lg: 10px;
+}
+
+/* ── Forced themes (header toggle) ──────────────── */
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* ── Reset ──────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.65;
+  /* light-on-dark compensation: +letter-spacing, raised line-height */
+  letter-spacing: 0.011em;
+  color: var(--ink);
+  background: var(--bg);
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--s6) var(--s6) var(--s8);
+  -webkit-font-smoothing: antialiased;
+  font-kerning: normal;
+}
+
+/* ── Shared voices ──────────────────────────────── */
+
+.label {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.label-accent {
+  color: var(--accent);
+}
+.label-danger {
+  color: var(--danger);
+}
+.mono-meta {
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Status indicator: glyph + color, never color alone */
+.status-ind {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+.status-go {
+  color: var(--go);
+}
+.status-caution {
+  color: var(--caution);
+}
+
+/* ── Deck header ────────────────────────────────── */
+
+.deck-header {
+  padding-bottom: var(--s5);
+  border-bottom: 2px solid var(--line-strong);
+  margin-bottom: var(--s6);
+}
+.deck-id {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s5);
+}
+.deck-slug {
+  margin-bottom: var(--s3);
+}
+.deck-title {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.deck-meta {
+  text-align: right;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  align-items: flex-end;
+}
+.deck-meta .mono-meta {
+  line-height: 1.5;
+}
+.theme-toggle {
+  position: relative;
+  background: transparent;
+  color: var(--faint);
+  border: 1px solid var(--line);
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-top: var(--s1);
+}
+/* expand hit area to ~44px without growing the visual */
+.theme-toggle::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+}
+.theme-toggle:hover {
+  color: var(--accent);
+  border-color: var(--line-strong);
+}
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Gate strip: go/no-go board */
+.gate-strip {
+  margin-top: var(--s5);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface-1);
+}
+.gate-cell {
+  padding: var(--s3) var(--s4);
+  border-inline-start: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--s1) var(--s3);
+  align-items: baseline;
+}
+.gate-cell:first-child {
+  border-inline-start: 0;
+}
+.gate-mark {
+  font-family: var(--font-mono);
+  font-size: var(--text-data);
+  font-weight: 700;
+  grid-row: span 2;
+}
+.gate-name {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.gate-evidence {
+  grid-column: 2;
+  font-size: var(--text-meta);
+  font-family: var(--font-sans);
+  letter-spacing: 0.011em;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.gate-verdict {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s3);
+}
+
+/* ── Panels & sections ──────────────────────────── */
+
+.section {
+  margin-top: var(--s7);
+}
+.section-hdr {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s4);
+  margin-bottom: var(--s4);
+}
+.section-hdr .label {
+  flex: 0 0 auto;
+}
+.section-hdr-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+  align-self: center;
+}
+.section-count {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  letter-spacing: 0.05em;
+  color: var(--faint);
+}
+.panel {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s6);
+}
+
+/* ── Prose (problem statement) ──────────────────── */
+
+.prose {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  max-width: 68ch;
+}
+.prose p {
+  margin: 0;
+  font-size: var(--text-body);
+  line-height: 1.65;
+  color: var(--ink);
+}
+.line-num {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  color: var(--faint);
+  margin-right: var(--s2);
+  letter-spacing: 0.08em;
+  vertical-align: 0.12em;
+}
+
+/* ── Goals ──────────────────────────────────────── */
+
+.goal-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.goal-row {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  align-items: baseline;
+}
+.goal-num {
+  font-family: var(--font-mono);
+  font-size: var(--text-title);
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.goal-text {
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+/* ── Success criteria ───────────────────────────── */
+
+.criteria-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 var(--s6);
+}
+.criteria-item {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: var(--s3);
+  align-items: baseline;
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+.criteria-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.criteria-check {
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  line-height: 1.5;
+  color: var(--accent);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  padding: var(--s1) var(--s2);
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+  align-self: flex-start;
+}
+.criteria-judgment {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--caution);
+  font-weight: 600;
+}
+
+/* ── Scope ──────────────────────────────────────── */
+
+.scope-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: var(--s6);
+}
+.nested-tiers {
+  position: relative;
+  width: 300px;
+  height: 300px;
+}
+.tier-box {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: var(--radius);
+}
+.tier-box-stretch {
+  width: 300px;
+  height: 300px;
+  border: 1px dashed var(--line-strong);
+}
+.tier-box-full {
+  width: 218px;
+  height: 218px;
+  border: 1px solid var(--accent-down);
+}
+.tier-box-mvp {
+  width: 136px;
+  height: 136px;
+  background: var(--accent-tint);
+  border: 1px solid var(--accent);
+}
+.tier-box-label {
+  position: absolute;
+  top: var(--s2);
+  left: var(--s3);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.tier-box-stretch .tier-box-label {
+  color: var(--faint);
+}
+.tier-box-full .tier-box-label {
+  color: var(--accent);
+}
+.tier-box-mvp .tier-box-label {
+  color: var(--accent);
+}
+.tier-lists {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+}
+.tier-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s2);
+}
+.tier-glyph {
+  font-family: var(--font-mono);
+  font-size: var(--text-data);
+  font-weight: 700;
+  color: var(--accent);
+}
+.tier-title {
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.tier-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.tier-count {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  color: var(--faint);
+}
+.tier-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.tier-items li {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.tier-items strong {
+  font-weight: 500;
+}
+.tier-reason {
+  color: var(--muted);
+  margin-left: var(--s2);
+  font-size: 0.8125rem;
+}
+.scope-extras {
+  margin-top: var(--s5);
+}
+.scope-panel {
+  padding: var(--s4);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface-1);
+}
+.scope-panel-out {
+  background: var(--danger-tint);
+}
+.scope-panel .label {
+  display: block;
+  margin-bottom: var(--s3);
+}
+.scope-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.scope-list li {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.scope-out-item {
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: line-through;
+  text-decoration-color: var(--danger);
+}
+
+/* ── Pipeline (DAG) ─────────────────────────────── */
+
+.pipeline-wrap {
+  padding: var(--s5);
+  overflow-x: auto;
+}
+.pipeline {
+  display: block;
+  min-width: 560px;
+  max-width: 100%;
+  height: auto;
+}
+.pipeline .node-box {
+  fill: var(--surface-2);
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.pipeline .node-gate .node-box {
+  fill: var(--accent-tint);
+  stroke: var(--accent-down);
+}
+.pipeline .node-rail {
+  stroke-width: 3;
+}
+.pipeline .node-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--faint);
+  letter-spacing: 0.08em;
+}
+.pipeline .node-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+.pipeline .node-kind {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--faint);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pipeline .edge {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+  fill: none;
+}
+.pipeline .edge-head {
+  fill: var(--line-strong);
+}
+
+/* ── Phase table ────────────────────────────────── */
+
+.phase-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-data);
+}
+.phase-table th {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--faint);
+  text-align: left;
+  padding: var(--s2) var(--s4);
+  border-bottom: 1px solid var(--line-strong);
+}
+.phase-table td {
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--line);
+  vertical-align: baseline;
+}
+.phase-table tr:last-child td {
+  border-bottom: 0;
+}
+.phase-num {
+  font-family: var(--font-mono);
+  color: var(--faint);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.phase-title {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--ink);
+}
+.phase-kind {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.phase-risk {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.phase-notes {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  letter-spacing: 0.011em;
+  color: var(--muted);
+  line-height: 1.5;
+  max-width: 52ch;
+}
+
+/* ── Commands ───────────────────────────────────── */
+
+.run-bar {
+  margin-top: var(--s5);
+  padding: var(--s5);
+  border: 1px solid var(--accent-down);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) minmax(280px, 1.4fr);
+  gap: var(--s5);
+  align-items: center;
+}
+.run-bar-headline {
+  font-family: var(--font-mono);
+  font-size: var(--text-title);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  margin: var(--s1) 0;
+}
+.run-bar-desc {
+  font-size: 0.8125rem;
+  letter-spacing: 0.011em;
+  color: var(--muted);
+  line-height: 1.5;
+  max-width: 52ch;
+}
+.cmd-field {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: var(--text-data);
+  line-height: 1.4;
+  color: var(--ink);
+}
+.cmd-field-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: all;
+}
+.cmd-field-wide {
+  white-space: pre-wrap;
+}
+.cmd-field-wide .cmd-field-text {
+  white-space: pre-wrap;
+}
+.copy-btn {
+  position: relative;
+  flex: 0 0 auto;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--line-strong);
+  padding: var(--s1) var(--s3);
+  border-radius: 4px;
+  font-size: var(--text-label);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+/* expand hit area to ~44px without growing the visual */
+.copy-btn::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+}
+.copy-btn:hover {
+  background: var(--accent-tint);
+  border-color: var(--accent-down);
+}
+.copy-btn:active {
+  color: var(--accent-down);
+}
+.copy-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.cmd-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.cmd-row {
+  display: grid;
+  grid-template-columns: 36px 220px 1fr;
+  gap: var(--s4);
+  align-items: center;
+}
+.cmd-row-num {
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  color: var(--faint);
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.cmd-row-title {
+  font-family: var(--font-mono);
+  font-size: var(--text-data);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ── Disclosure ─────────────────────────────────── */
+
+.disclosure {
+  margin-top: var(--s5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface-1);
+}
+.disclosure summary {
+  list-style: none;
+  cursor: pointer;
+  padding: var(--s3) var(--s4);
+  font-family: var(--font-mono);
+  font-size: var(--text-data);
+  font-weight: 600;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.disclosure summary:hover {
+  color: var(--ink);
+}
+.disclosure summary::-webkit-details-marker {
+  display: none;
+}
+.disclosure summary::before {
+  content: '▸';
+  color: var(--faint);
+  transition: transform 0.15s ease;
+}
+.disclosure[open] summary::before {
+  transform: rotate(90deg);
+}
+.disclosure summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.disclosure-body {
+  padding: var(--s4);
+  border-top: 1px solid var(--line);
+}
+
+/* ── First move / approval / close bands ────────── */
+
+.approval-bar {
+  margin-top: var(--s5);
+  padding: var(--s5);
+  border: 1px solid var(--caution);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+}
+.approval-desc {
+  font-size: 0.8125rem;
+  letter-spacing: 0.011em;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-top: var(--s2);
+  max-width: 64ch;
+}
+.plan-placeholder {
+  color: var(--muted);
+  font-style: italic;
+}
+.contract-close {
+  margin-top: var(--s7);
+  padding: var(--s5);
+  border: 1px solid var(--line-strong);
+  border-top: 2px solid var(--go);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--s5);
+  align-items: center;
+}
+.close-headline {
+  font-family: var(--font-mono);
+  font-size: var(--text-title);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  margin-top: var(--s2);
+}
+.close-desc {
+  font-size: 0.8125rem;
+  letter-spacing: 0.011em;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-top: var(--s2);
+  max-width: 60ch;
+}
+.close-meta {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  align-items: flex-end;
+}
+
+/* ── Responsive ─────────────────────────────────── */
+
+@media (max-width: 820px) {
+  body {
+    padding: var(--s4) var(--s4) var(--s7);
+  }
+  .deck-id {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .deck-meta {
+    text-align: left;
+    align-items: flex-start;
+  }
+  .deck-title {
+    font-size: 1.75rem;
+  }
+  .gate-cell {
+    border-inline-start: 0;
+    border-top: 1px solid var(--line);
+  }
+  .gate-cell:first-child {
+    border-top: 0;
+  }
+  .two-col,
+  .scope-layout,
+  .scope-extras,
+  .run-bar,
+  .contract-close {
+    grid-template-columns: 1fr;
+  }
+  .close-meta {
+    text-align: left;
+    align-items: flex-start;
+  }
+  .criteria-grid {
+    grid-template-columns: 1fr;
+  }
+  .nested-tiers {
+    display: none;
+  }
+  .cmd-row {
+    grid-template-columns: 36px 1fr;
+  }
+  .cmd-row .cmd-field {
+    grid-column: 1 / -1;
+  }
+  .phase-notes-col {
+    display: none;
+  }
+}
+
+/* ── Reduced motion ─────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .disclosure summary::before {
+    transition: none;
+  }
+}
+
+/* ── Print: the deck renders as a paper document ── */
+
+@media print {
+  /* Paper always wins, even when the toggle forced the dark deck */
+  :root,
+  :root[data-theme] {
+    color-scheme: light;
+  }
+  :root {
+    --bg: #ffffff;
+    --surface-1: #ffffff;
+    --surface-2: #f4f6f8;
+    --line: #c9d2da;
+    --line-strong: #8d9aa6;
+    --ink: #000000;
+    --muted: #333d46;
+    --faint: #4d5a66;
+    --accent: #0a5e76;
+    --accent-down: #0a5e76;
+    --accent-tint: #e8f2f6;
+    --go: #0d5c43;
+    --caution: #6e4b00;
+    --danger: #9c2547;
+  }
+  body {
+    font-size: 11pt;
+    max-width: none;
+    padding: 20px;
+  }
+  .copy-btn,
+  .theme-toggle {
+    display: none !important;
+  }
+  .pipeline-wrap {
+    overflow: visible;
+  }
+  .disclosure:not([open]) > *:not(summary) {
+    display: block !important;
+  }
+  .disclosure summary::before {
+    display: none;
+  }
+  .panel,
+  .goal-row,
+  .gate-strip,
+  .run-bar,
+  .contract-close {
+    page-break-inside: avoid;
+  }
+}
+
+    </style>
+  </head>
+  <body data-contract-status="Approved">
+
+    <header class="deck-header">
+      <div class="deck-id">
+        <div>
+          <div class="deck-slug label">mission brief · ux-dejank</div>
+          <h1 class="deck-title">UX De-Jank &amp; Learning Loop</h1>
+        </div>
+        <div class="deck-meta">
+          <span class="status-ind status-go"><span class="status-dot" aria-hidden="true"></span>Approved</span>
+          
+          <span class="mono-meta">created 2026-07-23</span>
+          <span class="mono-meta">approved 2026-07-23 · Nick Nisi</span>
+          
+          <button type="button" class="theme-toggle" id="theme-toggle">theme · auto</button>
+        </div>
+      </div>
+
+      <div class="gate-verdict">
+        <span class="label">Readiness gates</span>
+        <span class="status-ind status-go">All gates ready</span>
+      </div>
+      <div class="gate-strip">
+        <div class="gate-cell">
+          <span class="gate-mark" style="color: var(--go)">✓</span>
+          <span class="gate-name">Problem Clarity</span>
+          <span class="gate-evidence">Field research across six comparable tools plus a same-day end-to-end express run identified five concrete friction points; learnings.md has never been created despite the plugin being its own heaviest user.</span>
+        </div>
+        <div class="gate-cell">
+          <span class="gate-mark" style="color: var(--go)">✓</span>
+          <span class="gate-name">Goal Definition</span>
+          <span class="gate-evidence">Five goals, each naming an observable artifact: routing question, generator-emitted contract.md, scoreboard line, summary confirmation, push-based learning capture.</span>
+        </div>
+        <div class="gate-cell">
+          <span class="gate-mark" style="color: var(--go)">✓</span>
+          <span class="gate-name">Success Criteria</span>
+          <span class="gate-evidence">Fifteen of sixteen criteria carry runnable checks (generator render + greps + engine tests); the routing/whimsy judgment call is named as such.</span>
+        </div>
+        <div class="gate-cell">
+          <span class="gate-mark" style="color: var(--go)">✓</span>
+          <span class="gate-name">Scope Boundaries</span>
+          <span class="gate-evidence">User multi-selected all four jank items plus retro absorb+delete; express survives as pre-commit alias; exclusions (new agents, auto-saved learnings, critic changes) recorded with reasons.</span>
+        </div>
+        <div class="gate-cell">
+          <span class="gate-mark" style="color: var(--go)">✓</span>
+          <span class="gate-name">Consistency</span>
+          <span class="gate-evidence">The retro deletion propagates to every reference including both plugin manifests; the express/ideation section-reference coupling is dissolved by the thin-alias rewrite and verified by a no-step-citation check.</span>
+        </div>
+      </div>
+    </header>
+    <main>
+
+    <section class="run-bar">
+      <div>
+        <div class="label label-accent">First move</div>
+        <div class="run-bar-headline">Run this.</div>
+        <div class="run-bar-desc">Phase 01 of 04 — <strong>Generator emits contract.md</strong></div>
+      </div>
+      <div class="cmd-field">
+            <span class="cmd-field-text" id="cmd-first">/ideation:execute-spec docs/ideation/ux-dejank/spec-phase-1.md</span>
+            <button type="button" class="copy-btn" data-copy="cmd-first">copy</button>
+          </div>
+    </section>
+
+    <div class="section two-col">
+      <section>
+      <div class="section-hdr">
+        <span class="label">The problem</span>
+        <span class="section-hdr-rule"></span>
+      </div>
+        <div class="prose">
+          <p><span class="line-num">01</span>The plugin's entry surface forces the ceremony decision before the information exists: users choose /ideation:ideation vs /ideation:express before the interview, yet the interview is identical in both and gate confidence plus criteria verifiability — the exact inputs for that choice — only exist after it. Six user-facing skills compound the surface-area problem.</p>
+          <p><span class="line-num">02</span>The contract exists in three representations, one of them hand-authored: contract-data.json renders contract.html mechanically, but contract.md is hand-mirrored by the model, inviting drift, and the express skill needs ordering rules just to keep re-runs archiving cleanly. The plugin's own over-engineering critic flagged the unread third copy.</p>
+          <p><span class="line-num">03</span>The interview gives no progress feedback — one-question-per-turn is correct elicitation, but the user cannot see how many gates remain, making interviews feel unbounded. The express confirmation has the opposite problem: a wall of terminal text (a 12-row criteria table plus tiers plus digest) duplicating what the rendered contract already shows.</p>
+          <p><span class="line-num">04</span>The learning loop is structurally dead: /ideation:retro is pull-based (must be remembered at the moment of least motivation), empty-input-prone (clean runs produce nothing, training users it is pointless), and silently consumed (intake reads learnings.md invisibly). Field evidence is decisive — every adopted mechanism (Devin knowledge suggestions, Windsurf memories, Claude Code auto-memory) moved capture off the user, and Cursor removed its approval-gated Memories feature entirely. learnings.md has never been created in this repo.</p>
+        </div>
+      </section>
+      <section>
+      <div class="section-hdr">
+        <span class="label">Goals</span>
+        <span class="section-hdr-rule"></span>
+        <span class="section-count">×5</span>
+      </div>
+        <div class="goal-list">
+          <div class="goal-row">
+            <span class="goal-num">01</span>
+            <span class="goal-text">/ideation is the single default front door: identical interview, then a post-interview routing recommendation (express-style single confirmation vs full interactive review) derived from gate evidence and criteria verifiability; /ideation:express survives as a pre-commit alias that skips the routing question.</span>
+          </div>
+          <div class="goal-row">
+            <span class="goal-num">02</span>
+            <span class="goal-text">contract.md becomes generator output: contract-gen.ts renders it from contract-data.json alongside contract.html, preserving the exact structure autopilot's fallback parser and get-goal-prompt consume; neither skill hand-mirrors it again.</span>
+          </div>
+          <div class="goal-row">
+            <span class="goal-num">03</span>
+            <span class="goal-text">The interview shows a one-line gate scoreboard after each answer (e.g. 'Gates: 3/5 ready — open: criteria, scope'), inherited by both skills from the shared engine.</span>
+          </div>
+          <div class="goal-row">
+            <span class="goal-num">04</span>
+            <span class="goal-text">The express-style confirmation is a terminal summary (criteria counts, top checks, one line per critic lens) with full detail living in the rendered contract.</span>
+          </div>
+          <div class="goal-row">
+            <span class="goal-num">05</span>
+            <span class="goal-text">The learning loop goes push-based: interactive completions propose up to 3 candidate learnings with one accept/edit/dismiss question, intake visibly attributes any learning it applies and surfaces unmined implementation notes from prior unattended runs, and /ideation:retro is deleted with all references updated.</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="section">
+      <div class="section-hdr">
+        <span class="label">Done when</span>
+        <span class="section-hdr-rule"></span>
+        <span class="section-count">16 signals · 15 mechanically checked</span>
+      </div>
+      <ul class="criteria-grid">
+        <li class="criteria-item">
+          <span class="line-num">01</span>
+          <div class="criteria-body">
+            <span>Generator emits contract.md from contract-data.json alongside the HTML</span>
+            <code class="criteria-check">npx tsx scripts/contract-gen.ts --input test-fixtures/orchestration/contract-data.json --output /tmp/uxd.html --md-output /tmp/uxd.md &amp;&amp; grep -q '## Execution Plan' /tmp/uxd.md — exits 0</code>
+          </div>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">02</span>
+          <div class="criteria-body">
+            <span>Generated contract.md smoke test (runs after the previous criterion's render): title heading, Approval header line, dependency-graph fence, per-phase execute-spec lines, and decision log section all present</span>
+            <code class="criteria-check">grep -qE '^# .+ Contract' /tmp/uxd.md &amp;&amp; grep -q '\*\*Approval\*\*' /tmp/uxd.md &amp;&amp; grep -qi 'dependency graph' /tmp/uxd.md &amp;&amp; grep -q 'blocked by' /tmp/uxd.md &amp;&amp; [ $(grep -c '/ideation:execute-spec ' /tmp/uxd.md) -ge 4 ] &amp;&amp; grep -qi 'decisions considered' /tmp/uxd.md — exits 0 (orchestration fixture has 4 phases, 3 with prereqs)</code>
+          </div>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">03</span>
+          <div class="criteria-body">
+            <span>Both skills instruct generating contract.md via the generator, not hand-mirroring</span>
+            <code class="criteria-check">grep -qi 'md-output' skills/ideation/SKILL.md &amp;&amp; grep -qi 'md-output' skills/express/SKILL.md — exits 0</code>
+          </div>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">04</span>
+          <div class="criteria-body">
+            <span>Ideation SKILL.md contains the post-interview routing step recommending express-style vs full review from gate/verifiability evidence</span>
+            <code class="criteria-check">grep -qiE 'recommend.*(express|full review)' skills/ideation/SKILL.md — exits 0</code>
+          </div>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">05</span>
+          <div class="criteria-body">
+            <span>Express SKILL.md is rewritten as a pre-commit alias over the shared flow</span>
+            <code class="criteria-check">grep -qi 'pre-commit' skills/express/SKILL.md — exits 0</code>
+          </div>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">06</span>
+          <div class="criteria-body">
+            <span>Interview engine contains the gate scoreboard instruction, in the shared engine only</span>
+            <code class="criteria-check">grep -qi 'scoreboard' references/interview-engine.md &amp;&amp; ! grep -riq 'scoreboard' skills/ideation/SKILL.md skills/express/SKILL.md — exits 0</code>
+          </div>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">07</span>
+          <div class="criteria-body">
+            <span>/ideation:retro is deleted</span>
+            <code class="criteria-check">test ! -e skills/retro — exits 0</code>
+          </div>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">08</span>
+          <div class="criteria-body">
+            <span>No dangling retro references anywhere in skills, references, README, or the plugin manifests</span>
+            <code class="criteria-check">! grep -rq 'ideation:retro' skills/ references/ README.md .claude-plugin/ — exits 0</code>
+          </div>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">09</span>
+          <div class="criteria-body">
+            <span>Push-based learning capture carries its behavioral contract (up to 3 candidates, accept/edit/dismiss) in both execution skills</span>
+            <code class="criteria-check">grep -qiE 'accept/edit/dismiss|up to 3' skills/execute-spec/SKILL.md &amp;&amp; grep -qiE 'accept/edit/dismiss|up to 3' skills/autopilot/SKILL.md — exits 0</code>
+          </div>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">10</span>
+          <div class="criteria-body">
+            <span>The confirmation instruction describes the summary form (counts, top checks, one line per lens), not an inline criteria table</span>
+            <code class="criteria-check">grep -qiE 'one line per lens|top checks' skills/ideation/SKILL.md — exits 0</code>
+          </div>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">11</span>
+          <div class="criteria-body">
+            <span>Intake visibly attributes applied learnings and surfaces unmined notes</span>
+            <code class="criteria-check">grep -qiE 'applying learning|unmined' references/interview-engine.md — exits 0</code>
+          </div>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">12</span>
+          <div class="criteria-body">
+            <span>The shared learning-filter reference carries the full learnings.md lifecycle: dedupe amendments, retirement, entry format</span>
+            <code class="criteria-check">grep -qi 'also seen in' references/learning-filter.md &amp;&amp; grep -qi 'retire' references/learning-filter.md &amp;&amp; grep -qi 'pattern' references/learning-filter.md — exits 0</code>
+          </div>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">13</span>
+          <div class="criteria-body">
+            <span>No step-number citations into ideation Phase 3 remain in the express alias (the coupling is structurally gone)</span>
+            <code class="criteria-check">! grep -qE 'Phase 3 step [0-9]|steps 3.4' skills/express/SKILL.md — exits 0</code>
+          </div>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">14</span>
+          <div class="criteria-body">
+            <span>Engine test suites pass and plugin version is 0.19.0</span>
+            <code class="criteria-check">node --test test-fixtures/orchestration/graph.test.mjs workflows/wave-planner.test.mjs workflows/execute-contract.smoke.test.mjs &amp;&amp; grep -q '&quot;version&quot;: &quot;0.19.0&quot;' .claude-plugin/plugin.json — exits 0</code>
+          </div>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">15</span>
+          <div class="criteria-body">
+            <span>Animated HTML workflow example exists, is self-contained, and animates</span>
+            <code class="criteria-check">test -f docs/workflow-example.html &amp;&amp; grep -qi '@keyframes' docs/workflow-example.html &amp;&amp; ! grep -qi '&lt;script src=' docs/workflow-example.html &amp;&amp; ! grep -riq 'workflow-example.md' skills/ references/ README.md — exits 0</code>
+          </div>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">16</span>
+          <div class="criteria-body">
+            <span>The routing recommendation and scoreboard read naturally in a dry-run interview transcript, the trimmed confirmation still carries the load-bearing content, and the workflow example is genuinely detailed, fun, and whimsical (judgment call: manual read-through)</span>
+            <span class="criteria-judgment">judgment call — no mechanical check</span>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <div class="section-hdr">
+        <span class="label">Scope</span>
+        <span class="section-hdr-rule"></span>
+        <span class="section-count">MVP nests inside Full nests inside Stretch</span>
+      </div>
+      <div class="scope-layout">
+        <div class="nested-tiers" aria-hidden="true">
+          <div class="tier-box tier-box-stretch"><span class="tier-box-label">Stretch ×1</span></div>
+          <div class="tier-box tier-box-full"><span class="tier-box-label">Full ×3</span></div>
+          <div class="tier-box tier-box-mvp"><span class="tier-box-label">MVP ×5</span></div>
+        </div>
+        <div class="tier-lists">
+
+          <div class="tier-group">
+            <div class="tier-header">
+              <span class="tier-title">MVP — must ship</span>
+              <span class="tier-rule"></span>
+              <span class="tier-count">×5</span>
+            </div>
+            <ul class="tier-items">
+              <li><strong>contract-gen.ts --md-output: render contract.md from contract-data.json (title, Approval header, gates, problem, goals, criteria with checks, scope, decision log, dependency graph, execution plan with per-phase commands), reworking the sibling-md lineage block — the mtime heuristic assumes hand-authored md written after the html; generator-emitted pairs archive together</strong><span class="tier-reason">— Kills the hand-mirrored third representation; md structure stays parser-compatible as a deliberate legacy/durability contract (fallback for json-less projects, glob locator, human-readable record)</span></li>
+              <li><strong>Ideation Phase 5.3 and express Phase 5 step 3 rewritten to invoke the generator for contract.md</strong><span class="tier-reason">— Production side of goal 2; deletes the express ordering rule for md-before-html archiving</span></li>
+              <li><strong>Post-interview routing step in ideation Phase 3: after gates resolve, recommend express-style single confirmation vs full review (heuristic: all gates ready without early stop + majority of criteria carry checks favors express); user chooses</strong><span class="tier-reason">— Moves the ceremony decision to where the information exists</span></li>
+              <li><strong>Express SKILL.md rewritten as a THIN pre-commit alias (~10-20 lines): points at /ideation's shared flow with the routing question pre-answered and the clean-tree check run at intake; ideation's routing path becomes the single owner of express semantics (single confirmation, approvalMode, isolation branch, strict)</strong><span class="tier-reason">— Preserves muscle memory and upfront walk-away commitment while dissolving the express↔ideation section-reference sync tax entirely — no parallel implementation remains to drift</span></li>
+              <li><strong>Learning loop absorb: retro's FULL learnings.md lifecycle — generalization filter, bootstrap header, entry format, dedupe 'Also seen in' amendments, retirement discipline — moves to ONE shared reference (references/learning-filter.md) invoked at two moments: interactive completion (candidates bounded to the just-finished project, up to 3, one accept/edit/dismiss question, silent when zero qualify) and intake (attribution line for applied learnings + bounded surfacing of unmined notes from this repo's project dirs); delete skills/retro</strong><span class="tier-reason">— Push-based capture per field evidence; the lifecycle survives written once (partial relocation would let learnings.md rot with duplicates and stale entries), and the unmined-notes intake path preserves retro's coverage of unattended-run notes that deleting the command would otherwise orphan</span></li>
+            </ul>
+          </div>
+
+          <div class="tier-group">
+            <div class="tier-header">
+              <span class="tier-title">Full — target outcome</span>
+              <span class="tier-rule"></span>
+              <span class="tier-count">×3</span>
+            </div>
+            <ul class="tier-items">
+              <li><strong>Gate scoreboard one-liner in the shared interview engine</strong><span class="tier-reason">— Progress visibility; inherited by both skills automatically</span></li>
+              <li><strong>Tighter express-style confirmation: terminal summary with counts and top checks, full table lives in the rendered contract</strong><span class="tier-reason">— The informed gate stays informed without the wall of text</span></li>
+              <li><strong>README and workflow docs updated: one-door flow, retro removal, express-as-alias; version bump to 0.19.0</strong><span class="tier-reason">— Docs must describe the new surface; single version location</span></li>
+            </ul>
+          </div>
+
+          <div class="tier-group">
+            <div class="tier-header">
+              <span class="tier-title">Stretch — if time permits</span>
+              <span class="tier-rule"></span>
+              <span class="tier-count">×1</span>
+            </div>
+            <ul class="tier-items">
+              <li><strong>Animated HTML workflow example (docs/workflow-example.html): a detailed, fun, whimsical end-to-end walkthrough of the one-door 0.19 flow — interview, scoreboard, routing, execution, learning capture — self-contained (no external assets), replacing references/workflow-example.md with all resource-list references updated</strong><span class="tier-reason">— User-requested upgrade at approval: the walkthrough is human-facing documentation and deserves a rendered, animated treatment rather than a markdown rewrite</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="two-col scope-extras">
+        <div class="scope-panel scope-panel-out">
+          <span class="label label-danger">Out of scope — said no on purpose</span>
+          <ul class="scope-list">
+            <li><span class="scope-out-item">New agents, phases, or roles</span> — BMAD is the ceremony-maximum cautionary tale; this project reduces surface, never adds</li>
+            <li><span class="scope-out-item">Auto-writing learnings without user approval</span> — Silent file writes erode trust; capture always passes through one accept/edit/dismiss question</li>
+            <li><span class="scope-out-item">Changes to plan-critic, scout, or reviewer agents</span> — The consumption pipeline shipped in 0.18.0 and is out of this project's blast radius</li>
+            <li><span class="scope-out-item">External memory-system integration (Horizon, auto-memory)</span> — The plugin stays portable and file-based; learnings.md remains the store</li>
+            <li><span class="scope-out-item">Deleting or renaming execute-spec, autopilot, or get-goal-prompt</span> — They are the execution layer, invoked by artifacts rather than chosen by users; the surface-area problem is the planning fork, not the execution stack</li>
+          </ul>
+        </div>
+        <div class="scope-panel">
+          <span class="label">Future — someday, maybe</span>
+          <ul class="scope-list">
+            <li>AskUserQuestion previews for the routing choice (side-by-side express vs full sketches)</li>
+            <li>Session-metrics-style stats on learning reuse (which entries actually changed interviews)</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-hdr">
+        <span class="label">Decisions considered and rejected</span>
+        <span class="section-hdr-rule"></span>
+        <span class="section-count">×15</span>
+      </div>
+      <ul class="tier-items">
+        <li><strong>Absorb retro into completion capture and intake attribution, then delete the command</strong><span class="tier-reason">— rejected: Dropping the learning loop entirely, or keeping /ideation:retro as-is. Field evidence shows pull-based retro ceremonies are never used (Cursor removed its equivalent; every adopted mechanism is push-based), but retro's generalization filter and dedupe/retire discipline are sound — only the trigger and visibility are broken.</span></li>
+        <li><strong>Keep /ideation:express as a pre-commit alias over the shared flow</strong><span class="tier-reason">— rejected: Deleting the express command for a single-command surface. Zero migration cost, preserves the ability to commit to walk-away mode upfront, and /ideation still becomes the default door.</span></li>
+        <li><strong>Move the ceremony choice to a post-interview routing recommendation</strong><span class="tier-reason">— rejected: Keeping the pre-interview ideation-vs-express fork. Gate confidence and criteria verifiability are the routing inputs and they only exist after the interview; both skills already share the identical interview.</span></li>
+        <li><strong>contract.md becomes generator output from contract-data.json</strong><span class="tier-reason">— rejected: Continuing to hand-mirror contract.md from the template. Hand-mirroring is drift-prone (flagged by the plugin's own over-engineering critic); a generated md turns parser compatibility into a testable output contract.</span></li>
+        <li><strong>In the /ideation path the clean-tree check runs at routing time, not before the interview</strong><span class="tier-reason">— rejected: Running the express Phase 0 tree check before every /ideation interview. A clean tree is only needed if the user routes to immediate isolated execution, which is unknown pre-interview; the cost is one stash prompt after routing.</span></li>
+        <li><strong>Unattended runs never auto-capture learnings; the next interactive intake surfaces unmined notes</strong><span class="tier-reason">— rejected: Auto-appending unreviewed learnings from headless completions. Silent file writes erode trust and violate the accept/edit/dismiss contract; push-at-next-touch keeps capture human-approved without resurrecting a dead command.</span></li>
+        <li><strong>Express-style confirmation becomes a terminal summary with detail in the rendered contract</strong><span class="tier-reason">— rejected: Keeping the full criteria table and digest inline in the terminal. The 12-row wall duplicates the artifact the flow just rendered; the gate stays informed via counts, top checks, and one line per critic lens.</span></li>
+        <li><strong>Express alias is a thin pointer (~10-20 lines) into /ideation's routing path, which solely owns express semantics</strong><span class="tier-reason">— rejected: Keeping express as a parallel skill file overriding ideation sections by reference. Over-engineering critic: the parallel file's only remaining function post-routing is pre-answering one question, while its section-reference coupling taxes every future ideation edit — the same coupling that required hard constraints twice in one day.</span></li>
+        <li><strong>The generalization/dedupe/retire filter is written once in a shared reference and invoked at completion (bounded to the just-finished project) and intake (bounded unmined-notes scan)</strong><span class="tier-reason">— rejected: Duplicating the filter logic inside execute-spec, autopilot, and the interview engine. Three hot-path copies of mining logic would drift; one reference, two invocation points keeps the discipline testable and the intake scan cost bounded.</span></li>
+        <li><strong>Zero qualifying candidates at completion produces no prompt and no output</strong><span class="tier-reason">— rejected: Always showing the capture question after interactive runs. A mandatory prompt on clean runs recreates exactly the empty-input fatigue the problem statement condemns in retro.</span></li>
+        <li><strong>The retro-reference sweep includes both .claude-plugin manifest descriptions</strong><span class="tier-reason">— rejected: Sweeping only skills/, references/, and README. Success-criteria critic blocker: plugin.json and marketplace.json both advertise /ideation:retro; without them in scope the plugin ships describing a command it no longer has while the check passes green.</span></li>
+        <li><strong>The full learnings.md lifecycle (bootstrap, entry format, dedupe amendments, retirement) relocates wholesale to the shared reference</strong><span class="tier-reason">— rejected: Relocating only the generalization filter and leaving lifecycle rules to die with the retro command. Hidden-dependency critic blocker: retro is the sole producer of learnings.md and intake is a format-dependent consumer; partial relocation lets the file rot with duplicates and stale entries — the exact decay retro existed to prevent.</span></li>
+        <li><strong>Generated contract.md keeps full parser-compatible structure as a deliberate legacy compatibility contract</strong><span class="tier-reason">— rejected: A minimal human-readable md, since the fallback parser never fires for generator-produced projects (contract-data.json always exists). The structure is free at render time, keeps pre-JSON projects and the json-deleted recovery path working, and one smoke criterion is cheap; the live roles (locator, human record) get it for free.</span></li>
+        <li><strong>Lineage archiving treats generator-emitted html+md as a pair archived together</strong><span class="tier-reason">— rejected: Keeping the sibling-md mtime heuristic unchanged. The heuristic exists because hand-authored md was written after the html; when one invocation emits both, mtimes are near-equal and the comparison is meaningless — the archive step must handle the pair explicitly.</span></li>
+        <li><strong>The workflow example becomes a self-contained animated HTML page replacing references/workflow-example.md</strong><span class="tier-reason">— rejected: Rewriting the markdown walkthrough in place. User direction at contract approval: the walkthrough is human-facing and no skill instruction reads the md file, so the rendered treatment costs nothing downstream; resource lists must drop the dangling md reference.</span></li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <div class="section-hdr">
+        <span class="label">Execution</span>
+        <span class="section-hdr-rule"></span>
+        <span class="section-count">Sequential</span>
+      </div>
+      <div class="panel pipeline-wrap">
+        <svg class="pipeline" viewBox="0 0 1004 76" role="img" aria-label="Phase pipeline: 01 Generator emits contract.md (wave 1); 02 Post-interview routing (wave 2); 03 Learning loop and polish (wave 3); 04 Whimsical workflow example (wave 4) — 4 waves">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path class="edge-head" d="M0,0 L10,5 L0,10 z" />
+            </marker>
+          </defs>
+      <path class="edge" d="M 206 38 H 263" marker-end="url(#arrow)" />
+      <path class="edge" d="M 470 38 H 527" marker-end="url(#arrow)" />
+      <path class="edge" d="M 734 38 H 791" marker-end="url(#arrow)" />
+      <g class="node">
+        <rect class="node-box" x="6" y="6" width="200" height="64" rx="5" />
+        <line class="node-rail" x1="7" y1="7.5" x2="205" y2="7.5" stroke="var(--caution)" />
+        <text class="node-num" x="18" y="28">01</text>
+        <text class="node-kind" x="194" y="28" text-anchor="end" fill="var(--caution)">med</text>
+        <text class="node-title" x="18" y="47">Generator emits contract.…</text>
+        <text class="node-kind" x="18" y="62">phase · blocking</text>
+      </g>
+      <g class="node">
+        <rect class="node-box" x="270" y="6" width="200" height="64" rx="5" />
+        <line class="node-rail" x1="271" y1="7.5" x2="469" y2="7.5" stroke="var(--danger)" />
+        <text class="node-num" x="282" y="28">02</text>
+        <text class="node-kind" x="458" y="28" text-anchor="end" fill="var(--danger)">high</text>
+        <text class="node-title" x="282" y="47">Post-interview routing</text>
+        <text class="node-kind" x="282" y="62">phase · blocking</text>
+      </g>
+      <g class="node">
+        <rect class="node-box" x="534" y="6" width="200" height="64" rx="5" />
+        <line class="node-rail" x1="535" y1="7.5" x2="733" y2="7.5" stroke="var(--caution)" />
+        <text class="node-num" x="546" y="28">03</text>
+        <text class="node-kind" x="722" y="28" text-anchor="end" fill="var(--caution)">med</text>
+        <text class="node-title" x="546" y="47">Learning loop and polish</text>
+        <text class="node-kind" x="546" y="62">phase</text>
+      </g>
+      <g class="node">
+        <rect class="node-box" x="798" y="6" width="200" height="64" rx="5" />
+        <line class="node-rail" x1="799" y1="7.5" x2="997" y2="7.5" stroke="var(--go)" />
+        <text class="node-num" x="810" y="28">04</text>
+        <text class="node-kind" x="986" y="28" text-anchor="end" fill="var(--go)">low</text>
+        <text class="node-title" x="810" y="47">Whimsical workflow example</text>
+        <text class="node-kind" x="810" y="62">phase</text>
+      </g>
+        </svg>
+      </div>
+      <div class="panel">
+        <table class="phase-table">
+          <thead>
+            <tr>
+              <th scope="col">##</th>
+              <th scope="col">Phase</th>
+              <th scope="col">Kind</th>
+              <th scope="col">Risk</th>
+              <th scope="col" class="phase-notes-col">Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="phase-num">01</td>
+              <td class="phase-title">Generator emits contract.md</td>
+              <td class="phase-kind">phase · blocking</td>
+              <td class="phase-risk" style="color: var(--caution)">med</td>
+              <td class="phase-notes phase-notes-col">contract-gen.ts --md-output renderer with parser-compatible structure; ideation 5.3 and express Phase 5 step 3 switch to generator invocation; fixture render checks</td>
+            </tr>
+            <tr>
+              <td class="phase-num">02</td>
+              <td class="phase-title">Post-interview routing</td>
+              <td class="phase-kind">phase · blocking</td>
+              <td class="phase-risk" style="color: var(--danger)">high</td>
+              <td class="phase-notes phase-notes-col">Ideation Phase 3 gains the routing step and absorbs express semantics as its express-route path; express SKILL.md collapses to a thin pre-commit pointer (section-reference sync constraint dissolves); tighter confirmation; clean-tree timing</td>
+            </tr>
+            <tr>
+              <td class="phase-num">03</td>
+              <td class="phase-title">Learning loop and polish</td>
+              <td class="phase-kind">phase</td>
+              <td class="phase-risk" style="color: var(--caution)">med</td>
+              <td class="phase-notes phase-notes-col">Shared learning-filter reference (written once); completion capture in execute-spec/autopilot bounded to the finished project, silent on zero; intake attribution + bounded unmined-notes surfacing; delete skills/retro and all references INCLUDING both .claude-plugin manifest descriptions; gate scoreboard; README/docs; version 0.19.0</td>
+            </tr>
+            <tr>
+              <td class="phase-num">04</td>
+              <td class="phase-title">Whimsical workflow example</td>
+              <td class="phase-kind">phase</td>
+              <td class="phase-risk" style="color: var(--go)">low</td>
+              <td class="phase-notes phase-notes-col">Self-contained animated HTML walkthrough of the finished one-door flow at docs/workflow-example.html; delete references/workflow-example.md and update every resource-list mention</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="run-bar">
+        <div>
+          <div class="label label-accent">Run all phases</div>
+          <div class="run-bar-headline">Autopilot.</div>
+          <div class="run-bar-desc">Reads the contract, walks the dependency graph, and dispatches phases automatically.</div>
+        </div>
+        <div class="cmd-field">
+            <span class="cmd-field-text" id="cmd-autopilot">/ideation:autopilot</span>
+            <button type="button" class="copy-btn" data-copy="cmd-autopilot">copy</button>
+          </div>
+      </div>
+
+      <details class="disclosure">
+        <summary>Run phases individually (4)</summary>
+        <div class="disclosure-body">
+          <div class="cmd-list">
+            <div class="cmd-row">
+              <span class="cmd-row-num">01</span>
+              <span class="cmd-row-title">Generator emits contract.md</span>
+              <div class="cmd-field">
+            <span class="cmd-field-text" id="cmd-1">/ideation:execute-spec docs/ideation/ux-dejank/spec-phase-1.md</span>
+            <button type="button" class="copy-btn" data-copy="cmd-1">copy</button>
+          </div>
+            </div>
+            <div class="cmd-row">
+              <span class="cmd-row-num">02</span>
+              <span class="cmd-row-title">Post-interview routing</span>
+              <div class="cmd-field">
+            <span class="cmd-field-text" id="cmd-2">/ideation:execute-spec docs/ideation/ux-dejank/spec-phase-2.md</span>
+            <button type="button" class="copy-btn" data-copy="cmd-2">copy</button>
+          </div>
+            </div>
+            <div class="cmd-row">
+              <span class="cmd-row-num">03</span>
+              <span class="cmd-row-title">Learning loop and polish</span>
+              <div class="cmd-field">
+            <span class="cmd-field-text" id="cmd-3">/ideation:execute-spec docs/ideation/ux-dejank/spec-phase-3.md</span>
+            <button type="button" class="copy-btn" data-copy="cmd-3">copy</button>
+          </div>
+            </div>
+            <div class="cmd-row">
+              <span class="cmd-row-num">04</span>
+              <span class="cmd-row-title">Whimsical workflow example</span>
+              <div class="cmd-field">
+            <span class="cmd-field-text" id="cmd-4">/ideation:execute-spec docs/ideation/ux-dejank/spec-phase-4.md</span>
+            <button type="button" class="copy-btn" data-copy="cmd-4">copy</button>
+          </div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+    </section>
+
+    <section class="contract-close">
+      <div>
+        <div class="label label-accent">Contract approved</div>
+        <div class="close-headline">This plan is the commitment.</div>
+        <div class="close-desc">4 phases · Sequential. Scope changes mean a new revision that supersedes this brief — not silent drift.</div>
+      </div>
+      <div class="close-meta">
+        <span class="status-ind status-go"><span class="status-dot" aria-hidden="true"></span>Approved</span>
+        <span class="mono-meta">2026-07-23 · Nick Nisi</span>
+      </div>
+    </section>
+    </main>
+
+    <script>
+      document.querySelectorAll('.copy-btn').forEach(btn => {
+        // aria-live so the copied/failed text swap is announced
+        btn.setAttribute('aria-live', 'polite');
+        btn.addEventListener('click', () => {
+          const target = document.getElementById(btn.dataset.copy);
+          if (!target) return;
+          const flash = label => {
+            btn.textContent = label;
+            setTimeout(() => (btn.textContent = 'copy'), 2000);
+          };
+          navigator.clipboard
+            .writeText(target.textContent.trim())
+            .then(() => flash('copied'))
+            // file:// or denied permission — the text is select-all, so
+            // point at the manual path instead of failing silently
+            .catch(() => flash('press ⌘C / Ctrl+C'));
+        });
+      });
+
+      /* === THEME TOGGLE (auto → light → dark) === */
+      const themeBtn = document.getElementById('theme-toggle');
+      if (themeBtn) {
+        const KEY = 'ideation-contract-theme';
+        const root = document.documentElement;
+        const apply = mode => {
+          if (mode === 'auto') delete root.dataset.theme;
+          else root.dataset.theme = mode;
+          themeBtn.textContent = 'theme · ' + mode;
+          try {
+            if (mode === 'auto') localStorage.removeItem(KEY);
+            else localStorage.setItem(KEY, mode);
+          } catch {}
+        };
+        apply(root.dataset.theme || 'auto');
+        themeBtn.addEventListener('click', () => {
+          const order = ['auto', 'light', 'dark'];
+          const current = root.dataset.theme || 'auto';
+          apply(order[(order.indexOf(current) + 1) % order.length]);
+        });
+      }
+    </script>
+  </body>
+</html>

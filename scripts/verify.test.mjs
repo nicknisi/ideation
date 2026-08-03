@@ -71,6 +71,11 @@ function repoWithCommitFor(specPath) {
   git('init', '-q', '-b', 'main');
   git('config', 'user.email', 'test@example.invalid');
   git('config', 'user.name', 'Verify Test');
+  // A throwaway repo must not inherit the user's global commit signing: on a
+  // machine with commit.gpgsign=true and an unavailable signer the commit
+  // silently never lands and the test fails for the wrong reason (after the
+  // signer's timeout, no less).
+  git('config', 'commit.gpgsign', 'false');
   writeFileSync(join(dir, 'placeholder.txt'), 'x\n');
   git('add', '-A');
   git('commit', '-q', '-m', `feat: a phase\n\nPhase 1 of ${specPath}`);

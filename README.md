@@ -264,7 +264,7 @@ search too...
 
 **Prefer to watch it happen?** The [ideation site](https://ideation.engineering/) walks one fictional feature — a bookmark garden — through the whole loop as an animated, self-contained page: the interview scoreboard, the plan critics, the routing fork, execution waves, and the learning the next interview inherits. After cloning, `cd site && pnpm dev` serves both pages at `localhost:4321`. The command reference lives at [ideation.engineering/guide](https://ideation.engineering/guide/).
 
-**Prefer to read the artifacts?** [`test-fixtures/orchestration/`](test-fixtures/orchestration/) is a full synthetic contract plus specs you can read without running anything — the dependency graph is the point — and [`skills/ideation/examples/`](skills/ideation/examples/) holds a worked contract, PRD, and spec.
+**Prefer to read the artifacts?** [`test-fixtures/orchestration/`](test-fixtures/orchestration/) is a full synthetic contract plus specs you can read without running anything — the dependency graph is the point — and [`skills/ideation/examples/`](skills/ideation/examples/) holds a worked contract, PRD, and spec. For a real run, unedited: [`docs/ideation/ux-dejank/`](docs/ideation/ux-dejank/) is the archived dogfood project that de-janked this plugin's own UX — contract, specs, gate evidence, and implementation notes exactly as the run produced them, reds and all (the archive's README explains the reds).
 
 ## Full Workflow Diagram
 

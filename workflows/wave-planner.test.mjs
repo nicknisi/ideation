@@ -320,7 +320,10 @@ describe('engine mirror drift', () => {
       assert.equal(
         normalize(mirror),
         normalize(source),
-        `${name} has drifted from wave-planner.mjs — copy it back verbatim`,
+        `${name} has drifted from wave-planner.mjs — fix by paste: replace the ` +
+          `${name}(…) copy in execute-contract.mjs (under the KEEP IN SYNC header; ` +
+          `this text replaces the function only, not the header or its comments) ` +
+          `with this exact text:\n\n${source}\n`,
       );
     });
   }
