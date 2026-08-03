@@ -528,14 +528,17 @@ For manual control, run specs individually:
 ### pi
 
 ```bash
+pi install npm:pi-subagents
+pi install npm:@quintinshaw/pi-dynamic-workflows
+pi install npm:@juicesharp/rpiv-ask-user-question
 pi install git:github.com/nicknisi/ideation
 ```
 
-That's it. The three pi extensions the plugin uses — [`pi-subagents`](https://github.com/nicknisi/pi-subagents) (the `subagent` tool), [`@quintinshaw/pi-dynamic-workflows`](https://github.com/QuintinShaw/pi-dynamic-workflows) (the `workflow` tool), and [`@juicesharp/rpiv-ask-user-question`](https://github.com/juicesharp/rpiv-ask-user-question) (the `ask_user_question` tool) — are declared as `dependencies` in `package.json` and loaded via the `pi` manifest, so `pi install` pulls them in automatically. No separate install steps.
+The three tools the plugin calls — [`pi-subagents`](https://github.com/nicknisi/pi-subagents) (the `subagent` tool), [`@quintinshaw/pi-dynamic-workflows`](https://github.com/QuintinShaw/pi-dynamic-workflows) (the `workflow` tool), and [`@juicesharp/rpiv-ask-user-question`](https://github.com/juicesharp/rpiv-ask-user-question) (the `ask_user_question` tool) — are deliberately **not** bundled. Pi allows one owner per tool name, so a bundled copy fatally conflicts with the same tool installed at the user level; installing them yourself makes your copies the only copies (pi dedupes `npm:` installs by name) and the plugin composes with whatever versions you already run. Details in [`references/harness-compat.md` § 3](references/harness-compat.md).
 
 ## Requirements
 
-Both runtimes are full citizens: **Claude Code** (the tools are built in) and **pi** (via the three bundled extensions named above — the same names `package.json`'s `dependencies` and `pi` manifest declare, so drift between this section and the manifest is greppable). Two caveats for a fresh setup:
+Both runtimes are full citizens: **Claude Code** (the tools are built in) and **pi** (via the three user-level tool installs named above). Two caveats for a fresh setup:
 
 - **`${CLAUDE_PLUGIN_ROOT}` resolution.** Skill bodies reference it; in pi it resolves via a user-level `claude-plugin-root` extension — the one piece of Nick's own setup not bundled. The caveat and its fallback (resolve relative to the skill directory) are owned by [`references/harness-compat.md`](references/harness-compat.md#what-does-not-differ).
 - **A Workflow engine** for `/ideation:autopilot`, `/ideation:express`, and `/ideation:get-goal-prompt`. Without one, the fallback is [Manual Cross-Session Execution](#manual-cross-session-execution): run `/ideation:execute-spec` per phase, in dependency order.
@@ -594,14 +597,14 @@ pnpm deploy:check   # validate wrangler.jsonc, no credentials needed
 pnpm site:install   # install the site's dependencies
 ```
 
-**The plugin's tests still need no install.** The root `package.json` declares
-three pi-extension `dependencies` (`pi-subagents`, `@quintinshaw/pi-dynamic-workflows`,
-`@juicesharp/rpiv-ask-user-question`) so a single `pi install` brings them in at
-runtime — but the test suite exercises the engine and scripts directly with
-`node --test`, never loading the extensions, so there is nothing to install
-before `pnpm test` or `node --run test` works. CI runs the latter, Node's own
-script runner, without a package manager at all. Only `site/` has build-time
-dependencies, and only the site build needs them.
+**The plugin's tests need no install.** The root `package.json` declares no
+dependencies at all — the pi tools the skills call (`pi-subagents`,
+`@quintinshaw/pi-dynamic-workflows`, `@juicesharp/rpiv-ask-user-question`) are
+user-level installs, never packages of this repo — and the test suite exercises
+the engine and scripts directly with `node --test`, so there is nothing to
+install before `pnpm test` or `node --run test` works. CI runs the latter,
+Node's own script runner, without a package manager at all. Only `site/` has
+build-time dependencies, and only the site build needs them.
 
 If you would rather not use pnpm, `node --run test` and
 `node --test 'workflows/*.test.mjs' 'scripts/*.test.mjs' 'test-fixtures/**/*.test.mjs'`

@@ -25,8 +25,13 @@ const HARNESSES = [
   },
   {
     label: 'pi',
-    lines: ['pi install git:github.com/nicknisi/ideation'],
-    copyLabel: 'copy',
+    lines: [
+      'pi install npm:pi-subagents',
+      'pi install npm:@quintinshaw/pi-dynamic-workflows',
+      'pi install npm:@juicesharp/rpiv-ask-user-question',
+      'pi install git:github.com/nicknisi/ideation',
+    ],
+    copyLabel: 'copy all',
   },
 ];
 
