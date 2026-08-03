@@ -264,6 +264,8 @@ search too...
 
 **Prefer to watch it happen?** The [ideation site](https://ideation.engineering/) walks one fictional feature — a bookmark garden — through the whole loop as an animated, self-contained page: the interview scoreboard, the plan critics, the routing fork, execution waves, and the learning the next interview inherits. After cloning, `cd site && pnpm dev` serves both pages at `localhost:4321`. The command reference lives at [ideation.engineering/guide](https://ideation.engineering/guide/).
 
+**Prefer to read the artifacts?** [`test-fixtures/orchestration/`](test-fixtures/orchestration/) is a full synthetic contract plus specs you can read without running anything — the dependency graph is the point — and [`skills/ideation/examples/`](skills/ideation/examples/) holds a worked contract, PRD, and spec.
+
 ## Full Workflow Diagram
 
 ```mermaid
@@ -531,6 +533,13 @@ pi install git:github.com/nicknisi/ideation
 
 That's it. The three pi extensions the plugin uses — [`pi-subagents`](https://github.com/nicknisi/pi-subagents) (the `subagent` tool), [`@quintinshaw/pi-dynamic-workflows`](https://github.com/QuintinShaw/pi-dynamic-workflows) (the `workflow` tool), and [`@juicesharp/rpiv-ask-user-question`](https://github.com/juicesharp/rpiv-ask-user-question) (the `ask_user_question` tool) — are declared as `dependencies` in `package.json` and loaded via the `pi` manifest, so `pi install` pulls them in automatically. No separate install steps.
 
+## Requirements
+
+Both runtimes are full citizens: **Claude Code** (the tools are built in) and **pi** (via the three bundled extensions named above — the same names `package.json`'s `dependencies` and `pi` manifest declare, so drift between this section and the manifest is greppable). Two caveats for a fresh setup:
+
+- **`${CLAUDE_PLUGIN_ROOT}` resolution.** Skill bodies reference it; in pi it resolves via a user-level `claude-plugin-root` extension — the one piece of Nick's own setup not bundled. The caveat and its fallback (resolve relative to the skill directory) are owned by [`references/harness-compat.md`](references/harness-compat.md#what-does-not-differ).
+- **A Workflow engine** for `/ideation:autopilot`, `/ideation:express`, and `/ideation:get-goal-prompt`. Without one, the fallback is [Manual Cross-Session Execution](#manual-cross-session-execution): run `/ideation:execute-spec` per phase, in dependency order.
+
 ## Harness support
 
 The plugin targets **Claude Code** and runs in **pi**. Skills, agents, references, and
@@ -608,6 +617,10 @@ Releases are automated. Commit messages are the input, so they have to be
 single **"chore: release x.y.z"** pull request that accumulates everything
 unreleased. Nothing ships until you merge it; merging it tags the release,
 publishes the GitHub release, and writes [CHANGELOG.md](CHANGELOG.md).
+The generated section gets a final human edit in the release PR before
+merging — release-please groups entries by commit type, which is not how a
+stranger reads a changelog. (0.21.0 shipped raw and stayed the worst section
+in the file until it was curated by hand.)
 
 The version that matters lives in **`.claude-plugin/plugin.json`** — Claude Code
 resolves a plugin's version from that file first, and it is what decides whether

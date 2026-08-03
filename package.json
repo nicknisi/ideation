@@ -1,7 +1,25 @@
 {
-  "name": "ideation-plugin",
+  "name": "ideation",
   "version": "0.23.0",
   "private": true,
+  "description": "Whether, then how, then shipped — an evidence-gated interview turns a brain dump into an interactive HTML contract and Markdown specs, and a deterministic workflow engine executes them.",
+  "repository": "github:nicknisi/ideation",
+  "license": "MIT",
+  "author": {
+    "name": "Nick Nisi",
+    "email": "nick@nisi.org"
+  },
+  "keywords": [
+    "ideation",
+    "brainstorming",
+    "brain-dump",
+    "planning",
+    "prd",
+    "specification",
+    "execution",
+    "orchestration",
+    "interactive"
+  ],
   "packageManager": "pnpm@11.10.0",
   "dependencies": {
     "pi-subagents": "^0.40.0",
