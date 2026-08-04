@@ -76,9 +76,13 @@ spec-template-{pattern}.md     # Shared template for repeatable phases (if appli
 spec-phase-N.md                # Per-phase delta or full spec
 context-map.md                 # Scout's codebase map (written during execution)
 implementation-notes-phase-1.html  # Decisions made during execution (per-phase)
+run-{date}.json                # Machine-readable run record — one per engine run
+run-{date}.html                # Self-contained run report; warnings lead
 ```
 
-HTML artifacts (contract, implementation notes, ephemeral visualizations) are self-contained single files with all CSS/JS inlined — no external dependencies. They open in your browser automatically. Features include:
+Autopilot writes the `run-{date}.json` / `.html` pair as soon as the engine returns — before its failure gate, so a halted or walked-away run still leaves its review findings behind — and re-renders it once `scripts/verify.mjs` has run.
+
+HTML artifacts (contract, implementation notes, run reports, ephemeral visualizations) are self-contained single files with all CSS/JS inlined — no external dependencies. They open in your browser automatically. Features include:
 
 - **Field-guide layout** — one scrolling document: masthead, flight strip, banded sections, and a running head that carries the run command once you scroll past it (no tabs, no framework, no CDN)
 - **Readiness gate checklist** — a ✓/✗ per dimension with its one-sentence evidence citation in the hero (no score; readiness is binary)

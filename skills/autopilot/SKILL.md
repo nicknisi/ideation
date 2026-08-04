@@ -121,6 +121,36 @@ The engine returns `{ completed, noops, failed, skipped, results }` — plus an 
 - **Each entry in `results` carries `reviewStatus`** (`passed` / `validation-only` / `failed` / `skipped-empty-diff` / `not-run`), a `warnings` array that leads its `summary` string, and `reviewCycles`. Any `reviewStatus` other than `passed` on a committed phase means unreviewed or partially reviewed code landed — that must reach the Completion Report, never be collapsed into a bare PASS.
 - **Effort tracks risk** (informational — the engine handles it): a phase with `risk: "high"` runs its build and fix stages at `effort: 'high'`; review always runs at `effort: 'high'`. `risk` comes straight from `contract-data.json`, so it is worth passing through accurately.
 
+### Write the run record — before the failure gate
+
+**When the summary carries no run-level `error` and its `results` array is non-empty**, write and render the run record *now*, ahead of the branching below. That ordering is the point: the failure gate's "Stop here" and unattended-halt branches never reach the Completion Report, and a failed walk-away run is the record most worth keeping. Do not move this into the report step — the reviewer findings, warnings, and `reviewStatus` values in `results` exist nowhere else once the run ends. (Nothing to record: a run-level `error` means no phase ran, and an empty `results` means every phase was already committed and skipped by Step 2 — no run to report either way, and the generator refuses both records by design.)
+
+1. **Choose the stem.** `{projectDir}run-{date}.json` with today's date from `date +%Y-%m-%d` — read it, never recall it, because the `date` field below must match the stem. Both files live in the project directory, not elsewhere: the report links `contract.html` and the notes with relative hrefs. If that file exists, append `-2`, `-3`, … until one is free: one record per engine summary, so a within-session retry gets its own pair instead of overwriting the failed run it is retrying. The `.html` sibling takes the **same** stem. Remember both paths — the Completion Report re-renders these, not a freshly recomputed pair.
+2. **Write the JSON** with exactly these eight top-level keys and no others. `${CLAUDE_PLUGIN_ROOT}/test-fixtures/run-report/run-record.json` is a complete worked example — read it once rather than guessing the nesting. Unknown keys are silently ignored, never reported, so an invented field (there is deliberately no `mode`) becomes a fact nobody ever sees:
+   - `projectName`, `slug` — from `contract-data.json`; `date` — the same `YYYY-MM-DD` string as the stem.
+   - `branch` — the branch Step 1 asserted, or `null` when the contract declared none. Never substitute `git branch --show-current`: the field means "the branch this contract declared", not "where the shell happens to be".
+   - `strict` — the boolean you put in the Step 3 manifest.
+   - `summary` — the engine's `{completed, noops, failed, skipped, results}` object **verbatim, never summarized, trimmed, or reordered**. The generator cross-checks every bucket against `results[]` and refuses any disagreement, so a "helpful" condensation is a hard error, not a nicety.
+   - `verify: null` — verification has not run yet; the report renders an explicit "not run" state for it.
+   - `notesFiles` — the **bare filenames** matching `{projectDir}implementation-notes-*.html` right now, `[]` when none. The report links them relative to itself, so a `docs/…` prefix or an absolute path renders a dead link, and a `://` anywhere fails validation outright.
+
+   This skill has no `Write` tool, so write it with Bash and a **quoted** heredoc delimiter, with the closing delimiter at the start of its own line — phase summaries and findings routinely carry backticks, `$`, and literal markup, and an unquoted delimiter would let the shell expand them:
+
+   ```bash
+   cat > {recordPath} <<'JSON'
+   {…the record…}
+   JSON
+   ```
+
+3. **Render it** as its own Bash call — never `&&`-chained with the write, so a denial of one is visible and doesn't silently skip the other:
+
+   ```bash
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/run-report-gen.ts --input {recordPath} --output {htmlPath}
+   ```
+
+4. **If the generator rejects the record**, it prints every violation with its JSON path (`summary.results[2].reviewStatus: …`) and writes nothing. Fix the JSON against those indices and re-run — the errors name exactly what disagrees. Never bypass validation, and never hand-author the HTML: the generator is the only renderer and there is no fallback template. **If the command is denied by permissions**, print the exact `! node …` command so the user can render the record whenever they like, note the skipped render, and continue.
+5. Then proceed to the gate below exactly as before. The JSON is already on disk, so neither a rejection nor a denial may block or delay the run's handling.
+
 **If `failed` is empty** (and no `error`): proceed to the Completion Report.
 
 **If `failed` is non-empty:** this is the failure gate. Present it via `AskUserQuestion`:
@@ -175,6 +205,16 @@ After the engine finishes (or execution stops), present a summary. **Warnings co
 ```
 
 **Then verify the contract** (when `contract-data.json` exists): run `node ${CLAUDE_PLUGIN_ROOT}/scripts/verify.mjs {projectDir}/contract-data.json` and quote its final line — `VERIFY {slug}: commits=A/B pass=N fail=M judgment=K` — verbatim in the report. Exit 0 (fail=0 and commits=B/B) is the completion predicate; if the script cannot run, say "verification not run", never "Complete" on the engine summary alone. Scope caveat: it checks this one contract's acceptance criteria, not repo health.
+
+**Then enrich the run record** written in Step 5 — set its `verify` to `{ "line": "<the VERIFY line verbatim>", "exitCode": <the command's exit status> }`, using the integer status of that Bash call rather than a status inferred from the line's counts, and re-render the **same** stem with the same command:
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/run-report-gen.ts --input {recordPath} --output {htmlPath}
+```
+
+The output overwrites in place, which is the intent: one record per run, re-rendered once verification has run. Leave `notesFiles` as written. When verification did not run at all — no `contract-data.json`, or the script was denied — leave `verify: null` and let the report say so; a fabricated VERIFY line is worse than an honest blank.
+
+**Watched runs only:** `open {htmlPath}` for ambient visibility, as a separate Bash call from the render and never as an approval step. Unattended runs (a `/goal` wrapper, or any run with no interactive user) skip the open — never the write.
 
 If all phases completed and verification passed:
 
