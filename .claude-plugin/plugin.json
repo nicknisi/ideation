@@ -1,6 +1,6 @@
 {
   "name": "ideation",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "homepage": "https://ideation.engineering/",
   "description": "Whether, then how, then shipped. /ideation:brainstorm pressure-tests ideas in conversation; the evidence-gated interview, stress-tested by adversarial plan critics, turns a yes into an interactive HTML contract and Markdown specs; /ideation:autopilot runs all phases on a deterministic workflow engine. Watched runs teach the next interview.",
   "author": {
