@@ -21,10 +21,9 @@ docs/ideation/*
 # The ux-dejank dogfood run is published history — a real run, kept unedited —
 # linked from the README's Example section and the site walkthrough.
 !docs/ideation/ux-dejank/
-# The pride-report run drove phases 1-5 on its branch; its artifacts are
-# published history too. Un-ignored so future files there stay visible to
-# `git status` instead of needing force-adds.
-!docs/ideation/pride-report/
+# The pride-report run's artifacts stay local, except the two force-added
+# files (context-map.md, implementation-notes-phase-5.html) — already tracked,
+# so this rule does not touch them.
 
 # Pi session-local state (agents, artifacts) — never published.
 .pi/
