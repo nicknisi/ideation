@@ -572,8 +572,12 @@ function runStamp(f: Facts): { cls: string; label: string } {
   return { cls: 'is-go', label: 'clean' };
 }
 
-/** One sentence stating how the run ended, assembled from its own numbers, so
-    the reader does not have to scroll to learn the shape. */
+/** One sentence naming what this run executed, then how it ended, assembled
+    from the run's own numbers. The association comes first: a report can be
+    opened cold, days later, from a directory of siblings — and the close
+    band's contract link at the foot of the page is too late to orient the
+    reader (a project literally named "Run Report" proved the masthead alone
+    reads as tautology). */
 function ledeFor(d: RunRecord, f: Facts): string {
   const total = f.phases.length;
   const parts = [
@@ -588,7 +592,7 @@ function ledeFor(d: RunRecord, f: Facts): string {
   const findings = f.findingsCount
     ? ` ${f.findingsCount} reviewer ${plural(f.findingsCount, 'finding')} ${plural(f.findingsCount, 'is', 'are')} recorded below.`
     : ' No reviewer findings were recorded.';
-  return `${parts.join(', ')}.${review}${findings}`;
+  return `Execution record of the <a href="contract.html">${esc(d.projectName)} contract</a>: ${parts.join(', ')}.${review}${findings}`;
 }
 
 function buildMasthead(d: RunRecord, f: Facts): string {

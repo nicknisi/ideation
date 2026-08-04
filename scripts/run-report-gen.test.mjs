@@ -343,6 +343,22 @@ describe('render honesty', () => {
     );
   });
 
+  it('names the contract it executed in the masthead, not only in the close band', () => {
+    // A report is opened cold, days later, from a directory of siblings. The
+    // close band's contract link at the foot of the page is too late to
+    // orient the reader — and a project named like its artifact type (the
+    // first real project was literally called "Run Report") makes a bare
+    // projectName masthead read as tautology. The lede must state the
+    // association before the shape.
+    const { code, html } = runGen({ inputPath: VALID_FIXTURE });
+    assert.equal(code, 0);
+    has(
+      html,
+      /Execution record of the <a href="contract\.html">[^<]+ contract<\/a>/,
+      'the lede must open with the contract association, linked',
+    );
+  });
+
   it('renders the review diff in merge-base form against baseBranch', () => {
     // `git diff {branch}` alone diffs the branch tip against the READER's
     // working tree — empty when read on the branch, reversed when read from
