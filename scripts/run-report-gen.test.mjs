@@ -223,6 +223,18 @@ describe('validation', () => {
     has(err, /notesFiles\[0\]: .* is a URL/, err);
   });
 
+  it('refuses a baseBranch that is neither string nor null', () => {
+    // The review diff renders as `git diff {baseBranch}...{branch}` — a wrong
+    // base produces a misleading diff, so an unknown base must be an explicit
+    // null, never a guess.
+    const record = clone();
+    record.baseBranch = ['main'];
+    const { code, err, wrote } = runGen({ record });
+    assert.equal(code, 1);
+    assert.equal(wrote, false);
+    has(err, /baseBranch: expected a string or null/, err);
+  });
+
   it('refuses input that is not JSON, naming the parse failure', () => {
     const scratch = mkdtempSync(join(tmpdir(), 'run-report-gen-parse-'));
     try {
@@ -328,6 +340,40 @@ describe('render honesty', () => {
       rendered.html,
       /(src|href)="https?:\/\//,
       'the report carries an external reference — it must open over file:// with no network',
+    );
+  });
+
+  it('renders the review diff in merge-base form against baseBranch', () => {
+    // `git diff {branch}` alone diffs the branch tip against the READER's
+    // working tree — empty when read on the branch, reversed when read from
+    // main. Only the three-dot merge-base form answers "what did this run
+    // build". Caught by a human read-through of the first real report
+    // (contract criterion 6), after two review cycles passed it: the wrong
+    // command was faithfully implemented from the spec, so the guard lives
+    // here now.
+    const { code, html } = runGen({ inputPath: VALID_FIXTURE });
+    assert.equal(code, 0);
+    has(
+      html,
+      /git diff main\.\.\.ideation\/run-report-fixture/,
+      'review diff must be {baseBranch}...{branch}',
+    );
+    lacks(
+      html,
+      /git diff ideation\//,
+      'the two-argument-less form must not survive anywhere',
+    );
+  });
+
+  it('omits the diff command when the default branch is unknown', () => {
+    const record = clone();
+    record.baseBranch = null;
+    const { code, html } = runGen({ record });
+    assert.equal(code, 0);
+    lacks(
+      html,
+      /git diff /,
+      'no diff command without a trustworthy base — a wrong diff is worse than none',
     );
   });
 

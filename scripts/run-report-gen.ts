@@ -77,6 +77,10 @@ interface RunRecord {
   date: string;
   /** isolation branch, when the contract carries one */
   branch: string | null;
+  /** the repo's default branch the review diff runs against (skill-detected at
+      write time); null = unknown, and the report renders no diff command — a
+      wrong base produces a misleading diff, which is worse than none */
+  baseBranch: string | null;
   /** true when the run dispatched with strict semantics (express) */
   strict: boolean;
   summary: {
@@ -126,7 +130,7 @@ function validateRecord(data: unknown): string[] {
 
   if (!isObject(data)) {
     errors.push(
-      `the record root: expected a JSON object carrying projectName, slug, date, branch, strict, summary, verify and notesFiles — got ${typeName(data)}`,
+      `the record root: expected a JSON object carrying projectName, slug, date, branch, baseBranch, strict, summary, verify and notesFiles — got ${typeName(data)}`,
     );
     return errors;
   }
@@ -188,6 +192,11 @@ function validateRecord(data: unknown): string[] {
   if (data.branch !== null && typeof data.branch !== 'string') {
     errors.push(
       `branch: expected a string or null (null = the contract carried no isolation branch), got ${typeName(data.branch)}`,
+    );
+  }
+  if (data.baseBranch !== null && typeof data.baseBranch !== 'string') {
+    errors.push(
+      `baseBranch: expected a string or null (the default branch the review diff runs against; null = unknown, no diff command is rendered), got ${typeName(data.baseBranch)}`,
     );
   }
   if (typeof data.strict !== 'boolean') {
@@ -975,9 +984,9 @@ function buildClose(d: RunRecord, f: Facts, recordPath: string): string {
         <ul class="links">
 ${links.join('\n')}
         </ul>${
-          d.branch
+          d.branch && d.baseBranch
             ? `\n        <div class="review-cmd">
-          ${cmdField('cmd-diff', `git diff ${d.branch}`)}
+          ${cmdField('cmd-diff', `git diff ${d.baseBranch}...${d.branch}`)}
         </div>`
             : ''
         }
@@ -1112,7 +1121,8 @@ if (!values.input) {
     'Usage: run-report-gen.ts --input <run-record.json> --output <run-report.html>\n' +
       '  --input  the run record the autopilot session wrote for one run: the\n' +
       '           engine\'s {completed, noops, failed, skipped, results} summary\n' +
-      '           plus provenance (projectName, slug, date, branch, strict), a\n' +
+      '           plus provenance (projectName, slug, date, branch, baseBranch,\n' +
+      '           strict), a\n' +
       '           nullable verify block, and notesFiles.\n' +
       '  --output where to write the report. Defaults to run-report.html in the\n' +
       '           current directory, and OVERWRITES it — the same run is\n' +

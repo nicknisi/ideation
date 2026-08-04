@@ -3,6 +3,7 @@
   "slug": "malformed-fixture",
   "date": "2026-02-14",
   "branch": null,
+  "baseBranch": null,
   "strict": true,
   "summary": {
     "error": "the wave loop threw before any phase ran",

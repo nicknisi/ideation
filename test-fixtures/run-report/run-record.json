@@ -3,6 +3,7 @@
   "slug": "run-report-fixture",
   "date": "2026-02-14",
   "branch": "ideation/run-report-fixture",
+  "baseBranch": "main",
   "strict": false,
   "summary": {
     "completed": ["Run-report generator", "Autopilot wiring"],
