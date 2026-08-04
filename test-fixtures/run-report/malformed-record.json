@@ -1,0 +1,28 @@
+{
+  "projectName": "Malformed Fixture",
+  "slug": "malformed-fixture",
+  "date": "2026-02-14",
+  "branch": null,
+  "strict": true,
+  "summary": {
+    "error": "the wave loop threw before any phase ran",
+    "completed": ["Ghost phase", "Real phase"],
+    "noops": [],
+    "failed": [],
+    "skipped": [],
+    "results": [
+      {
+        "title": "Real phase",
+        "result": "PASS",
+        "reviewStatus": "partial",
+        "commitHash": "deadbee",
+        "summary": "Three independent defects live in this record: an unknown reviewStatus, a bucketed title that no result describes, and a run-level error.",
+        "findings": [],
+        "warnings": [],
+        "reviewCycles": 1
+      }
+    ]
+  },
+  "verify": null,
+  "notesFiles": []
+}

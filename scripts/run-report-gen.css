@@ -1,0 +1,927 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Run report — the post-flight document.
+
+   THESIS   A run report is read after the machine has stopped, by
+            someone who was not watching. Its job is to make the run
+            impossible to misread: what landed, what nobody reviewed,
+            and every finding that would otherwise have died in a
+            transcript. So warnings lead, and nothing is decorative.
+   WORLD    The ideation field guide — DESIGN.md is the token
+            authority, scripts/contract-gen.css is the canonical
+            declaration. Paper ground, ink, ONE cobalt accent, serif
+            display, letterpress offset, hairline rules, 3px radii.
+            Graphite dark deck, never navy.
+   REGISTER Serif carries headings and prose. Mono is evidence only:
+            commit hashes, the VERIFY line, counts. A heading in mono
+            would be a lapse.
+   MOTION   None authored. This document reports on something already
+            finished; animating it would imply it is still moving.
+            State changes only, under 160ms.
+
+   Inlined into every generated report by run-report-gen.ts at
+   generation time. Self-contained: no fonts, no CDNs, no images —
+   reports are opened over file:// with no network.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Auto: follow the system. The masthead toggle forces a deck by
+     setting data-theme, which pins color-scheme and resolves every
+     light-dark() below. */
+  color-scheme: light dark;
+
+  /* ── Palette ─────────────────────────────────────────────────
+     light-dark(paper deck, graphite deck). Values are DESIGN.md's
+     table, so a run report looks like the contract it reports on. */
+  --bg: light-dark(#f7f7f3, #131417);
+  --surface-1: light-dark(#fcfcfa, #1a1c20);
+  --surface-2: light-dark(#ffffff, #202329);
+  --wash: light-dark(#ebebe4, #0c0d0f);
+  --line: light-dark(#dededf, #2d3036);
+  --line-strong: light-dark(#a6a6a0, #4c505a);
+  --ink: light-dark(#191b1d, #e9e9e4);
+  --muted: light-dark(#50555a, #a8aaa6);
+  --faint: light-dark(#75797d, #82858a);
+
+  --accent: light-dark(#2b46c7, #93a7ff);
+  --accent-tint: light-dark(#e6eafb, #1e2542);
+  --go: light-dark(#187a48, #63bf8d);
+  --go-tint: light-dark(#e0f0e7, #15291e);
+  --caution: light-dark(#94660a, #d2ad55);
+  --caution-tint: light-dark(#f5ecd2, #2b2513);
+  --danger: light-dark(#bb3a2c, #e0796e);
+  --danger-tint: light-dark(#f8e2de, #331714);
+
+  /* Letterpress: an offset, no blur. The world's depth device. */
+  --press: 3px 3px 0 0 var(--line);
+
+  /* ── Type ────────────────────────────────────────────────────
+     Serif = voice. Sans = interface furniture. Mono = evidence. */
+  --font-serif:
+    'Iowan Old Style', 'Palatino Nova', Palatino, 'Book Antiqua', Georgia,
+    'Times New Roman', serif;
+  --font-mono:
+    'Berkeley Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, Consolas,
+    monospace;
+  --font-sans:
+    system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial,
+    sans-serif;
+
+  --t-kicker: 0.6875rem;
+  --t-meta: 0.75rem;
+  --t-data: 0.8125rem;
+  --t-small: 0.875rem;
+  --t-body: 1rem;
+  --t-lead: 1.125rem;
+  --t-h3: 1.25rem;
+  --t-h2: 1.75rem;
+  --t-display: clamp(2.25rem, 5.5vw, 3.5rem);
+  --t-figure: clamp(1.75rem, 4vw, 2.5rem);
+
+  /* ── Space (4pt) ─────────────────────────────────────────── */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 72px;
+
+  --radius: 3px;
+  --radius-lg: 4px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --measure: 68ch;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* ── Reset ─────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: var(--font-serif);
+  font-size: var(--t-body);
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  font-kerning: normal;
+}
+:where(button, summary):focus-visible,
+:where(a, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+.wrap {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding-inline: var(--s6);
+}
+/* ── Voices ────────────────────────────────────────────────── */
+
+/* Reserved for labels on measurements and for the stamps. Not an
+   eyebrow over every section — sections get real serif heads. */
+.kicker {
+  font-family: var(--font-mono);
+  font-size: var(--t-kicker);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.meta {
+  font-family: var(--font-mono);
+  font-size: var(--t-meta);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Letterpress stamp — the run's verdict, worn like a rubber stamp. */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-family: var(--font-mono);
+  font-size: var(--t-meta);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: var(--s1) var(--s3);
+  border: 1.5px solid currentColor;
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+.stamp::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+.is-go {
+  color: var(--go);
+}
+.is-caution {
+  color: var(--caution);
+}
+.is-danger {
+  color: var(--danger);
+}
+
+/* Inline chips — small facts that ride next to text. Flat, hairline.
+   Every tinted chip also carries its word, never colour alone. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: var(--t-kicker);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.chip-go {
+  color: var(--go);
+  border-color: currentColor;
+  background: var(--go-tint);
+}
+.chip-caution {
+  color: var(--caution);
+  border-color: currentColor;
+  background: var(--caution-tint);
+}
+.chip-danger {
+  color: var(--danger);
+  border-color: currentColor;
+  background: var(--danger-tint);
+}
+
+/* ── Masthead ──────────────────────────────────────────────── */
+
+.masthead {
+  padding-block: var(--s7);
+  border-top: 0;
+}
+.masthead-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s5);
+  flex-wrap: wrap;
+}
+.masthead-slug {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+}
+/* The mark: a rotated square, the same glyph as the plugin's favicon. */
+.masthead-mark {
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  transform: rotate(45deg);
+  flex: 0 0 auto;
+}
+.masthead h1 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--t-display);
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+  max-width: 18ch;
+}
+.masthead-aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s2);
+  text-align: right;
+  flex: 0 0 auto;
+}
+.masthead-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-end;
+}
+.theme-toggle {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-top: var(--s1);
+  padding: 0;
+  color: var(--faint);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.theme-toggle::after {
+  content: '';
+  position: absolute;
+  inset: -7px;
+}
+.theme-toggle,
+.copy,
+.links a {
+  /* The only motion in the document: a state change, under 160ms. */
+  transition:
+    color 0.14s var(--ease),
+    background-color 0.14s var(--ease),
+    border-color 0.14s var(--ease);
+}
+.theme-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.theme-toggle svg {
+  width: 15px;
+  height: 15px;
+  display: none;
+}
+.theme-toggle[data-mode='auto'] .i-auto,
+.theme-toggle[data-mode='light'] .i-light,
+.theme-toggle[data-mode='dark'] .i-dark {
+  display: block;
+}
+
+/* The lede — one sentence stating how the run ended. */
+.masthead-lede {
+  margin: var(--s5) 0 0;
+  font-size: var(--t-lead);
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 62ch;
+  text-wrap: pretty;
+}
+.masthead-lede strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ── Flight strip ──────────────────────────────────────────
+   The measured outcome of the run. One bordered strip of cells,
+   not a row of floating cards. */
+
+/* The cell separators are the grid's own 1px gaps with the rule
+   colour showing through — not per-cell borders. The strip wraps at
+   narrow widths, and a wrapped row's borders cannot be addressed by
+   :first-child, so the gap does the job at every column count. */
+.flightstrip {
+  margin-top: var(--s6);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(184px, 1fr));
+  gap: 1px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--line);
+  box-shadow: var(--press);
+  overflow: hidden;
+}
+.fs-cell {
+  padding: var(--s4) var(--s4) var(--s3);
+  background: var(--surface-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  min-width: 0;
+}
+.fs-figure {
+  font-family: var(--font-mono);
+  font-size: var(--t-figure);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.fs-figure .fs-of {
+  font-size: 0.5em;
+  color: var(--faint);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.fs-note {
+  font-family: var(--font-sans);
+  font-size: var(--t-meta);
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* Outcome meter — one segment per phase, in run order, drawn to
+   scale. Colour is never the only signal: the note spells the
+   counts out in words next to it. */
+.meter {
+  display: flex;
+  gap: 2px;
+  height: 6px;
+  margin-top: var(--s1);
+}
+.meter span {
+  flex: 1;
+  border-radius: 1px;
+  background: var(--line-strong);
+}
+.meter .m-pass {
+  background: var(--go);
+}
+.meter .m-warn {
+  background: var(--caution);
+}
+.meter .m-fail {
+  background: var(--danger);
+}
+
+/* ── Section furniture ─────────────────────────────────────── */
+
+.band {
+  padding-block: var(--s8);
+  border-top: 1px solid var(--line);
+}
+.band-wash {
+  background: var(--surface-1);
+}
+.sec-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s5);
+  margin-bottom: var(--s6);
+  flex-wrap: wrap;
+}
+.sec-head h2 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--t-h2);
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.15;
+}
+.sec-sub {
+  margin: var(--s2) 0 0;
+  font-size: var(--t-small);
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: var(--measure);
+  text-wrap: pretty;
+}
+.sec-count {
+  font-family: var(--font-mono);
+  font-size: var(--t-meta);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.placeholder {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ── Warnings ──────────────────────────────────────────────
+   The band that leads the document, because the failure this whole
+   artifact exists to prevent is a run that reads clean when it was
+   not. Tinted ground plus a glyph plus the phase name — three
+   signals, so none of them is load-bearing alone. */
+
+.warnband {
+  border-top: 3px solid var(--caution);
+  background: var(--caution-tint);
+}
+.warnband.is-severe {
+  border-top-color: var(--danger);
+  background: var(--danger-tint);
+}
+.warnstrip {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  box-shadow: var(--press);
+  overflow: hidden;
+}
+.warn-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  background: var(--wash);
+  border-block-end: 1px solid var(--line);
+}
+/* A second group opening under the rows of the first needs its own rule;
+   the first one sits against the strip's border and must not double it. */
+.warn-row + .warn-group-head {
+  border-block-start: 1px solid var(--line);
+}
+.warn-group-head h3 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--t-h3);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.warn-group-head p {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--t-meta);
+  color: var(--muted);
+}
+.warn-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--s3);
+  padding: var(--s4);
+  border-block-start: 1px solid var(--line);
+}
+/* A group head already draws the rule under itself. */
+.warn-group-head + .warn-row {
+  border-block-start: 0;
+}
+.warn-glyph {
+  font-family: var(--font-mono);
+  font-size: var(--t-small);
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--caution);
+}
+.warn-row.is-severe .warn-glyph {
+  color: var(--danger);
+}
+.warn-phase {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  font-family: var(--font-serif);
+  font-size: var(--t-body);
+  font-weight: 600;
+}
+.warn-text {
+  margin: var(--s2) 0 0;
+  font-family: var(--font-sans);
+  font-size: var(--t-data);
+  line-height: 1.6;
+  color: var(--ink);
+  max-width: var(--measure);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+/* ── Phases ────────────────────────────────────────────────
+   One bordered strip of cells per phase, then its prose beneath.
+   Cards would float; a run is a sequence. */
+
+.phase {
+  margin-top: var(--s6);
+}
+.phase:first-of-type {
+  margin-top: 0;
+}
+.phase-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--line);
+  overflow: hidden;
+}
+.ph-cell {
+  padding: var(--s3) var(--s4);
+  background: var(--surface-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  min-width: 0;
+}
+.ph-title h3 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--t-h3);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  line-height: 1.25;
+  text-wrap: pretty;
+}
+.ph-index {
+  font-family: var(--font-mono);
+  font-size: var(--t-kicker);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--faint);
+}
+.ph-val {
+  font-family: var(--font-mono);
+  font-size: var(--t-data);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.phase-body {
+  border: 1px solid var(--line-strong);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  background: var(--surface-2);
+  box-shadow: var(--press);
+  padding: var(--s4);
+}
+.phase-summary {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: 1.6;
+  color: var(--ink);
+  max-width: var(--measure);
+  text-wrap: pretty;
+}
+/* Findings are the reason this document exists — they are the data
+   that evaporated in the transcript before it. Every one renders. */
+.findings {
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px dashed var(--line);
+}
+.findings-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+}
+.findings ul {
+  margin: var(--s2) 0 0;
+  padding-inline-start: 0;
+  list-style: none;
+}
+.findings li {
+  position: relative;
+  padding-inline-start: var(--s5);
+  margin-top: var(--s2);
+  font-family: var(--font-sans);
+  font-size: var(--t-data);
+  line-height: 1.6;
+  color: var(--ink);
+  max-width: var(--measure);
+  overflow-wrap: anywhere;
+}
+.findings li::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: var(--s3);
+  inset-block-start: 0.62em;
+  width: 5px;
+  height: 5px;
+  background: var(--accent);
+}
+.phase-warn {
+  margin-top: var(--s4);
+  padding: var(--s3);
+  border: 1px solid var(--caution);
+  border-radius: var(--radius);
+  background: var(--caution-tint);
+  font-family: var(--font-sans);
+  font-size: var(--t-data);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.phase-warn + .phase-warn {
+  margin-top: var(--s2);
+}
+
+/* ── Verification ──────────────────────────────────────────── */
+
+.verify {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--s4);
+  align-items: start;
+  padding: var(--s5);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  box-shadow: var(--press);
+}
+.verify-line {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--t-data);
+  line-height: 1.6;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.verify-note {
+  margin: var(--s3) 0 0;
+  font-family: var(--font-sans);
+  font-size: var(--t-meta);
+  line-height: 1.6;
+  color: var(--muted);
+  max-width: 62ch;
+  text-wrap: pretty;
+}
+
+/* ── Commands ──────────────────────────────────────────────── */
+
+.cmd {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3);
+  background: var(--wash);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: var(--t-data);
+  line-height: 1.5;
+  min-width: 0;
+}
+.cmd-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: all;
+}
+.copy {
+  position: relative;
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: var(--t-kicker);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 3px var(--s2);
+  cursor: pointer;
+  min-width: 5.4em;
+  text-align: center;
+}
+.copy::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+}
+.copy:hover {
+  background: var(--accent-tint);
+  border-color: var(--accent);
+}
+.copy[data-state='done'] {
+  color: var(--go);
+  border-color: var(--go);
+  background: var(--go-tint);
+}
+
+/* ── Close ─────────────────────────────────────────────────── */
+
+.close {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--s5);
+  align-items: center;
+  padding: var(--s6) var(--s5);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  box-shadow: var(--press);
+}
+.close h2 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--t-h2);
+  font-weight: 600;
+  letter-spacing: -0.018em;
+}
+.close p {
+  margin: var(--s3) 0 0;
+  font-family: var(--font-sans);
+  font-size: var(--t-data);
+  line-height: 1.6;
+  color: var(--muted);
+  max-width: 62ch;
+  text-wrap: pretty;
+}
+.close-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s2);
+  text-align: right;
+}
+.links {
+  margin: var(--s5) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.links a {
+  font-family: var(--font-mono);
+  font-size: var(--t-data);
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in oklab, var(--accent) 40%, transparent);
+  overflow-wrap: anywhere;
+}
+.links a:hover {
+  border-bottom-color: var(--accent);
+}
+.links .meta {
+  margin-inline-start: var(--s2);
+}
+.review-cmd {
+  margin-top: var(--s5);
+  max-width: 62ch;
+}
+.colophon {
+  padding-block: var(--s6) var(--s8);
+  font-family: var(--font-sans);
+  font-size: var(--t-meta);
+  color: var(--faint);
+  line-height: 1.6;
+}
+.colophon code {
+  font-family: var(--font-mono);
+}
+
+/* ── Responsive ────────────────────────────────────────────
+   No horizontal page scroll at any width: the phase strip becomes a
+   stack, and every measured cell keeps its label. */
+
+@media (max-width: 900px) {
+  .phase-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ph-title {
+    grid-column: 1 / -1;
+  }
+  .verify,
+  .close {
+    grid-template-columns: 1fr;
+  }
+  .close-meta {
+    align-items: flex-start;
+    text-align: start;
+  }
+}
+
+@media (max-width: 640px) {
+  .wrap {
+    padding-inline: var(--s4);
+  }
+  .band {
+    padding-block: var(--s7);
+  }
+  .phase-strip {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Print — the run report as a paper document ────────────
+   Forced light tokens whatever the deck, controls gone, and a phase
+   never split across a page break: a report read on paper is read
+   by someone auditing what landed. */
+
+@media print {
+  :root,
+  :root[data-theme] {
+    color-scheme: light;
+    --bg: #ffffff;
+    --surface-1: #ffffff;
+    --surface-2: #ffffff;
+    --wash: #f2f2ee;
+    --line: #c9c9c4;
+    --line-strong: #8a8a84;
+    --ink: #000000;
+    --muted: #303336;
+    --faint: #4a4d51;
+    --accent: #1c2f96;
+    --accent-tint: #eceffc;
+    --go: #105934;
+    --go-tint: #eaf2ed;
+    --caution: #6b4a07;
+    --caution-tint: #f6efdb;
+    --danger: #8e2b20;
+    --danger-tint: #f9e6e3;
+    --press: none;
+  }
+  body {
+    font-size: 10.5pt;
+  }
+  .wrap {
+    max-width: none;
+    padding-inline: 0;
+  }
+  .copy,
+  .theme-toggle {
+    display: none !important;
+  }
+  .band {
+    padding-block: 18pt;
+    break-inside: auto;
+  }
+  .flightstrip {
+    overflow: visible;
+  }
+  .warnband {
+    /* The tint is the signal on screen; on paper the rule and the
+       glyphs carry it, because tinted grounds print as grey mush. */
+    background: transparent;
+  }
+  .flightstrip,
+  .fs-cell,
+  .warnstrip,
+  .warn-row,
+  .phase,
+  .phase-strip,
+  .findings li,
+  .phase-warn,
+  .verify,
+  .close {
+    break-inside: avoid;
+  }
+  .links a {
+    color: var(--ink);
+  }
+}

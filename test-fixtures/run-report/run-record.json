@@ -1,0 +1,80 @@
+{
+  "projectName": "Run Report Fixture",
+  "slug": "run-report-fixture",
+  "date": "2026-02-14",
+  "branch": "ideation/run-report-fixture",
+  "strict": false,
+  "summary": {
+    "completed": ["Run-report generator", "Autopilot wiring"],
+    "noops": ["README artifact list"],
+    "failed": ["Verify integration"],
+    "skipped": ["Dogfood pass"],
+    "results": [
+      {
+        "title": "Run-report generator",
+        "result": "PASS",
+        "reviewStatus": "passed",
+        "commitHash": "3f9a1c4",
+        "summary": "Added the generator, its stylesheet, and the black-box suite. Validation refuses a record before any filesystem side effect.",
+        "findings": [
+          "Fixture finding: esc() missing on summary field",
+          "Escaping check: a finding may quote code — <script>alert(\"drop\")</script> & <b>bold</b> must render as text"
+        ],
+        "warnings": [],
+        "reviewCycles": 2
+      },
+      {
+        "title": "Autopilot wiring",
+        "result": "PASS",
+        "reviewStatus": "validation-only",
+        "commitHash": "a71b028",
+        "summary": "Wired the generator into the Completion Report step. Committed on validation alone — the reviewer stage never returned a verdict.",
+        "findings": [],
+        "warnings": [
+          "WARNING — UNREVIEWED CODE COMMITTED: phase \"Autopilot wiring\" is being committed with NO code review — the reviewer stage never produced a verdict (agent returned no structured output). Validation \"PASS\" is the ONLY evidence this phase is correct."
+        ],
+        "reviewCycles": 0
+      },
+      {
+        "title": "README artifact list",
+        "result": "NO-OP",
+        "reviewStatus": "skipped-empty-diff",
+        "commitHash": null,
+        "summary": "The artifact list already named both run-report files — nothing to change, so nothing was committed.",
+        "findings": [],
+        "warnings": [],
+        "reviewCycles": 0
+      },
+      {
+        "title": "Verify integration",
+        "result": "FAIL",
+        "reviewStatus": "failed",
+        "commitHash": null,
+        "summary": "Reviewer returned FAIL at the cycle cap: the VERIFY parser accepted a partial match and rendered an undefined count as a figure. Changes left unstaged.",
+        "findings": [
+          "scripts/run-report-gen.ts: the commits=A/B regex matches a truncated VERIFY line and yields undefined for pass and fail",
+          "No test covers a VERIFY line missing the judgment= field"
+        ],
+        "warnings": [
+          "Phase left 3 modified files unstaged; a rerun will build on top of them."
+        ],
+        "reviewCycles": 3
+      },
+      {
+        "title": "Dogfood pass",
+        "result": "SKIPPED",
+        "reviewStatus": "not-run",
+        "commitHash": null,
+        "summary": "Skipped: depends on \"Verify integration\", which failed.",
+        "findings": [],
+        "warnings": [],
+        "reviewCycles": 0
+      }
+    ]
+  },
+  "verify": {
+    "line": "VERIFY run-report-fixture: commits=2/3 pass=4 fail=1 judgment=1",
+    "exitCode": 1
+  },
+  "notesFiles": ["implementation-notes-phase-2.html"]
+}
