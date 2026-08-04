@@ -94,16 +94,17 @@ Specs and PRDs are Markdown — readable as-is and consumed directly by `/ideati
 
 **Bundled references:**
 
-Shared (plugin root):
+Shared (`references/`):
 
 - `interview-engine.md` - Shared interview engine (Phases 1-2), including the intake exploration sweep
 - `confidence-rubric.md` - Evidence-gate criteria for readiness assessment and spec feedback quality
 - `feedback-loop-guide.md` - Component-type mapping and design criteria for feedback loops
+- `harness-compat.md` - Claude Code / pi harness translation matrix
+- `learning-filter.md` - The learnings.md lifecycle: classify, generalize, dedupe, retire
 
 Skill-specific:
 
-- `html-guide.md` - HTML component library, design tokens, and constraints (for ephemeral comparison/visualization artifacts; `contract.html` is rendered only by `scripts/contract-gen.ts`)
-- `contract-template.md` - Markdown contract template (the HTML contract has no template — it is generator output)
+- `html-guide.md` - components and constraints for ephemeral comparison/visualization artifacts (`contract.html` is rendered only by `scripts/contract-gen.ts`)
 - `prd-template.md` - PRD template
 - `spec-template.md` - Implementation spec template (includes feedback loops and failure modes)
 
@@ -182,13 +183,13 @@ Lineage and resuming answer different questions: lineage records that a commitme
 
 Readiness is no longer a number. The skill judges your brain dump across 5 **gates**, each either `ready` or `not-ready`. A gate is `ready` only when a concrete artifact exists — a goal written as a pass/fail statement, an explicit scope boundary — not when a score is asserted.
 
-| Gate             | Gate question                                                    |
-| ---------------- | ---------------------------------------------------------------- |
-| Problem Clarity  | Do I understand what problem we're solving, who has it, and why? |
-| Goal Definition  | Are the goals specific and measurable?                           |
-| Success Criteria | Can every stated goal be checked pass/fail today?                |
-| Scope Boundaries | Do I know what's in and out of scope?                            |
-| Consistency      | Are there contradictions I need resolved?                        |
+| Gate             | Gate question                                                             |
+| ---------------- | ------------------------------------------------------------------------- |
+| Problem Clarity  | Do I understand what problem we're solving, who has it, and why it matters? |
+| Goal Definition  | Are the goals specific and measurable?                                    |
+| Success Criteria | Can every stated goal be checked pass/fail today?                         |
+| Scope Boundaries | Do I know what's in and out of scope?                                     |
+| Consistency      | Are there contradictions I need resolved?                                 |
 
 **Proceed-to-contract rule:** all 5 gates `ready`, _or_ the user explicitly ends the interview ("stop" / "wrap up") — in which case the `not-ready` gates are recorded as such in the contract. Each gate carries a one-sentence `evidence` citation: the artifact that makes it ready, or the gap that keeps it not-ready.
 
@@ -263,6 +264,8 @@ search too...
 
 **Prefer to watch it happen?** The [ideation site](https://ideation.engineering/) walks one fictional feature — a bookmark garden — through the whole loop as an animated, self-contained page: the interview scoreboard, the plan critics, the routing fork, execution waves, and the learning the next interview inherits. After cloning, `cd site && pnpm dev` serves both pages at `localhost:4321`. The command reference lives at [ideation.engineering/guide](https://ideation.engineering/guide/).
 
+**Prefer to read the artifacts?** [`test-fixtures/orchestration/`](test-fixtures/orchestration/) is a full synthetic contract plus specs you can read without running anything — the dependency graph is the point — and [`skills/ideation/examples/`](skills/ideation/examples/) holds a worked contract, PRD, and spec. For a real run, unedited: [`docs/ideation/ux-dejank/`](docs/ideation/ux-dejank/) is the archived dogfood project that de-janked this plugin's own UX — contract, specs, gate evidence, and implementation notes exactly as the run produced them, reds and all (the archive's README explains the reds).
+
 ## Full Workflow Diagram
 
 ```mermaid
@@ -281,7 +284,7 @@ flowchart TD
         G -->|"Straight to specs"| I["Generate Specs<br/><i>with feedback loops</i>"]
         I --> J["Self-Review<br/>Feedback Quality"]
         J -->|"Weak"| I
-        J -->|"Strong/Adequate"| K["Write Execution Plan<br/><i>phase track,<br/>commands, agent team prompt</i>"]
+        J -->|"Strong/Adequate"| K["Write Execution Plan<br/><i>phase track,<br/>commands</i>"]
         K --> L["📄 Artifacts in<br/>docs/ideation/project/"]
     end
 
@@ -349,12 +352,6 @@ flowchart TD
 
     AH -->|"next phase"| M
 
-    style IDEATION fill:#1a1a2e,stroke:#e94560,color:#fff
-    style EXECUTE fill:#1a1a2e,stroke:#0f3460,color:#fff
-    style SCOUT fill:#16213e,stroke:#e94560,color:#fff
-    style BUILD fill:#16213e,stroke:#0f3460,color:#fff
-    style REVIEW fill:#16213e,stroke:#53a653,color:#fff
-    style REVIEWER fill:#0a1628,stroke:#53a653,color:#fff
 ```
 
 ### Reading the Diagram
@@ -531,10 +528,20 @@ For manual control, run specs individually:
 ### pi
 
 ```bash
+pi install npm:pi-subagents
+pi install npm:@quintinshaw/pi-dynamic-workflows
+pi install npm:@juicesharp/rpiv-ask-user-question
 pi install git:github.com/nicknisi/ideation
 ```
 
-That's it. The three pi extensions the plugin uses — [`pi-subagents`](https://github.com/nicknisi/pi-subagents) (the `subagent` tool), [`@quintinshaw/pi-dynamic-workflows`](https://github.com/QuintinShaw/pi-dynamic-workflows) (the `workflow` tool), and [`@juicesharp/rpiv-ask-user-question`](https://github.com/juicesharp/rpiv-ask-user-question) (the `ask_user_question` tool) — are declared as `dependencies` in `package.json` and loaded via the `pi` manifest, so `pi install` pulls them in automatically. No separate install steps.
+The three tools the plugin calls — [`pi-subagents`](https://github.com/nicknisi/pi-subagents) (the `subagent` tool), [`@quintinshaw/pi-dynamic-workflows`](https://github.com/QuintinShaw/pi-dynamic-workflows) (the `workflow` tool), and [`@juicesharp/rpiv-ask-user-question`](https://github.com/juicesharp/rpiv-ask-user-question) (the `ask_user_question` tool) — are deliberately **not** bundled. Pi allows one owner per tool name, so a bundled copy fatally conflicts with the same tool installed at the user level; installing them yourself makes your copies the only copies (pi dedupes `npm:` installs by name) and the plugin composes with whatever versions you already run. Details in [`references/harness-compat.md` § 3](references/harness-compat.md).
+
+## Requirements
+
+Both runtimes are full citizens: **Claude Code** (the tools are built in) and **pi** (via the three user-level tool installs named above). Two caveats for a fresh setup:
+
+- **`${CLAUDE_PLUGIN_ROOT}` resolution.** Skill bodies reference it; in pi it resolves via a user-level `claude-plugin-root` extension — the one piece of Nick's own setup not bundled. The caveat and its fallback (resolve relative to the skill directory) are owned by [`references/harness-compat.md`](references/harness-compat.md#what-does-not-differ).
+- **A Workflow engine** for `/ideation:autopilot`, `/ideation:express`, and `/ideation:get-goal-prompt`. Without one, the fallback is [Manual Cross-Session Execution](#manual-cross-session-execution): run `/ideation:execute-spec` per phase, in dependency order.
 
 ## Harness support
 
@@ -553,6 +560,31 @@ themselves are unchanged and keep their Claude Code tool format. Skill frontmatt
 Nothing here is conditional at load time. A skill reads the same in both harnesses and
 names the translation inline where it dispatches an agent or the engine.
 
+## One owner, derive or drift-test
+
+Every piece of knowledge in this repo has exactly one owner. Everything else either derives
+from it mechanically or points at it — never restates it. The failure this exists to prevent
+is a silent one: two prose copies of the same rule diverge, and the skill an agent reads
+decides which behavior it has. Prose drift changes agent behavior, so prose gets the same
+treatment as code.
+
+Current owners:
+
+| Knowledge           | Owner                            | Backed by                                                              |
+| ------------------- | -------------------------------- | ---------------------------------------------------------------------- |
+| Check semantics     | `scripts/verify.mjs`             | `scripts/verify.test.mjs`                                              |
+| Planner             | `workflows/wave-planner.mjs`     | `workflows/wave-planner.test.mjs` (incl. the engine-mirror drift suite) |
+| Gates               | `references/confidence-rubric.md` | `site/src/lib/gates.ts` (build throws unless exactly 5 gates parse)    |
+| Goal string         | `scripts/contract-gen.ts`        | `scripts/contract-gen.test.mjs`                                        |
+| Express semantics   | `skills/ideation/SKILL.md`       | — (prose owner; the express alias carries no section references)       |
+| Gate behavior       | `workflows/README.md`            | `workflows/execute-contract.smoke.test.mjs` covers the engine row-by-row |
+| Harness translation | `references/harness-compat.md`   | — (prose owner; the guide page renders from it at build time)          |
+| Question cadence    | `references/interview-engine.md` | — (prose owner; core rule 1)                                           |
+| Learning capture    | `references/learning-filter.md`  | — (prose owner; both skills point here)                                |
+
+When you add knowledge, add it to its owner. When you catch yourself restating a rule in a
+second file, that's the signal one of the two copies is in the wrong place.
+
 ## Working on this repo
 
 Everything runs from the top level:
@@ -565,14 +597,14 @@ pnpm deploy:check   # validate wrangler.jsonc, no credentials needed
 pnpm site:install   # install the site's dependencies
 ```
 
-**The plugin's tests still need no install.** The root `package.json` declares
-three pi-extension `dependencies` (`pi-subagents`, `@quintinshaw/pi-dynamic-workflows`,
-`@juicesharp/rpiv-ask-user-question`) so a single `pi install` brings them in at
-runtime — but the test suite exercises the engine and scripts directly with
-`node --test`, never loading the extensions, so there is nothing to install
-before `pnpm test` or `node --run test` works. CI runs the latter, Node's own
-script runner, without a package manager at all. Only `site/` has build-time
-dependencies, and only the site build needs them.
+**The plugin's tests need no install.** The root `package.json` declares no
+dependencies at all — the pi tools the skills call (`pi-subagents`,
+`@quintinshaw/pi-dynamic-workflows`, `@juicesharp/rpiv-ask-user-question`) are
+user-level installs, never packages of this repo — and the test suite exercises
+the engine and scripts directly with `node --test`, so there is nothing to
+install before `pnpm test` or `node --run test` works. CI runs the latter,
+Node's own script runner, without a package manager at all. Only `site/` has
+build-time dependencies, and only the site build needs them.
 
 If you would rather not use pnpm, `node --run test` and
 `node --test 'workflows/*.test.mjs' 'scripts/*.test.mjs' 'test-fixtures/**/*.test.mjs'`
@@ -588,6 +620,10 @@ Releases are automated. Commit messages are the input, so they have to be
 single **"chore: release x.y.z"** pull request that accumulates everything
 unreleased. Nothing ships until you merge it; merging it tags the release,
 publishes the GitHub release, and writes [CHANGELOG.md](CHANGELOG.md).
+The generated section gets a final human edit in the release PR before
+merging — release-please groups entries by commit type, which is not how a
+stranger reads a changelog. (0.21.0 shipped raw and stayed the worst section
+in the file until it was curated by hand.)
 
 The version that matters lives in **`.claude-plugin/plugin.json`** — Claude Code
 resolves a plugin's version from that file first, and it is what decides whether

@@ -9,7 +9,7 @@ const commands = joinCommands();
 const gates = readGates();
 const engineCompat = readCompatTable('The Workflow tool');
 const agentCompat = readCompatTable('Agent \\(subagent\\) names');
-const depCompat = readCompatTable('Pi extension dependencies');
+const depCompat = readCompatTable('Pi tool prerequisites');
 const harnesses = readHarnesses();
 
 const stages: Stage[] = ['whether', 'plan', 'execute'];
@@ -319,11 +319,13 @@ const artifacts = [
 
       <h3 class="label-mono mt-9 text-accent">pi installation</h3>
       <p class="mt-4 max-w-[64ch] text-muted">
-        One command — <code class="font-mono text-[0.875rem]">pi install git:github.com/nicknisi/ideation</code> —
-        brings in the three pi extensions the plugin needs, declared as
-        <code class="font-mono text-[0.875rem]">dependencies</code> and loaded via the
-        <code class="font-mono text-[0.875rem]">pi</code> manifest. Claude Code has the
-        tools built in and ignores the manifest.
+        Install the three tools the plugin calls, then the plugin itself —
+        <code class="font-mono text-[0.875rem]">pi install npm:&lt;tool&gt;</code> three times, then
+        <code class="font-mono text-[0.875rem]">pi install git:github.com/nicknisi/ideation</code>.
+        The tools are deliberately not bundled: pi allows one owner per tool name, so a bundled
+        copy would fatally conflict with the same tool installed at the user level. Your installs
+        are the ones the skills call. Claude Code has the tools built in and ignores the
+        <code class="font-mono text-[0.875rem]">pi</code> manifest.
       </p>
       <div class="mt-4 space-y-3">
         {

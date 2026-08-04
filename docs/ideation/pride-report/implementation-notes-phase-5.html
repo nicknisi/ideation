@@ -1,0 +1,122 @@
+<!doctype html>
+<!--
+  Implementation-notes shell — copied VERBATIM by execute-spec on the first logged entry.
+  This file is the single owner of the implementation-notes format. Do not restate its
+  structure or styles elsewhere; change the format here and every future phase inherits it.
+  Copier substitutes: {N} (phase number, twice), {PROJECT}, {DATE}, {PHASE DESCRIPTION} —
+  then deletes the example entry and appends real ones inside <main class="doc-content">.
+-->
+<html lang="en" data-theme="auto">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Implementation Notes — Phase 5</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f7f7f3;
+        --fg: #191b1d;
+        --muted: #50555a;
+        --border: #dededf;
+        --accent: #2b46c7;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #131417;
+          --fg: #e9e9e4;
+          --muted: #a8aaa6;
+          --border: #2d3036;
+          --accent: #93a7ff;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0 auto;
+        max-width: 46rem;
+        padding: 2rem 1.25rem 4rem;
+        background: var(--bg);
+        color: var(--fg);
+        font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      .doc-header { border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 2rem; }
+      .doc-header h1 { margin: 0 0 0.25rem; font-size: 1.5rem; }
+      .doc-meta { margin: 0; color: var(--muted); font-size: 0.875rem; }
+      .note-entry { border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+      .note-entry h3 { margin: 0 0 0.75rem; font-size: 1.05rem; color: var(--accent); }
+      .note-entry dl { margin: 0; }
+      .note-entry dt { font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-top: 0.75rem; }
+      .note-entry dt:first-child { margin-top: 0; }
+      .note-entry dd { margin: 0.15rem 0 0; }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.9em;
+        background: color-mix(in srgb, var(--fg) 8%, transparent);
+        padding: 0.1em 0.3em;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="doc-header">
+      <h1>Implementation Notes — Phase 5</h1>
+      <p class="doc-meta">Pride Report Fixes · 2026-08-03 · Bold moves (drift-test fix-by-paste, prompt lint, scenario evals, real-run archive)</p>
+    </header>
+    <main class="doc-content">
+      <section class="note-entry">
+        <h3>Drift replacement text — small version taken, engine inliner deferred</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>The spec offered a large version (a build-time inliner, <code>scripts/build-engine.mjs</code>, splicing planner functions into an engine template) and a small version (the drift test's failure message carries the paste-ready replacement). It said take the small one unless the large proves trivially cheap, and record the decision.</dd>
+          <dt>Decision</dt>
+          <dd>Small version shipped: the <code>engine mirror drift</code> assert message now embeds <code>extract()</code>'s output verbatim, naming that it replaces the function only (not the KEEP IN SYNC header). The acceptance experiment ran end-to-end: drifted <code>detectCycle</code> in <code>execute-contract.mjs</code> (<code>[]</code> → <code>new Array()</code>), read the emitted text out of the test failure, pasted it back over the drifted copy without opening <code>wave-planner.mjs</code>, suite green, <code>git diff</code> on the engine empty. The inliner is recorded as a Future Consideration — the failure mode it would remove now has a two-minute fix path.</dd>
+          <dt>Alternative</dt>
+          <dd>The inliner. Rejected: a new build step, a template format, and a generated-file boundary to buy back a problem the paste path already solves — the exact gold-plating this phase was warned about.</dd>
+        </dl>
+      </section>
+      <section class="note-entry">
+        <h3>lint-prompts — corpus scope and the italic-anchor near-miss rule</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>The spec scoped v1 to paths, § anchors, and frontmatter, and said tune patterns until the live corpus is clean, never the other way around. Two judgment calls remained: how wide the corpus walks, and how to check italic anchors (<code>*When to stop*</code>) without flagging emphasis italics (<code>*The decision*</code>) — templates and prose both use single-asterisk spans heavily.</dd>
+          <dt>Decision</dt>
+          <dd>Corpus = the 17 markdown files under <code>skills/</code> + <code>references/</code> (the spec's minimum; <code>agents/*.md</code> and <code>workflows/README.md</code> not widened in — v1 stays where the check surface was verified). Italic anchors: a span exactly matching a corpus heading is a reference (checked, passes); a span matching only after case/whitespace normalization is flagged as a suspected rename-left-behind; anything else is emphasis and skipped. This catches the common rot (heading reworded by case or a word swapped) with zero false positives on the live tree, and cannot catch a wholesale rename — a documented limit, accepted per the machine-shaped-only rule. Bare numeric references without § (express's "4.2's phasing") stay unchecked for the same reason.</dd>
+          <dt>Alternative</dt>
+          <dd>Flagging every unmatched italic span (hundreds of false positives — emphasis is idiomatic in this corpus), and hardcoding an emphasis allowlist (a second prose owner — the failure mode the spec names). Both rejected.</dd>
+        </dl>
+      </section>
+      <section class="note-entry">
+        <h3>Scenario evals — transcripts + manual checklist shipped; automation rejected</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>The spec pre-authorized the fallback: "if the harness can't produce a trustworthy assertion, ship the transcripts + checklist and stop." The three invariants (scoreboard each turn, contract refused before gates close, spike on the unanswerable but not the testable) assert model behavior, and this build stage cannot dispatch a live interview to observe it anyway.</dd>
+          <dt>Decision</dt>
+          <dd>Shipped <code>test-fixtures/evals/</code> (tracked, matching the fixture convention: README + content): three transcripts (messy dump, settled decision, scope-creeper) with per-turn scripted probes and assertions, plus a README that documents the replay procedure and records why automation was rejected — a scripted driver can feed turns but its assertions would be a second model grading the first, and grep-level assertions false-pass on quotes and false-fail on paraphrases. The settled-decision transcript carries both spike legs; the other two carry the premature-contract probe.</dd>
+          <dt>Alternative</dt>
+          <dd>A subagent-driven harness with mechanical assertions (grep for scoreboard shape, grep for spike offer). Rejected: the spike offer's wording is prose, and the assertion that matters ("offered here, withheld there") needs a reader — forcing it would be the spec's named failure mode, not a win.</dd>
+        </dl>
+      </section>
+      <section class="note-entry">
+        <h3>Real-run archive — committed-docs approach (a); site page (b) not built; capture cut; reds are 3, not 2</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>The spec said start with (a) commit-the-archive, (b) render-as-site-page optional if cheap. It also said the archive has "2 red verify criteria on deleted paths" — reality, verified live: <strong>3 reds</strong>, and only one is a deleted path ([15] <code>docs/workflow-example.html</code>, removed by the Astro rebuild). [9] fails on stale <em>content</em> (the pride report's own Phase 2 deduped learning-capture prose to pointers — the product improved past the criterion) and [14] pins version 0.19.0 (its test suites still pass; the pin is stale).</dd>
+          <dt>Decision</dt>
+          <dd>Shipped (a): one-line targeted un-ignore (<code>!docs/ideation/ux-dejank/</code> — not <code>**</code>, so pride-report/ and future working dirs stay local), verified with <code>git check-ignore</code> (exit 1) and 12 untracked entries; an in-archive README that leads with the dated-history framing and explains all three reds accurately; one link line in the README's "Prefer to read the artifacts?" paragraph; one line on the site walkthrough page ("Every transcript below is the shape of a real run… the repo keeps the archive of its own de-janking"). (b) not built: (a) landed cheaply and a second surface would duplicate the framing. The optional asciinema capture is <strong>cut</strong>: the tooling is installed, but the capture's subject is a live autopilot run, which a headless build stage cannot produce — a staged terminal video of a fake run would be the dishonest version of the artifact.</dd>
+          <dt>Alternative</dt>
+          <dd>Building the site page anyway (spec's (b)); staging an asciinema capture against canned output. Both rejected — the first duplicates a landed surface, the second fabricates the thing the archive exists to prove.</dd>
+        </dl>
+      </section>
+      <section class="note-entry">
+        <h3>Pre-existing test-environment bug fixed: verify.test.mjs inherited global commit signing</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>The phase opened with a red baseline: <code>scripts/verify.test.mjs</code>'s commit-matching tests failed (and hung ~60s each) because <code>repoWithCommitFor</code> builds a throwaway repo that inherits the user's global <code>commit.gpgsign=true</code>, and this machine's SSH signer (1Password <code>op-ssh-sign</code>) is unavailable to headless processes — the commit silently never lands, so the test fails for the wrong reason after the signer's timeout.</dd>
+          <dt>Decision</dt>
+          <dd>Added <code>git('config', 'commit.gpgsign', 'false')</code> to the fixture with a comment naming why. A unit test's throwaway repo must not depend on the user's global git config — the same principle the test file already states for repo history. Baseline is now 162 → 170 green in ~0.8s. Out of the spec's File Changes table but required to reach a green baseline; flagged here per the spec-gap rule.</dd>
+          <dt>Alternative</dt>
+          <dd>Running validation with a <code>GIT_CONFIG_*</code> environment override and leaving the test unchanged. Rejected: the failure is real on any contributor machine with signing enabled and an unavailable signer — hiding it in this session leaves it for the next one.</dd>
+        </dl>
+      </section>
+    </main>
+  </body>
+</html>

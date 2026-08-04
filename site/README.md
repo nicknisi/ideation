@@ -102,7 +102,9 @@ frame, never from a shadow. Imported from a Claude Design project.
 
 **Field guide** (`src/styles/global.css`) dresses `/guide`: paper ground, ink,
 one cobalt accent, serif display, letterpress offset, 3px radii, graphite dark
-deck.
+deck. `/guide` deliberately stays on the field-guide world — it renders product
+documentation, not marketing; revisit only if the Industry world grows a docs
+skin.
 
 Both clear Tailwind's default palette (`--color-*: initial`) so `bg-blue-500` is
 not reachable; the only colours that exist are the system's own. `@theme inline`

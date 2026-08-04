@@ -71,6 +71,11 @@ function repoWithCommitFor(specPath) {
   git('init', '-q', '-b', 'main');
   git('config', 'user.email', 'test@example.invalid');
   git('config', 'user.name', 'Verify Test');
+  // A throwaway repo must not inherit the user's global commit signing: on a
+  // machine with commit.gpgsign=true and an unavailable signer the commit
+  // silently never lands and the test fails for the wrong reason (after the
+  // signer's timeout, no less).
+  git('config', 'commit.gpgsign', 'false');
   writeFileSync(join(dir, 'placeholder.txt'), 'x\n');
   git('add', '-A');
   git('commit', '-q', '-m', `feat: a phase\n\nPhase 1 of ${specPath}`);
@@ -136,6 +141,14 @@ describe('legacy string normalization', () => {
   it('treats an absent check as absent, not as an empty command', () => {
     assert.equal(normalizeCheck(undefined), undefined);
     assert.equal(normalizeCriterion('bare string criterion').check, undefined);
+  });
+
+  it('tolerates a null criterion instead of crashing', () => {
+    // A null inside successCriteria used to take verify down with a TypeError
+    // reading `raw.criterion` — and verify's exit code is what a /goal's
+    // done-when consumes, so a crash is the ultimate misreadable red.
+    assert.deepEqual(normalizeCriterion(null), { criterion: 'null' });
+    assert.deepEqual(normalizeCriterion(undefined), { criterion: 'undefined' });
   });
 });
 
@@ -273,6 +286,42 @@ describe('exit code', () => {
     ]);
     const { code } = run([path]);
     assert.equal(code, 0);
+  });
+});
+
+describe('malformed criteria', () => {
+  // A null/non-object criterion used to crash outright; the tolerant parser
+  // briefly converted it to a judgment criterion instead — printed, never
+  // counted, and invisible to /goal's completion predicate. Reject loudly.
+  function runCapturingStderr(args) {
+    const err = [];
+    const errFn = console.error;
+    console.error = (...a) => err.push(a.join(' '));
+    try {
+      const { code } = run(args);
+      return { code, err: err.join('\n') };
+    } finally {
+      console.error = errFn;
+    }
+  }
+
+  it('a null criterion exits 1 with a readable error naming the index', () => {
+    const path = contract([
+      null,
+      { criterion: 'ok', check: { cmd: 'true', expect: '' } },
+    ]);
+    const { code, err } = runCapturingStderr([path]);
+    assert.equal(code, 1);
+    assert.match(err, /successCriteria\[0\] is null/);
+    assert.match(err, /expected a string or a \{ criterion, check \} object/);
+  });
+
+  it('array and numeric criteria are rejected the same way', () => {
+    const path = contract([['not', 'an', 'object'], 42]);
+    const { code, err } = runCapturingStderr([path]);
+    assert.equal(code, 1);
+    assert.match(err, /successCriteria\[0\] is an array/);
+    assert.match(err, /successCriteria\[1\] is number/);
   });
 });
 

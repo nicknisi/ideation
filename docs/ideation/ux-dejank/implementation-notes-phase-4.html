@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Implementation Notes — Phase 4</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fg: #1a1a1a;
+        --bg: #ffffff;
+        --muted: #6b6b6b;
+        --rule: #e2e2e2;
+        --accent: #0b6e4f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #e6e6e6;
+          --bg: #131313;
+          --muted: #9a9a9a;
+          --rule: #333;
+          --accent: #4cc9a4;
+        }
+      }
+      body {
+        margin: 0 auto;
+        max-width: 46rem;
+        padding: 2rem 1.25rem 4rem;
+        font: 16px/1.55 system-ui, -apple-system, sans-serif;
+        color: var(--fg);
+        background: var(--bg);
+      }
+      header.doc-header {
+        border-bottom: 1px solid var(--rule);
+        padding-bottom: 1rem;
+        margin-bottom: 2rem;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin: 0 0 0.25rem;
+      }
+      .doc-meta {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin: 0;
+      }
+      .note-entry {
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+      }
+      .note-entry h3 {
+        margin: 0 0 0.75rem;
+        font-size: 1.05rem;
+        color: var(--accent);
+      }
+      dt {
+        font-weight: 600;
+        margin-top: 0.6rem;
+      }
+      dd {
+        margin: 0.15rem 0 0;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.85em;
+        background: color-mix(in srgb, var(--fg) 8%, transparent);
+        padding: 0.1em 0.3em;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="doc-header">
+      <h1>Implementation Notes — Phase 4</h1>
+      <p class="doc-meta">UX De-Jank &amp; Learning Loop · Whimsical workflow example · 2026-07-23</p>
+    </header>
+    <main class="doc-content">
+      <section class="note-entry">
+        <h3>SKILL.md Bundled Resources — walkthrough line dropped, no replacement note added</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>
+            The spec's File Changes row for <code>skills/ideation/SKILL.md</code> says to drop
+            the <code>workflow-example.md</code> line and "add a 'human-facing walkthrough:
+            docs/workflow-example.html' note only if the section's grain fits" — an explicitly
+            delegated judgment call.
+          </dd>
+          <dt>Decision</dt>
+          <dd>
+            Dropped the line without a replacement. The "Shared references (plugin root)" list
+            enumerates model-consumed reference documents the skill reads during the flow;
+            <code>docs/workflow-example.html</code> is repo documentation no skill instruction
+            ever reads, so listing it there would re-create exactly the kind of dangling,
+            model-facing pointer this phase removes. The README carries the human-facing link.
+          </dd>
+          <dt>Alternative</dt>
+          <dd>
+            Adding the note anyway for discoverability — rejected: a model-facing resource list
+            is the wrong surface for a humans-only artifact, and the contract's decision log
+            already records that resource lists must drop the dangling reference.
+          </dd>
+        </dl>
+      </section>
+    </main>
+  </body>
+</html>

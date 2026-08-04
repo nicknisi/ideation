@@ -61,7 +61,7 @@ Not every component needs a feedback loop. Skip it for:
 
 ## Mapping Discovered Infrastructure to Playgrounds
 
-When codebase exploration (Phase 2.2) discovers existing feedback tools, prefer them over creating new ones:
+When codebase exploration (the interview engine's intake sweep and *What to explore*) discovers existing feedback tools, prefer them over creating new ones:
 
 | Discovered Infrastructure                                     | Use As Playground For                        |
 | ------------------------------------------------------------- | -------------------------------------------- |

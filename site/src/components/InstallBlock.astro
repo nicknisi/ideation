@@ -4,17 +4,36 @@ import Blueprint from './Blueprint.astro';
 interface Props {
   /** The hero's framed call to action, or the quieter one further down. */
   variant?: 'primary' | 'secondary';
-  /** Blinking terminal caret after the second line. Hero only. */
+  /** Blinking terminal caret after the last Claude Code line. Hero only. */
   caret?: boolean;
   class?: string;
 }
 
 const { variant = 'secondary', caret = false, class: className = '' } = Astro.props;
 
-const LINES = ['/plugin marketplace add nicknisi/ideation', '/plugin install ideation@ideation'];
-// One clipboard payload, both lines — pasted together they register the
-// marketplace and install from it in a single go.
-const payload = LINES.join('\n');
+// One clipboard payload per harness, labeled. Pasted together, the two
+// Claude Code lines register the marketplace and install from it in a
+// single go. The pi line is never mixed into that payload — pasted into
+// the wrong harness it fails — so each block copies only its own. The
+// caret stays on the Claude Code block: appending pi there would move the
+// hero's caret and blur which harness the page is talking to.
+const HARNESSES = [
+  {
+    label: 'Claude Code',
+    lines: ['/plugin marketplace add nicknisi/ideation', '/plugin install ideation@ideation'],
+    copyLabel: 'copy both',
+  },
+  {
+    label: 'pi',
+    lines: [
+      'pi install npm:pi-subagents',
+      'pi install npm:@quintinshaw/pi-dynamic-workflows',
+      'pi install npm:@juicesharp/rpiv-ask-user-question',
+      'pi install git:github.com/nicknisi/ideation',
+    ],
+    copyLabel: 'copy all',
+  },
+];
 
 const button =
   'flex-none px-6 font-heading text-[14px] font-semibold cursor-pointer transition-colors ' +
@@ -24,35 +43,53 @@ const button =
     : 'border-line text-ink hover:bg-ink/7 active:bg-ink/14');
 ---
 
-<div class:list={['flex max-w-[640px] items-stretch gap-3 max-[780px]:flex-wrap', className]}>
-  <div
-    class="grid min-w-0 flex-1 gap-2 overflow-x-auto border border-line p-4 font-mono text-[13.5px] leading-[1.5]"
-  >
-    {
-      LINES.map((line, i) => (
-        <code class="whitespace-nowrap">
-          <span class="pr-3 text-accent-700 select-none">$</span>
-          {line}
-          {caret && i === LINES.length - 1 && (
-            <span
-              aria-hidden="true"
-              class="ml-[3px] inline-block h-[15px] w-[7px] animate-blink bg-accent align-middle"
-            />
-          )}
-        </code>
-      ))
-    }
-  </div>
-
+<div class:list={['flex max-w-[640px] flex-col gap-4', className]}>
   {
-    variant === 'primary' ? (
-      <Blueprint as="button" type="button" data-copy={payload} class={button}>
-        <span data-copy-label>copy both</span>
-      </Blueprint>
-    ) : (
-      <button type="button" data-copy={payload} class:list={['border', button]}>
-        <span data-copy-label>copy both</span>
-      </button>
-    )
+    HARNESSES.map((harness, h) => (
+      <div class="flex flex-col gap-1.5">
+        <span class="font-heading text-[11px] font-semibold tracking-[0.14em] text-neutral-700 uppercase">
+          {harness.label}
+        </span>
+        <div class="flex items-stretch gap-3 max-[780px]:flex-wrap">
+          <div class="grid min-w-0 flex-1 gap-2 overflow-x-auto border border-line p-4 font-mono text-[13.5px] leading-[1.5]">
+            {
+              harness.lines.map((line, i) => (
+                <code class="whitespace-nowrap">
+                  <span class="pr-3 text-accent-700 select-none">$</span>
+                  {line}
+                  {caret && h === 0 && i === harness.lines.length - 1 && (
+                    <span
+                      aria-hidden="true"
+                      class="ml-[3px] inline-block h-[15px] w-[7px] animate-blink bg-accent align-middle"
+                    />
+                  )}
+                </code>
+              ))
+            }
+          </div>
+
+          {
+            variant === 'primary' ? (
+              <Blueprint
+                as="button"
+                type="button"
+                data-copy={harness.lines.join('\n')}
+                class={button}
+              >
+                <span data-copy-label>{harness.copyLabel}</span>
+              </Blueprint>
+            ) : (
+              <button
+                type="button"
+                data-copy={harness.lines.join('\n')}
+                class:list={['border', button]}
+              >
+                <span data-copy-label>{harness.copyLabel}</span>
+              </button>
+            )
+          }
+        </div>
+      </div>
+    ))
   }
 </div>

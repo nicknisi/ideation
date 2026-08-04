@@ -117,6 +117,18 @@ function computeWaves(phases, completed = []) {
 
   const titles = new Set(phases.map(p => p.title));
 
+  // Validate titles are unique — a Set silently dedupes, and every downstream
+  // structure keys by title, so two same-titled phases would dispatch
+  // concurrently in one working tree and summarize as a clean double-PASS.
+  if (titles.size !== phases.length) {
+    const seen = new Set();
+    const dupes = new Set();
+    for (const p of phases) (seen.has(p.title) ? dupes : seen).add(p.title);
+    throw new Error(
+      `Duplicate phase title(s): ${[...dupes].join(', ')} — phase titles must be unique.`,
+    );
+  }
+
   // Validate prereq titles resolve.
   for (const p of phases) {
     for (const dep of p.prereqs ?? []) {
@@ -564,6 +576,97 @@ Do not ask the user anything.`;
 // Phase pipeline: scout → build → (review ⇄ fix)×3 → commit
 // ---------------------------------------------------------------------------
 
+/**
+ * The review ⇄ fix loop of runPhase, extracted because it carries the subtlest
+ * state in the file: a verdict-less reviewer mid-loop leaves the last standing
+ * FAIL unresolved (`reviewError`), the cycle cap is 3 with a fix BETWEEN cycles
+ * (never after the last), and `carried` falls back to the reviewer's own
+ * findings when the fixer returns no refutations.
+ *
+ * Returns { failure, review, reviewError, cycles }: `failure` is the
+ * finished fail() result when the loop must end the phase early (fixer crash,
+ * or a fixer honestly reporting FAIL — fail-closed rather than paying for
+ * another review cycle), else null and the caller reads the verdict state.
+ * (`carried` is loop-internal state — the fixer refutations the next cycle
+ * reviews against — and is not part of the return contract.)
+ */
+async function runReviewLoop(phase, a, phaseLabel, patternFiles, fail) {
+  const title = phase.title;
+  let carried = [];
+  let cycle = 1;
+  let review = null;
+  let reviewError = null;
+
+  while (cycle <= 3) {
+    const res = await safeAgent(
+      reviewPrompt(phase, a, cycle, carried, patternFiles),
+      {
+        label: `review:${title}#${cycle}`,
+        phase: phaseLabel,
+        agentType: agentNames.reviewer,
+        schema: REVIEW_RESULT_SCHEMA,
+        // Always high, whatever the phase risk: review is where a miss is
+        // expensive, and it is the only stage nothing downstream re-checks.
+        effort: 'high',
+      },
+    );
+    if (!res.ok || (res.value.verdict !== 'PASS' && res.value.verdict !== 'FAIL')) {
+      reviewError = res.error ?? 'reviewer returned no verdict';
+      break;
+    }
+    review = res.value;
+    if (review.verdict === 'PASS' || cycle === 3) break;
+
+    const fixRes = await safeAgent(
+      fixPrompt(phase, a, cycle, review.findings ?? []),
+      {
+        label: `fix:${title}#${cycle}`,
+        phase: phaseLabel,
+        agentType: agentNames.builder,
+        schema: FIX_RESULT_SCHEMA,
+        ...effortFor(phase.risk),
+      },
+    );
+    if (!fixRes.ok) {
+      return {
+        failure: fail(
+          `Review cycle ${cycle} FAILED and the fix stage produced no result (${fixRes.error}). Nothing committed; changes left unstaged.`,
+          'failed',
+          { findings: review.findings ?? [], reviewCycles: cycle },
+        ),
+        review,
+        reviewError,
+        cycles: cycle,
+      };
+    }
+    // `result` is schema-required, so a fixer that omits it never gets here —
+    // safeAgent already turned that into the typed failure above. One that
+    // honestly reports FAIL must close the phase out, not loop into another
+    // paid review cycle.
+    if (fixRes.value.result === 'FAIL') {
+      return {
+        failure: fail(
+          `Review cycle ${cycle} FAILED and the fixer reported it could not fix the findings: ${fixRes.value.summary ?? 'no summary given'}. Nothing committed; changes left unstaged.`,
+          'failed',
+          { findings: review.findings ?? [], reviewCycles: cycle },
+        ),
+        review,
+        reviewError,
+        cycles: cycle,
+      };
+    }
+    // The reviewer tracks fixes against the whole prior cycle, not just the
+    // leftovers — fall back to it if the fixer only returned its refutations.
+    carried =
+      (fixRes.value.carried ?? []).length > 0
+        ? fixRes.value.carried
+        : (review.findings ?? []);
+    cycle++;
+  }
+
+  return { failure: null, review, reviewError, cycles: cycle };
+}
+
 async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
   const title = phase.title;
   const warnings = [];
@@ -656,56 +759,9 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
 
   // --- 3. REVIEW ⇄ FIX (max 3 cycles, mirroring execute-spec) ---------------
   const patternFiles = build.patternFiles ?? [];
-  let carried = [];
-  let cycle = 1;
-  let review = null;
-  let reviewError = null;
-
-  while (cycle <= 3) {
-    const res = await safeAgent(
-      reviewPrompt(phase, a, cycle, carried, patternFiles),
-      {
-        label: `review:${title}#${cycle}`,
-        phase: phaseLabel,
-        agentType: agentNames.reviewer,
-        schema: REVIEW_RESULT_SCHEMA,
-        // Always high, whatever the phase risk: review is where a miss is
-        // expensive, and it is the only stage nothing downstream re-checks.
-        effort: 'high',
-      },
-    );
-    if (!res.ok || (res.value.verdict !== 'PASS' && res.value.verdict !== 'FAIL')) {
-      reviewError = res.error ?? 'reviewer returned no verdict';
-      break;
-    }
-    review = res.value;
-    if (review.verdict === 'PASS' || cycle === 3) break;
-
-    const fixRes = await safeAgent(
-      fixPrompt(phase, a, cycle, review.findings ?? []),
-      {
-        label: `fix:${title}#${cycle}`,
-        phase: phaseLabel,
-        agentType: agentNames.builder,
-        schema: FIX_RESULT_SCHEMA,
-        ...effortFor(phase.risk),
-      },
-    );
-    if (!fixRes.ok) {
-      return fail(
-        `Review cycle ${cycle} FAILED and the fix stage produced no result (${fixRes.error}). Nothing committed; changes left unstaged.`,
-        'failed',
-        { findings: review.findings ?? [], reviewCycles: cycle },
-      );
-    }
-    // The reviewer tracks fixes against the whole prior cycle, not just the
-    // leftovers — fall back to it if the fixer only returned its refutations.
-    carried =
-      (fixRes.value.carried ?? []).length > 0
-        ? fixRes.value.carried
-        : (review.findings ?? []);
-    cycle++;
-  }
+  const loop = await runReviewLoop(phase, a, phaseLabel, patternFiles, fail);
+  if (loop.failure) return loop.failure;
+  const { review, reviewError, cycles: cycle } = loop;
 
   if (review === null) {
     // The reviewer crashed or never produced a verdict. This is the fork the
@@ -860,35 +916,70 @@ const byTitle = new Map(phases.map(p => [p.title, p]));
 const indexOfTitle = new Map(phases.map((p, i) => [p.title, i]));
 const filesOf = new Map(phases.map(p => [p.title, p.files ?? []]));
 
-// Prereq-ordered waves first, then split any wave whose phases share a declared
-// file so they never run concurrently (avoids contaminated diffs / index races).
-const prereqWaves = computeWaves(phases, a.completedPhases ?? []);
+// Planning is the one place a bad MANIFEST (dependency cycle, unknown prereq,
+// duplicate title) can still throw — every stage below is crash-safe through
+// safeAgent, except the deliberate wave-cursor invariant throw in the
+// serialization logging below (a broken engine invariant should reject the
+// run outright, not masquerade as a planning failure). Convert a planner throw into the typed summary the skill
+// consumes (summarize()'s shape, spread so the two cannot drift, plus the
+// error), so autopilot reports the message instead of the run rejecting with a
+// bare exception.
+let prereqWaves;
+let waves;
+try {
+  // Prereq-ordered waves first, then split any wave whose phases share a declared
+  // file so they never run concurrently (avoids contaminated diffs / index races).
+  prereqWaves = computeWaves(phases, a.completedPhases ?? []);
 
-// Warn once if any multi-phase prereq wave contains a phase that declares no
-// files — it is treated as parallel-safe, so an undeclared file race is invisible
-// to the planner. (The commit-retry backstop in commitPrompt covers the rest.)
-const fileless = new Set();
-for (const wave of prereqWaves) {
-  if (wave.length <= 1) continue;
-  for (const t of wave) {
-    if ((filesOf.get(t) ?? []).length === 0) fileless.add(t);
+  // Warn once if any multi-phase prereq wave contains a phase that declares no
+  // files — it is treated as parallel-safe, so an undeclared file race is invisible
+  // to the planner. (The commit-retry backstop in commitPrompt covers the rest.)
+  const fileless = new Set();
+  for (const wave of prereqWaves) {
+    if (wave.length <= 1) continue;
+    for (const t of wave) {
+      if ((filesOf.get(t) ?? []).length === 0) fileless.add(t);
+    }
   }
-}
-if (fileless.size > 0) {
-  log(
-    `WARN: phase(s) without declared files in a parallel wave — treated as parallel-safe: ${[
-      ...fileless,
-    ].join(', ')}`,
-  );
+  if (fileless.size > 0) {
+    log(
+      `WARN: phase(s) without declared files in a parallel wave — treated as parallel-safe: ${[
+        ...fileless,
+      ].join(', ')}`,
+    );
+  }
+
+  waves = splitWavesByFileOverlap(prereqWaves, phases);
+} catch (err) {
+  log(`FAIL planning: ${err.message}`);
+  return { ...summarize([]), error: err.message };
 }
 
-const waves = splitWavesByFileOverlap(prereqWaves, phases);
-
-// Log each serialization the split introduced. A phase pushed into a later
-// sub-wave (idx > 0) of its prereq wave was held back by a shared file with an
-// earlier phase; name that blocker and the files they share.
+// Log each serialization the split introduced, derived from the already-computed
+// `waves`: the splitter splits each prereq wave independently and emits its
+// sub-waves in order, so each prereq wave's sub-waves are the next contiguous
+// slice of `waves`. A phase pushed into a later sub-wave (idx > 0) of its
+// prereq wave was held back by a shared file with an earlier phase; name that
+// blocker and the files they share.
+let waveCursor = 0;
 for (const prereqWave of prereqWaves) {
-  const subs = splitWavesByFileOverlap([prereqWave], phases);
+  const unplaced = new Set(prereqWave);
+  const subs = [];
+  while (unplaced.size > 0 && waveCursor < waves.length) {
+    const sw = waves[waveCursor++];
+    subs.push(sw);
+    for (const t of sw) unplaced.delete(t);
+  }
+  // The splitter emits each prereq wave's sub-waves as one contiguous slice of
+  // `waves`, so every phase in prereqWave must be placed by the slice we just
+  // consumed. If unplaced is non-empty here the contiguity invariant broke —
+  // fail loudly rather than draining quietly and misattributing blockers in
+  // the "Serialized X after Y" logs below.
+  if (unplaced.size > 0) {
+    throw new Error(
+      `wave-cursor invariant violated: [${[...unplaced].join(', ')}] not found in the expected contiguous slice of waves`,
+    );
+  }
   if (subs.length <= 1) continue;
   const subIndexOf = new Map();
   subs.forEach((sw, i) => sw.forEach(t => subIndexOf.set(t, i)));

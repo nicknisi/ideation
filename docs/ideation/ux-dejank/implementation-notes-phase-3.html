@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Implementation Notes — Phase 3</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fg: #1a1a1a;
+        --bg: #ffffff;
+        --muted: #6b6b6b;
+        --rule: #e2e2e2;
+        --accent: #0b6e4f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #e6e6e6;
+          --bg: #131313;
+          --muted: #9a9a9a;
+          --rule: #333;
+          --accent: #4cc9a4;
+        }
+      }
+      body {
+        margin: 0 auto;
+        max-width: 46rem;
+        padding: 2rem 1.25rem 4rem;
+        font: 16px/1.55 system-ui, -apple-system, sans-serif;
+        color: var(--fg);
+        background: var(--bg);
+      }
+      header.doc-header {
+        border-bottom: 1px solid var(--rule);
+        padding-bottom: 1rem;
+        margin-bottom: 2rem;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin: 0 0 0.25rem;
+      }
+      .doc-meta {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin: 0;
+      }
+      .note-entry {
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+      }
+      .note-entry h3 {
+        margin: 0 0 0.75rem;
+        font-size: 1.05rem;
+        color: var(--accent);
+      }
+      dt {
+        font-weight: 600;
+        margin-top: 0.6rem;
+      }
+      dd {
+        margin: 0.15rem 0 0;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.85em;
+        background: color-mix(in srgb, var(--fg) 8%, transparent);
+        padding: 0.1em 0.3em;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="doc-header">
+      <h1>Implementation Notes — Phase 3</h1>
+      <p class="doc-meta">UX De-Jank &amp; Learning Loop · Learning loop and polish · 2026-07-23</p>
+    </header>
+    <main class="doc-content">
+      <section class="note-entry">
+        <h3>Completion capture — execute-spec had no retro handoff line to remove</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>
+            The File Changes row for <code>skills/execute-spec/SKILL.md</code> says "replace the
+            <code>/ideation:retro</code> handoff line with nothing". A repo-wide grep shows the
+            file contains no retro reference — its Next Steps block only points at the next
+            phase. The spec anticipated this possibility for <code>express</code> ("may be a
+            no-op — verify with grep", confirmed: express is clean) but asserted it for
+            execute-spec.
+          </dd>
+          <dt>Decision</dt>
+          <dd>
+            Treated both removals as verified no-ops and implemented only the additive capture
+            step. The grep battery (criterion 8) confirms no command reference survives anywhere.
+          </dd>
+          <dt>Alternative</dt>
+          <dd>
+            Treating the missing line as evidence of a wrong file target and hunting for a
+            handoff elsewhere — rejected: the sweep grep found every remaining reference
+            (ideation SKILL.md completion lines, autopilot report, README, manifests), all
+            handled by their own File Changes rows.
+          </dd>
+        </dl>
+      </section>
+
+      <section class="note-entry">
+        <h3>learning-filter.md — bootstrap header reworded, not relocated verbatim</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>
+            The spec says the bootstrap header "moves unchanged", but the retro original reads
+            "mined from completed ideation projects by <code>/ideation:retro</code>" — a string
+            criterion 8 (<code>! grep -rq 'ideation:retro' … references/ …</code>) bans from the
+            new file's own text.
+          </dd>
+          <dt>Decision</dt>
+          <dd>
+            Reworded that one clause to "captured from completed ideation projects"; every other
+            header sentence (intake purpose, dated entries, hints-not-gates) moved unchanged.
+            Existing <code>learnings.md</code> files remain compatible — the header is only
+            written when bootstrapping a missing file.
+          </dd>
+          <dt>Alternative</dt>
+          <dd>
+            Keeping the header verbatim — rejected: it fails the phase's own validation battery
+            and re-advertises a deleted command in every freshly bootstrapped learnings file.
+          </dd>
+        </dl>
+      </section>
+
+      <section class="note-entry">
+        <h3>learning-filter.md — "clean phases delete their empty note files" updated</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>
+            Retro's Key Principle 4 said clean phases <em>delete</em> their empty note files.
+            Since the lazy-creation change in execute-spec ("create the file lazily, on the
+            first logged entry … no file ever exists"), empty note files are never created, so
+            the relocated principle would describe behavior the pipeline no longer has.
+          </dd>
+          <dt>Decision</dt>
+          <dd>
+            Relocated the principle as "clean phases never create note files", keeping its
+            substance (zero notes is normal; silence, never invented patterns) aligned with the
+            current producer.
+          </dd>
+          <dt>Alternative</dt>
+          <dd>
+            Verbatim relocation — rejected: the spec's own pattern note says "relocation with
+            light re-framing", and a stale mechanism description is exactly the rot the
+            retirement discipline exists to prevent.
+          </dd>
+        </dl>
+      </section>
+
+      <section class="note-entry">
+        <h3>README — express section staleness observed, left for its owning phase</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>
+            Phase 2's notes flagged that README's express section still describes the 0.18.0
+            standalone flow, citing its spec's "Phase 3 owns README" failure-mode note. This
+            phase's File Changes row for README covers only the retro sweep: delete the Retro
+            section, fix the line-3 description and What's New references, add the capture-flow
+            paragraph.
+          </dd>
+          <dt>Decision</dt>
+          <dd>
+            Implemented exactly the README changes this spec declares and left the express
+            section untouched. Its behavioral claims (identical interview, one consolidated
+            confirmation, strict fail-closed dispatch) remain accurate for the thin-alias
+            implementation, so nothing it says is wrong — it is merely written from the
+            pre-routing perspective.
+          </dd>
+          <dt>Alternative</dt>
+          <dd>
+            Rewriting the express section here "while in the file" — rejected: outside this
+            phase's declared File Changes (follow spec literally), and Phase 4's README pass
+            (workflow-example link) is the remaining owner if a rewrite is wanted.
+          </dd>
+        </dl>
+      </section>
+    </main>
+  </body>
+</html>

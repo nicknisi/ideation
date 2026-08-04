@@ -17,6 +17,7 @@ import {
   committablePhases,
   isJudgment,
   isStaticCheck,
+  malformedCriterionError,
   normalizeCriterion,
   summarizeCriteria,
   validateCheck,
@@ -165,7 +166,6 @@ interface ContractData {
   execution: {
     strategy: string;
     phases: Phase[];
-    agentTeamPrompt?: string;
   };
 }
 
@@ -364,7 +364,7 @@ interface Facts {
 
 function deriveFacts(d: ContractData): Facts {
   const phases = d.execution.phases ?? [];
-  const waves = computeWaves(phases);
+  const waves = computePhaseDepths(phases);
   const criteria = (d.successCriteria ?? []).map(asCriterion);
   const cmds = criteria.filter(c => isCmd(c.check));
   const risk = { high: 0, medium: 0, low: 0 };
@@ -841,8 +841,10 @@ ${tier('stretch', 'Stretch — only if time allows', d.scope.stretch)}
 // --- Plan: the graph and the ledger --------------------------------------
 
 /** Wave (column) per phase: longest prereq chain depth.
-    When no phase declares prereqs, the plan is an implicit sequential chain. */
-function computeWaves(phases: Phase[]): number[] {
+    When no phase declares prereqs, the plan is an implicit sequential chain.
+    Display-depth for the graph layout — deliberately NOT the dispatch planner
+    in `workflows/wave-planner.mjs`; different output, different cycle semantics. */
+function computePhaseDepths(phases: Phase[]): number[] {
   const anyPrereqs = phases.some(p => p.prereqs && p.prereqs.length > 0);
   if (!anyPrereqs) return phases.map((_, i) => i);
 
@@ -1421,18 +1423,7 @@ ${f.phases
   .join('\n')}
           </div>
         </div>
-      </details>${
-        d.execution.agentTeamPrompt
-          ? `
-
-      <details class="fold">
-        <summary>Agent team prompt (parallel execution)</summary>
-        <div class="fold-body">
-          ${cmdField('agent-team-prompt', d.execution.agentTeamPrompt, true)}
-        </div>
-      </details>`
-          : ''
-      }`,
+      </details>`,
   );
 }
 
@@ -1466,9 +1457,8 @@ function buildClose(d: ContractData, f: Facts, paths: ContractPaths): string {
 // --- Markdown Builders ---
 //
 // contract.md is the generator's second output (via --md-output): the same
-// ContractData rendered in the hand-authored structure the repo's existing
-// contracts use (skills/ideation/references/contract-template.md documents
-// it). The structure is a deliberate legacy compatibility contract —
+// ContractData rendered in the structure the repo's existing contracts use.
+// The structure is a deliberate legacy compatibility contract —
 // autopilot's fallback parser (when contract-data.json is absent) reads the
 // Execution Plan's graph and /ideation:execute-spec lines plus the
 // **Approval** header line, and get-goal-prompt uses the file as a locator
@@ -1684,16 +1674,6 @@ function mdExecutionPlan(d: ContractData, paths: ContractPaths): string {
     '',
     mdExecutionSteps(d, paths),
   );
-  if (d.execution.agentTeamPrompt) {
-    parts.push(
-      '',
-      '### Agent Team Prompt',
-      '',
-      '```',
-      d.execution.agentTeamPrompt,
-      '```',
-    );
-  }
   return parts.join('\n');
 }
 
@@ -2071,6 +2051,21 @@ if (!('gates' in parsed) && 'confidence' in parsed) {
 
 const data = parsed as unknown as ContractData;
 const paths = contractPaths(data, values.input);
+
+// Render-time rejection of malformed criteria — null, arrays, numbers. Same
+// predicate verify.mjs applies at acceptance time (it owns check semantics),
+// so a contract that cannot verify also cannot render and cannot print a
+// /goal whose done condition delegates to that same verify run.
+const malformed = (data.successCriteria ?? [])
+  .map((c, i) => malformedCriterionError(c, i))
+  .filter(Boolean) as string[];
+if (malformed.length) {
+  console.error(
+    `contract-data.json has ${malformed.length} malformed successCriteria entr${malformed.length === 1 ? 'y' : 'ies'}:\n` +
+      malformed.map(e => `  ${e}`).join('\n'),
+  );
+  process.exit(1);
+}
 
 // Render-time rejection of prose in the executable slot. Errors are collected
 // and reported together — one fix pass, not one per run — and name the

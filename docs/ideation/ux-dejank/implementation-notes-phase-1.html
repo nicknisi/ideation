@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Implementation Notes — Phase 1</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fg: #1a1a1a;
+        --bg: #ffffff;
+        --muted: #6b6b6b;
+        --rule: #e2e2e2;
+        --accent: #0b6e4f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #e6e6e6;
+          --bg: #131313;
+          --muted: #9a9a9a;
+          --rule: #333;
+          --accent: #4cc9a4;
+        }
+      }
+      body {
+        margin: 0 auto;
+        max-width: 46rem;
+        padding: 2rem 1.25rem 4rem;
+        font: 16px/1.55 system-ui, -apple-system, sans-serif;
+        color: var(--fg);
+        background: var(--bg);
+      }
+      header.doc-header {
+        border-bottom: 1px solid var(--rule);
+        padding-bottom: 1rem;
+        margin-bottom: 2rem;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin: 0 0 0.25rem;
+      }
+      .doc-meta {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin: 0;
+      }
+      .note-entry {
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+      }
+      .note-entry h3 {
+        margin: 0 0 0.75rem;
+        font-size: 1.05rem;
+        color: var(--accent);
+      }
+      dt {
+        font-weight: 600;
+        margin-top: 0.6rem;
+      }
+      dd {
+        margin: 0.15rem 0 0;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.85em;
+        background: color-mix(in srgb, var(--fg) 8%, transparent);
+        padding: 0.1em 0.3em;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="doc-header">
+      <h1>Implementation Notes — Phase 1</h1>
+      <p class="doc-meta">UX De-Jank &amp; Learning Loop · Generator emits contract.md · 2026-07-23</p>
+    </header>
+    <main class="doc-content">
+      <section class="note-entry">
+        <h3>buildMarkdown — judgment-call criterion rendering</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>
+            The spec's key decision reads: success criteria render as
+            <code>- [ ] {criterion} — check: `{check}`</code> or
+            <code>— judgment call: {criterion}</code> when no check. The second fragment is
+            ambiguous — read literally it would place the criterion text after the marker,
+            producing a checklist line that starts with an em-dash.
+          </dd>
+          <dt>Decision</dt>
+          <dd>
+            Render <code>- [ ] {criterion} — judgment call</code>: criterion first, marker as
+            suffix. Every existing representation puts the criterion first — the HTML renderer
+            (criterion, then a "judgment call — no mechanical check" tag) and both hand-authored
+            canon contracts (<code>… — judgment call: {what a human looks at}</code>). The
+            mechanical renderer has no separate "what a human looks at" field, so the suffix
+            carries no colon clause.
+          </dd>
+          <dt>Alternative</dt>
+          <dd>
+            The literal reading, <code>- [ ] — judgment call: {criterion}</code> — rejected
+            because it breaks the criterion-first ordering every other renderer and canon file
+            uses, and reads as a malformed checklist item.
+          </dd>
+        </dl>
+      </section>
+
+      <section class="note-entry">
+        <h3>buildMarkdown — numbered-step titles are not de-duplicated</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>
+            Execution steps render as <code>{n}. **Phase {n}** — {title}</code> (the canon
+            shape). The orchestration fixture's titles already embed "Phase N — …", so its
+            generated steps read "**Phase 1** — Phase 1 — root", where the hand-authored canon
+            wrote "**Phase 1** — root".
+          </dd>
+          <dt>Decision</dt>
+          <dd>
+            Keep the mechanical rendering. Titles are data; the graph annotations and
+            <code>(blocked by {title})</code> references use full titles verbatim, and the
+            fallback parser matches on titles — silently rewriting them risks breaking that
+            correspondence for a purely cosmetic gain on one synthetic fixture.
+          </dd>
+          <dt>Alternative</dt>
+          <dd>
+            Stripping a redundant <code>Phase {n} [—:]</code> prefix from titles at render
+            time — rejected as improvisation beyond the spec ("follow spec literally"), with
+            drift risk between the rendered label and the title autopilot matches against.
+          </dd>
+        </dl>
+      </section>
+
+      <section class="note-entry">
+        <h3>Skill edits — express Phase 3 cross-reference retarget</h3>
+        <dl>
+          <dt>Context</dt>
+          <dd>
+            The spec scopes the express edit to "generator invocation lines only: Phase 5 steps
+            3–4 collapse into one invocation". Collapsing them renumbers the render step from 4
+            to 3, and express Phase 3's intro cites it by number: "rendering moves to Phase 5
+            step 4".
+          </dd>
+          <dt>Decision</dt>
+          <dd>
+            Updated that one citation to "Phase 5 step 3". Leaving a dangling step number is the
+            exact failure mode the spec's own risk table flags for the ideation file (broken
+            section citations); the fix is one token and keeps the file internally consistent
+            until Phase 2 rewrites it wholesale.
+          </dd>
+          <dt>Alternative</dt>
+          <dd>
+            Strictly touching invocation lines only and leaving the stale "step 4" reference —
+            rejected: it would point at a step that no longer exists.
+          </dd>
+        </dl>
+      </section>
+    </main>
+  </body>
+</html>

@@ -80,26 +80,9 @@ Phase 1: Core Bookmarking + Tags ┐
    /ideation:execute-spec docs/ideation/bookmarks/spec-phase-1.md
    ```
 
-2. **Phases 2 & 3 — parallel after Phase 1**
-
-   Start one Claude Code session, enter delegate mode (Shift+Tab), paste:
+2. **Phases 2 & 3 — after Phase 1** (independent of each other; run in either order, one session at a time)
 
    ```
-   Phase 1 (Core Bookmarking) is complete. Create an agent team to
-   implement 2 remaining phases in parallel. Each phase is independent.
-
-   Spawn 2 teammates with plan approval required. Each teammate should:
-   1. Read their assigned spec file
-   2. Explore the codebase for relevant patterns before planning
-   3. Plan their implementation approach and wait for approval
-   4. Implement following spec and codebase patterns
-   5. Run validation commands from their spec after implementation
-
-   Teammates:
-
-   1. "Search & Filtering" — docs/ideation/bookmarks/spec-phase-2.md
-      Full-text search across bookmarks with tag-based filtering
-
-   2. "Offline Support" — docs/ideation/bookmarks/spec-phase-3.md
-      Cache bookmarked article content for offline access
+   /ideation:execute-spec docs/ideation/bookmarks/spec-phase-2.md
+   /ideation:execute-spec docs/ideation/bookmarks/spec-phase-3.md
    ```

@@ -17,6 +17,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const SRC = readFileSync(
   join(__dirname, 'execute-contract.mjs'),
   'utf8',
+  // Intentionally brittle: this strips `export const meta =` in its exact
+  // current form only. If the meta export's shape changes, the strip silently
+  // no-ops and the vm compile below fails LOUDLY on the stranded `export` —
+  // that loud failure is the point. Do not "fix" this into a looser regex.
 ).replace(/export\s+const\s+meta\s*=/, 'const meta =');
 
 /** Compile the script body into a callable async function with injected globals. */
@@ -221,6 +225,65 @@ describe('execute-contract — wave planning', () => {
     assert.ok(
       waveSizes.includes(2),
       `expected the file-less diamond to keep its size-2 wave, saw ${waveSizes}`,
+    );
+  });
+
+  it('duplicate phase titles end the run with a typed error summary, never a double dispatch', async () => {
+    // Two same-titled phases would otherwise dispatch concurrently in one
+    // working tree and summarize as a clean double-PASS.
+    const args = diamondArgs();
+    args.phases.push({ title: 'P1', specPath: 'p1-again.md', prereqs: [] });
+    const { summary, calls } = await run(args);
+    assert.match(summary.error, /Duplicate phase title\(s\): P1\b/);
+    assert.deepEqual(summary.completed, []);
+    assert.deepEqual(summary.results, []);
+    assert.equal(calls.length, 0, 'nothing may dispatch on a broken manifest');
+  });
+
+  it('a cyclic manifest yields a typed error summary naming the cycle, not a rejection', async () => {
+    const { summary, calls } = await run({
+      projectName: 'Cyclic',
+      slug: 'cyclic',
+      projectDir: 'd/',
+      completedPhases: [],
+      phases: [
+        { title: 'A', specPath: 'a.md', prereqs: ['B'] },
+        { title: 'B', specPath: 'b.md', prereqs: ['A'] },
+      ],
+    });
+    assert.match(summary.error, /Dependency cycle detected/);
+    assert.equal(calls.length, 0);
+  });
+
+  it('an unknown prereq yields a typed error summary, not a rejection', async () => {
+    const { summary, calls } = await run(
+      oneArgs({ phases: [{ title: 'Only', specPath: 's.md', prereqs: ['Ghost'] }] }),
+    );
+    assert.match(summary.error, /Unknown prereq "Ghost"/);
+    assert.equal(calls.length, 0);
+  });
+
+  it('logs "Serialized X after Y" provenance derived from the computed waves', async () => {
+    // The overlap split must be logged from the already-computed `waves`, not
+    // a per-prereq-wave recompute — and the log line must name the blocker and
+    // the shared files exactly as before.
+    const { summary, logs } = await run({
+      projectName: 'Overlap',
+      slug: 'overlap',
+      projectDir: 'd/',
+      completedPhases: [],
+      phases: [
+        { title: 'P1', specPath: 'p1.md', prereqs: [], files: ['p1.ts'] },
+        { title: 'P2', specPath: 'p2.md', prereqs: ['P1'], files: ['foo.ts'] },
+        { title: 'P3', specPath: 'p3.md', prereqs: ['P1'], files: ['foo.ts'] },
+      ],
+    });
+    assert.deepEqual(new Set(summary.completed), new Set(['P1', 'P2', 'P3']));
+    assert.ok(
+      logs.some(m =>
+        /Serialized "P3" after "P2" — shared files: foo\.ts/.test(m),
+      ),
+      `expected a Serialized log line, saw: ${logs.join(' | ')}`,
     );
   });
 
@@ -520,6 +583,31 @@ describe('execute-contract — review gate', () => {
     const r = resultFor(summary, 'Only');
     assert.equal(r.reviewStatus, 'failed');
     assert.match(r.summary, /re-review never returned a verdict/);
+  });
+
+  it('a fixer that honestly reports FAIL closes the phase without a second review', async () => {
+    // FIX_RESULT_SCHEMA requires `result`, but nothing used to READ it: a
+    // fixer reporting FAIL silently advanced into another paid review cycle.
+    const { summary, of, stages } = await run(oneArgs(), {
+      review: () => ({
+        verdict: 'FAIL',
+        blocking: 1,
+        findings: ['critical/logic a.ts:1 — broken → fix it'],
+        summary: 'bad',
+      }),
+      fix: () => ({
+        result: 'FAIL',
+        summary: 'not fixable in this tree',
+        carried: [],
+      }),
+    });
+    assert.deepEqual(summary.failed, ['Only']);
+    assert.equal(of('review').length, 1, 'no second review may be paid for');
+    assert.equal(of('fix').length, 1);
+    assert.ok(!stages.includes('commit:Only'), 'a fixer FAIL must not commit');
+    const r = resultFor(summary, 'Only');
+    assert.equal(r.reviewStatus, 'failed');
+    assert.match(r.summary, /not fixable in this tree/);
   });
 
   it('non-strict verdict-less reviewer commits validation-only and SHOUTS about it', async () => {

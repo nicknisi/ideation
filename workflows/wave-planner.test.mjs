@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -77,6 +79,28 @@ describe('computeWaves', () => {
   it('throws on an unknown prereq title', () => {
     const phases = graph({ A: [], B: ['Nonexistent'] });
     assert.throws(() => computeWaves(phases), /unknown|unresolved|prereq/i);
+  });
+
+  it('throws on duplicate phase titles, naming them', () => {
+    // A Set silently dedupes titles, and every downstream structure keys by
+    // title — two same-titled phases would dispatch concurrently in one
+    // working tree and summarize as a clean double-PASS.
+    const phases = [
+      { title: 'A' },
+      { title: 'B', prereqs: ['A'] },
+      { title: 'A' },
+    ];
+    assert.throws(
+      () => computeWaves(phases),
+      /Duplicate phase title\(s\): A\b/,
+    );
+  });
+
+  it('a title shared between `phases` and `completed` is history, not a duplicate', () => {
+    // Resume manifests legitimately overlap: `completed` titles are never
+    // checked for uniqueness against `phases`.
+    const phases = graph({ A: [], B: ['A'] });
+    assert.deepEqual(computeWaves(phases, ['A']), [['B']]);
   });
 });
 
@@ -296,7 +320,10 @@ describe('engine mirror drift', () => {
       assert.equal(
         normalize(mirror),
         normalize(source),
-        `${name} has drifted from wave-planner.mjs — copy it back verbatim`,
+        `${name} has drifted from wave-planner.mjs — fix by paste: replace the ` +
+          `${name}(…) copy in execute-contract.mjs (under the KEEP IN SYNC header; ` +
+          `this text replaces the function only, not the header or its comments) ` +
+          `with this exact text:\n\n${source}\n`,
       );
     });
   }
@@ -310,5 +337,97 @@ describe('engine mirror drift', () => {
       [...MIRRORED].sort(),
       'the engine inlines a planner function it does not use (or dropped one it does)',
     );
+  });
+});
+
+/**
+ * The CLI is live production surface (skills/execute-spec/SKILL.md invokes it
+ * for --parallel execution) and previously had zero tests — its entry-point
+ * guard already silently failed once in production. Every payload class must
+ * produce the CLI's clean error format (message on stderr, non-zero exit),
+ * never a stack trace.
+ */
+describe('wave-planner CLI', () => {
+  const dir = dirname(fileURLToPath(import.meta.url));
+  const CLI = join(dir, 'wave-planner.mjs');
+  const plan = payload =>
+    spawnSync(process.execPath, [CLI, 'plan', payload], { encoding: 'utf8' });
+
+  it('plans a valid manifest to stdout and exits 0', () => {
+    const manifest = JSON.stringify({
+      phases: [
+        { title: 'A' },
+        { title: 'B', prereqs: ['A'] },
+        { title: 'C', prereqs: ['A'] },
+        { title: 'D', prereqs: ['B', 'C'] },
+      ],
+    });
+    const r = plan(manifest);
+    assert.equal(r.status, 0, r.stderr);
+    assert.deepEqual(JSON.parse(r.stdout), [['A'], ['B', 'C'], ['D']]);
+  });
+
+  it('rejects JSON null without a stack trace', () => {
+    // Used to die with "TypeError: Cannot read properties of null".
+    const r = plan('null');
+    assert.notEqual(r.status, 0);
+    assert.match(r.stderr, /manifest object/);
+    assert.doesNotMatch(r.stderr, /TypeError/);
+  });
+
+  it('rejects malformed JSON without a stack trace', () => {
+    const r = plan('{broken');
+    assert.notEqual(r.status, 0);
+    assert.match(r.stderr, /Malformed JSON/);
+    assert.doesNotMatch(r.stderr, /TypeError/);
+  });
+
+  it('rejects a top-level array instead of silently planning zero waves', () => {
+    // '[]' has no `.phases` — it used to read as an empty manifest, exit 0,
+    // and print [].
+    const r = plan('[]');
+    assert.notEqual(r.status, 0);
+    assert.match(r.stderr, /manifest object/);
+  });
+
+  it('rejects scalar JSON payloads', () => {
+    for (const payload of ['42', '"str"']) {
+      const r = plan(payload);
+      assert.notEqual(r.status, 0, `payload ${payload} must be rejected`);
+      assert.match(r.stderr, /manifest object/);
+    }
+  });
+
+  it('reports duplicate titles through the CLI error format', () => {
+    const r = plan(
+      JSON.stringify({ phases: [{ title: 'A' }, { title: 'A' }] }),
+    );
+    assert.notEqual(r.status, 0);
+    assert.match(r.stderr, /Duplicate phase title\(s\): A/);
+  });
+
+  it('still fires when invoked through a symlinked directory', () => {
+    // Mirror of verify.test.mjs's isEntryPoint test: Node symlink-resolves
+    // import.meta.url but not argv[1], so the entry-point comparison must
+    // realpath both sides — otherwise the CLI silently exits 0 doing nothing,
+    // which reads as "no waves" to execute-spec's --parallel path.
+    const scratch = mkdtempSync(join(tmpdir(), 'wave-planner-cli-'));
+    const linkDir = join(scratch, 'linked-workflows');
+    try {
+      symlinkSync(dir, linkDir, 'dir');
+    } catch {
+      return; // no symlink permission (Windows CI) — nothing to assert
+    }
+    const r = spawnSync(
+      process.execPath,
+      [
+        join(linkDir, 'wave-planner.mjs'),
+        'plan',
+        JSON.stringify({ phases: [{ title: 'A' }] }),
+      ],
+      { encoding: 'utf8' },
+    );
+    assert.equal(r.status, 0, r.stderr);
+    assert.deepEqual(JSON.parse(r.stdout), [['A']]);
   });
 });

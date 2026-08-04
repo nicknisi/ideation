@@ -6,7 +6,6 @@ node_modules/
 .claude/settings.local.json
 .impeccable/
 PRODUCT.md
-DESIGN.md
 # The impeccable skill installs a full copy of itself into all three of these.
 # This repo publishes a plugin to a marketplace: a stray `git add -A` would
 # vendor ~50 files of someone else's skill into it. Ignored, not deleted.
@@ -19,14 +18,23 @@ test-fixtures/**/out/
 # `docs/ideation/`: git cannot re-include a file under an ignored directory.)
 docs/ideation/*
 !docs/ideation/learnings.md
+# The ux-dejank dogfood run is published history — a real run, kept unedited —
+# linked from the README's Example section and the site walkthrough.
+!docs/ideation/ux-dejank/
+# The pride-report run's artifacts stay local, except the two force-added
+# files (context-map.md, implementation-notes-phase-5.html) — already tracked,
+# so this rule does not touch them.
 
-# The root package.json declares pi-extension dependencies (pi-subagents,
-# pi-dynamic-workflows, rpiv-ask-user-question) so a single `pi install` brings
-# them in. package-lock.json is committed to pin the floating ^ ranges — pi's
-# git-clone install runs `npm install`, which respects the lockfile for
-# reproducible installs. CI uses `node --run test`, which never loads the
-# extensions. Leading slash on purpose: `site/pnpm-lock.yaml` is real and
-# tracked, and a bare pattern would swallow it.
+# Pi session-local state (agents, artifacts) — never published.
+.pi/
+
+# The root package.json declares no dependencies — the pi tools the skills call
+# (pi-subagents, pi-dynamic-workflows, rpiv-ask-user-question) are user-level
+# installs, deliberately not bundled (see references/harness-compat.md § 3).
+# package-lock.json stays committed as the stub `npm install` expects. A stray
+# `pnpm install` at the root would still emit a lockfile; ignore it. Leading
+# slash on purpose: `site/pnpm-lock.yaml` is real and tracked, and a bare
+# pattern would swallow it.
 /pnpm-lock.yaml
 
 # Astro site build output and cache (the site is built by Cloudflare from source)

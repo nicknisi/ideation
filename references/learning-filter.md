@@ -15,6 +15,25 @@ moments, each passing different inputs through them:
 Capture always passes through a human accept/edit/dismiss review — nothing is
 ever auto-appended, and unattended runs never write this file.
 
+## The Capture Step
+
+This is the canonical Learning Capture procedure the skills invoke at interactive
+completion. Unattended runs (a `/goal` wrapper, `--headless`, or any run with no
+interactive user) skip it entirely — never prompt, never write; their notes wait
+for the intake path above.
+
+1. **Aggregate the inputs**, bounded to the one project: every
+   `implementation-notes-phase-*.html` the run produced, plus that run's noted
+   gap-decisions. Never a repo-wide scan.
+2. **Classify and generalize** (below). The filter yields **up to 3**
+   candidates. Zero candidates → silence: no prompt, no output, no "nothing to
+   capture" message — proceed as if the step didn't exist.
+3. **Ask ONE `AskUserQuestion`** offering accept/edit/dismiss per candidate: a
+   single `multiSelect` question with each candidate's text inline (selected =
+   accept; "Other" = edit the wording, then treat as accepted; nothing selected
+   = dismiss all).
+4. **Persist** accepted entries per Dedupe and Persist below.
+
 ## Classify
 
 For each note entry, read its Context / Decision / Alternative and classify it
