@@ -917,8 +917,10 @@ const indexOfTitle = new Map(phases.map((p, i) => [p.title, i]));
 const filesOf = new Map(phases.map(p => [p.title, p.files ?? []]));
 
 // Planning is the one place a bad MANIFEST (dependency cycle, unknown prereq,
-// duplicate title) can still throw — every stage below is already crash-safe
-// through safeAgent. Convert a planner throw into the typed summary the skill
+// duplicate title) can still throw — every stage below is crash-safe through
+// safeAgent, except the deliberate wave-cursor invariant throw in the
+// serialization logging below (a broken engine invariant should reject the
+// run outright, not masquerade as a planning failure). Convert a planner throw into the typed summary the skill
 // consumes (summarize()'s shape, spread so the two cannot drift, plus the
 // error), so autopilot reports the message instead of the run rejecting with a
 // bare exception.

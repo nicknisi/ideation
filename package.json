@@ -24,6 +24,9 @@
   "pi": {
     "skills": [
       "./skills"
+    ],
+    "extensions": [
+      "extensions/preflight.ts"
     ]
   },
   "pi-subagents": {
