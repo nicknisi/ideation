@@ -254,22 +254,22 @@ if (process.argv[1]) {
     }
   };
   if (real(resolve(process.argv[1])) === real(fileURLToPath(import.meta.url))) {
-  const corpus = collectCorpus();
-  const violations = lintCorpus();
+    const corpus = collectCorpus();
+    const violations = lintCorpus();
 
-  if (violations.length === 0) {
-    console.log(`✓ prompt corpus clean — ${corpus.length} files, every machine-shaped reference resolves`);
-    process.exit(0);
-  }
+    if (violations.length === 0) {
+      console.log(`✓ prompt corpus clean — ${corpus.length} files, every machine-shaped reference resolves`);
+      process.exit(0);
+    }
 
-  console.error(`✗ ${violations.length} broken reference${violations.length === 1 ? '' : 's'} in the prompt corpus:\n`);
-  for (const v of violations) {
-    console.error(`  ${v.file}:${v.line}  ${v.ref}`);
-    console.error(`      ${v.reason}`);
-  }
-  console.error('\nPrompt cross-references fail silently — a renamed file or heading leaves');
-  console.error('the next reader following a pointer to nothing. Fix the reference or, if the');
-  console.error('move was deliberate, update every mention in the same change.');
-  process.exit(1);
+    console.error(`✗ ${violations.length} broken reference${violations.length === 1 ? '' : 's'} in the prompt corpus:\n`);
+    for (const v of violations) {
+      console.error(`  ${v.file}:${v.line}  ${v.ref}`);
+      console.error(`      ${v.reason}`);
+    }
+    console.error('\nPrompt cross-references fail silently — a renamed file or heading leaves');
+    console.error('the next reader following a pointer to nothing. Fix the reference or, if the');
+    console.error('move was deliberate, update every mention in the same change.');
+    process.exit(1);
   }
 }

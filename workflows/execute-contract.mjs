@@ -583,10 +583,12 @@ Do not ask the user anything.`;
  * (never after the last), and `carried` falls back to the reviewer's own
  * findings when the fixer returns no refutations.
  *
- * Returns { failure, review, reviewError, cycles, carried }: `failure` is the
+ * Returns { failure, review, reviewError, cycles }: `failure` is the
  * finished fail() result when the loop must end the phase early (fixer crash,
  * or a fixer honestly reporting FAIL — fail-closed rather than paying for
  * another review cycle), else null and the caller reads the verdict state.
+ * (`carried` is loop-internal state — the fixer refutations the next cycle
+ * reviews against — and is not part of the return contract.)
  */
 async function runReviewLoop(phase, a, phaseLabel, patternFiles, fail) {
   const title = phase.title;
@@ -635,7 +637,6 @@ async function runReviewLoop(phase, a, phaseLabel, patternFiles, fail) {
         review,
         reviewError,
         cycles: cycle,
-        carried,
       };
     }
     // `result` is schema-required, so a fixer that omits it never gets here —
@@ -652,7 +653,6 @@ async function runReviewLoop(phase, a, phaseLabel, patternFiles, fail) {
         review,
         reviewError,
         cycles: cycle,
-        carried,
       };
     }
     // The reviewer tracks fixes against the whole prior cycle, not just the
@@ -664,7 +664,7 @@ async function runReviewLoop(phase, a, phaseLabel, patternFiles, fail) {
     cycle++;
   }
 
-  return { failure: null, review, reviewError, cycles: cycle, carried };
+  return { failure: null, review, reviewError, cycles: cycle };
 }
 
 async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
@@ -967,6 +967,16 @@ for (const prereqWave of prereqWaves) {
     const sw = waves[waveCursor++];
     subs.push(sw);
     for (const t of sw) unplaced.delete(t);
+  }
+  // The splitter emits each prereq wave's sub-waves as one contiguous slice of
+  // `waves`, so every phase in prereqWave must be placed by the slice we just
+  // consumed. If unplaced is non-empty here the contiguity invariant broke —
+  // fail loudly rather than draining quietly and misattributing blockers in
+  // the "Serialized X after Y" logs below.
+  if (unplaced.size > 0) {
+    throw new Error(
+      `wave-cursor invariant violated: [${[...unplaced].join(', ')}] not found in the expected contiguous slice of waves`,
+    );
   }
   if (subs.length <= 1) continue;
   const subIndexOf = new Map();

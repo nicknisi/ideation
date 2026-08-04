@@ -51,8 +51,11 @@ describe('renounced command-deck palette', () => {
         // paths, not substrings, so a rename can't silently re-include it.
         if (resolve(file) === resolve(SELF)) continue;
         const text = readFileSync(file, 'utf8');
+        // CSS hex is case-insensitive, so `#1A1A2E` would slip past a
+        // case-sensitive match — compare lowercased text against the
+        // lowercase literals.
         for (const hex of RENOUNCED) {
-          if (text.includes(hex)) {
+          if (text.toLowerCase().includes(hex)) {
             offenders.push(`${relative(repoRoot, file)} contains ${hex}`);
           }
         }
