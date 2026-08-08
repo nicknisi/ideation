@@ -10,7 +10,23 @@ Transform brain dumps into structured implementation artifacts through a convers
 
 ## Skills
 
-The arc runs **whether → how → shipped**: brainstorm decides whether the idea is worth building, ideation plans how, and the execution commands below ship it.
+The arc runs **chart → whether → how → shipped**: chart finds the route when an effort is too big for one session and the route itself is unknown, brainstorm decides whether the idea is worth building, ideation plans how, and the execution commands below ship it.
+
+### chart
+
+For efforts too big for one agent session and wrapped in fog — the way from here to the destination isn't visible yet, so a single ideation contract is the wrong shape. Chart lays out a **shared local map** of **decision tickets** (markdown files under `docs/chart/{slug}/`), then works them one at a time — one per session, except research — until the route is clear. Each ticket resolves a *decision*, not a slice of a build; the map is done when nothing is left to decide before someone goes and does the thing.
+
+```
+/ideation:chart
+
+[a loose, too-big idea where you can't yet see the route]
+```
+
+**The model:** a map (`map.md`) is the canonical index — Destination, Notes, Decisions so far, Not yet specified (the fog of war), Out of scope. Tickets are files in `tickets/` with a `Type` (research / prototype / grilling / task), `Status`, `Claimed by`, and `Blocked by`. The frontier is the open, unblocked, unclaimed tickets. Research tickets resolve via an `Explore` subagent (AFK, parallel in the charting session); prototype tickets raise a cheap concrete artifact to react to; grilling tickets are one-question-at-a-time conversation (the same interview-engine sections brainstorm uses); task tickets are manual work that unblocks a decision. Resolving a ticket clears the fog ahead of it, graduating newly-specifiable questions into fresh tickets until the frontier is empty.
+
+**Plan, don't do** is the default — chart produces decisions, not deliverables. When the destination is a build, it hands off to `/ideation:ideation` with the route walked as the intake evidence (destination, route/decisions, rejected alternatives, out-of-scope), so ideation's interview starts at the open questions. Already can see the route? Skip to ideation. Still weighing whether to build at all? Use brainstorm.
+
+Full behavior lives in [skills/chart/SKILL.md](skills/chart/SKILL.md).
 
 ### brainstorm
 
@@ -24,7 +40,7 @@ Pressure-test whether an idea is worth building at all — "should I do X," "whi
 [the idea or decision you're weighing]
 ```
 
-Full behavior lives in [skills/brainstorm/SKILL.md](skills/brainstorm/SKILL.md). Already decided to build? Skip straight to ideation.
+Full behavior lives in [skills/brainstorm/SKILL.md](skills/brainstorm/SKILL.md). Already decided to build? Skip straight to ideation. Too big to see the route? Start with chart.
 
 ### ideation
 
@@ -532,13 +548,13 @@ For manual control, run specs individually:
 ### pi
 
 ```bash
-pi install npm:pi-subagents
+pi install npm:@nicknisi/pi-subagents
 pi install npm:@quintinshaw/pi-dynamic-workflows
 pi install npm:@juicesharp/rpiv-ask-user-question
 pi install git:github.com/nicknisi/ideation
 ```
 
-The three tools the plugin calls — [`pi-subagents`](https://github.com/nicknisi/pi-subagents) (the `subagent` tool), [`@quintinshaw/pi-dynamic-workflows`](https://github.com/QuintinShaw/pi-dynamic-workflows) (the `workflow` tool), and [`@juicesharp/rpiv-ask-user-question`](https://github.com/juicesharp/rpiv-ask-user-question) (the `ask_user_question` tool) — are deliberately **not** bundled. Pi allows one owner per tool name, so a bundled copy fatally conflicts with the same tool installed at the user level; installing them yourself makes your copies the only copies (pi dedupes `npm:` installs by name) and the plugin composes with whatever versions you already run. Details in [`references/harness-compat.md` § 3](references/harness-compat.md).
+The three tools the plugin calls — [`@nicknisi/pi-subagents`](https://github.com/nicknisi/pi-extensions) (the `dispatch` and `fleet` tools — first-party, in-process children), [`@quintinshaw/pi-dynamic-workflows`](https://github.com/QuintinShaw/pi-dynamic-workflows) (the `workflow` tool), and [`@juicesharp/rpiv-ask-user-question`](https://github.com/juicesharp/rpiv-ask-user-question) (the `ask_user_question` tool) — are deliberately **not** bundled. Pi allows one owner per tool name, so a bundled copy fatally conflicts with the same tool installed at the user level; installing them yourself makes your copies the only copies (pi dedupes `npm:` installs by name) and the plugin composes with whatever versions you already run. Details in [`references/harness-compat.md` § 3](references/harness-compat.md).
 
 ## Requirements
 
@@ -556,10 +572,12 @@ agent names, pi extension dependencies, and what does *not* differ — lives in
 [`references/harness-compat.md`](references/harness-compat.md), and the guide page
 renders it from that file at build time so the two cannot drift.
 
-Agent discovery in pi comes from the `pi-subagents` field in `package.json`, which
-points at [`agents/`](agents/); Claude Code ignores the unknown field. The agent files
-themselves are unchanged and keep their Claude Code tool format. Skill frontmatter,
-`${CLAUDE_PLUGIN_ROOT}` paths, and every `node` script are shared verbatim.
+In pi there is no agent registry: the agent definition travels with the call. A skill
+reads the file in [`agents/`](agents/) and passes its body as the dispatch task's
+`systemPrompt`, translating its frontmatter tool list to pi built-in names. The agent
+files themselves are unchanged and keep their Claude Code tool format — the translation
+lives in [`references/harness-compat.md` § 2](references/harness-compat.md). Skill
+frontmatter, `${CLAUDE_PLUGIN_ROOT}` paths, and every `node` script are shared verbatim.
 
 Nothing here is conditional at load time. A skill reads the same in both harnesses and
 names the translation inline where it dispatches an agent or the engine.
@@ -602,7 +620,7 @@ pnpm site:install   # install the site's dependencies
 ```
 
 **The plugin's tests need no install.** The root `package.json` declares no
-dependencies at all — the pi tools the skills call (`pi-subagents`,
+dependencies at all — the pi tools the skills call (`@nicknisi/pi-subagents`,
 `@quintinshaw/pi-dynamic-workflows`, `@juicesharp/rpiv-ask-user-question`) are
 user-level installs, never packages of this repo — and the test suite exercises
 the engine and scripts directly with `node --test`, so there is nothing to

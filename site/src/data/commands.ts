@@ -11,7 +11,7 @@
  */
 import { commandFor, readSkills, type SkillFacts } from '../lib/skills';
 
-export type Stage = 'whether' | 'plan' | 'execute';
+export type Stage = 'route' | 'whether' | 'plan' | 'execute';
 
 export interface CommandDoc {
   slug: string;
@@ -27,6 +27,11 @@ export interface CommandDoc {
 }
 
 export const STAGES: Record<Stage, { label: string; blurb: string }> = {
+  route: {
+    label: 'Charting the route',
+    blurb:
+      'Too big for one session and the way is not yet visible? Map the decisions first — as many sessions as it takes.',
+  },
   whether: {
     label: 'Deciding whether',
     blurb: 'Is this worth building at all? No files are written at this stage.',
@@ -45,6 +50,16 @@ export const STAGES: Record<Stage, { label: string; blurb: string }> = {
 
 /** Presentation order. Roughly the order you would meet them. */
 export const COMMANDS: CommandDoc[] = [
+  {
+    slug: 'chart',
+    stage: 'route',
+    headline: 'Map an effort too big for one session, one decision at a time.',
+    when: 'The work is huge and the route is fog — you cannot yet see the way from here to done, so a single interview cannot hold it. “We need a map before we plan.”',
+    produces:
+      'A map and its decision tickets under docs/chart/<slug>/, worked one per session. When nothing is left to decide, the route hands off to the interview as its starting evidence.',
+    caveat:
+      'It plans, and only plans — a ticket resolves a decision, never a build. If the fog lifts on first look, it says so and sends you straight to the interview.',
+  },
   {
     slug: 'brainstorm',
     stage: 'whether',
