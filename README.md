@@ -10,7 +10,23 @@ Transform brain dumps into structured implementation artifacts through a convers
 
 ## Skills
 
-The arc runs **whether → how → shipped**: brainstorm decides whether the idea is worth building, ideation plans how, and the execution commands below ship it.
+The arc runs **chart → whether → how → shipped**: chart finds the route when an effort is too big for one session and the route itself is unknown, brainstorm decides whether the idea is worth building, ideation plans how, and the execution commands below ship it.
+
+### chart
+
+For efforts too big for one agent session and wrapped in fog — the way from here to the destination isn't visible yet, so a single ideation contract is the wrong shape. Chart lays out a **shared local map** of **decision tickets** (markdown files under `docs/chart/{slug}/`), then works them one at a time — one per session, except research — until the route is clear. Each ticket resolves a *decision*, not a slice of a build; the map is done when nothing is left to decide before someone goes and does the thing.
+
+```
+/ideation:chart
+
+[a loose, too-big idea where you can't yet see the route]
+```
+
+**The model:** a map (`map.md`) is the canonical index — Destination, Notes, Decisions so far, Not yet specified (the fog of war), Out of scope. Tickets are files in `tickets/` with a `Type` (research / prototype / grilling / task), `Status`, `Claimed by`, and `Blocked by`. The frontier is the open, unblocked, unclaimed tickets. Research tickets resolve via an `Explore` subagent (AFK, parallel in the charting session); prototype tickets raise a cheap concrete artifact to react to; grilling tickets are one-question-at-a-time conversation (the same interview-engine sections brainstorm uses); task tickets are manual work that unblocks a decision. Resolving a ticket clears the fog ahead of it, graduating newly-specifiable questions into fresh tickets until the frontier is empty.
+
+**Plan, don't do** is the default — chart produces decisions, not deliverables. When the destination is a build, it hands off to `/ideation:ideation` with the route walked as the intake evidence (destination, route/decisions, rejected alternatives, out-of-scope), so ideation's interview starts at the open questions. Already can see the route? Skip to ideation. Still weighing whether to build at all? Use brainstorm.
+
+Full behavior lives in [skills/chart/SKILL.md](skills/chart/SKILL.md).
 
 ### brainstorm
 
@@ -24,7 +40,7 @@ Pressure-test whether an idea is worth building at all — "should I do X," "whi
 [the idea or decision you're weighing]
 ```
 
-Full behavior lives in [skills/brainstorm/SKILL.md](skills/brainstorm/SKILL.md). Already decided to build? Skip straight to ideation.
+Full behavior lives in [skills/brainstorm/SKILL.md](skills/brainstorm/SKILL.md). Already decided to build? Skip straight to ideation. Too big to see the route? Start with chart.
 
 ### ideation
 
