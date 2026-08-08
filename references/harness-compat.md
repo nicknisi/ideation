@@ -31,6 +31,13 @@ The skills dispatch agents by name. Claude Code plugin-scopes agents as `<plugin
 
 **Translation rule (pi):** drop the `ideation:` prefix; dispatch the bare local name via the `subagent` tool. Same agent, same prompt, same inputs.
 
+**The dispatch call shape (pi, pi-subagents ≥ 0.43):** the `subagent` tool has no direct `{ agent, task }` execution — that surface was removed, and calling it errors with "Direct execution was removed." Everything goes through the tool's `workflowScript` parameter, a JavaScript statement body with `runs.run` / `runs.all` globals:
+
+- **One agent** (a scout, a reviewer, a research `Explore`): one call, `subagent({ workflowScript: "return runs.run('main', { agent: '<name>', task: '<prompt>' })" })`. An explicit `return` is required — the run's output is the script's return value.
+- **A parallel fan-out** (the four plan critics, an execute-spec wave, chart's research tickets): **one** `subagent` call whose `workflowScript` uses `runs.all([...])` with a stable `key` and `agent` per child, e.g. `const [a, b] = await runs.all([{ key: 'scope-creep', agent: 'plan-critic', task: '…' }, { key: 'over-engineering', agent: 'plan-critic', task: '…' }]); return [a.output, b.output]`. A skill instruction to "issue N Agent calls in one message so they run concurrently" becomes one script that awaits them together — not N sequential tool calls.
+
+This call shape is **interim**: agent dispatch is planned to move to a first-party in-process runtime, and this subsection will be replaced wholesale when it lands. The names table above and the per-skill dispatch instructions are unaffected by that move.
+
 **Engine `agentType` names** (scout/reviewer/builder stages inside `execute-contract.mjs`): the engine reads `args.agentNames` with CC defaults, so a CC manifest omits it. A pi manifest passes `{ "agentNames": { "scout": "scout", "reviewer": "reviewer", "builder": "worker" } }`. The agents must also be registered in pi's **workflow agent registry** (separate from pi-subagents' agent discovery) for the stages to bind their tools + prompts — the registry scans `<cwd>/.pi/agents/`, `~/.pi/agent/agents/`, and `~/.pi/agents/`, not package `agents/` dirs. An unregistered name still dispatches with a prose hint (`Act as workflow subagent type: scout`) but **loses its tool binding** — the read-only scout and reviewer run with full tools. The autopilot skill copies the agent files to `.pi/agents/` before invoking the engine to prevent this; see § 3.
 
 ## 3. Pi tool prerequisites
