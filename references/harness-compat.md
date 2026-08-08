@@ -23,30 +23,27 @@ The skills dispatch agents by name. Claude Code plugin-scopes agents as `<plugin
 
 | Skill reference | Claude Code | pi |
 |-----------------|-------------|-----|
-| `Agent`, `subagent_type: "Explore"` | CC built-in `Explore` | `scout` (or a registered `Explore` user agent) via the `subagent` tool |
-| `subagent_type: ideation:plan-critic` | plugin-scoped `ideation:plan-critic` | `plan-critic` via `subagent` |
-| `subagent_type: ideation:scout` | plugin-scoped `ideation:scout` | `scout` via `subagent` |
-| `subagent_type: ideation:reviewer` | plugin-scoped `ideation:reviewer` | `reviewer` via `subagent` |
-| `subagent_type: general-purpose` | CC built-in `general-purpose` | `worker` via `subagent` |
+| `Agent`, `subagent_type: "Explore"` | CC built-in `Explore` | a read-only `dispatch` task |
+| `subagent_type: ideation:plan-critic` | plugin-scoped `ideation:plan-critic` | a `dispatch` task with `agents/plan-critic.md` as `systemPrompt` |
+| `subagent_type: ideation:scout` | plugin-scoped `ideation:scout` | a `dispatch` task with `agents/scout.md` as `systemPrompt` |
+| `subagent_type: ideation:reviewer` | plugin-scoped `ideation:reviewer` | a `dispatch` task with `agents/reviewer.md` as `systemPrompt` |
+| `subagent_type: general-purpose` | CC built-in `general-purpose` | a `dispatch` task with mutating tools + `allowTreeMutation` |
 
-**Translation rule (pi):** drop the `ideation:` prefix; dispatch the bare local name via the `subagent` tool. Same agent, same prompt, same inputs.
+**Translation rule (pi):** there is no agent registry on this path — the agent definition travels with the call. Dispatch via the first-party `dispatch` tool (`npm:@nicknisi/pi-subagents`, see § 3): read the agent file from `agents/`, pass its body as the task's `systemPrompt`, its frontmatter `tools` translated to pi built-in names (`Read`→`read`, `Grep`→`grep`, `Glob`→`find`, `Bash`→`bash`), and the skill's per-invocation inputs as the task's `task`. Same agent, same prompt, same inputs.
 
-**The dispatch call shape (pi, pi-subagents ≥ 0.43):** the `subagent` tool has no direct `{ agent, task }` execution — that surface was removed, and calling it errors with "Direct execution was removed." Everything goes through the tool's `workflowScript` parameter, a JavaScript statement body with `runs.run` / `runs.all` globals:
-
-- **One agent** (a scout, a reviewer, a research `Explore`): one call, `subagent({ workflowScript: "return runs.run('main', { agent: '<name>', task: '<prompt>' })" })`. An explicit `return` is required — the run's output is the script's return value.
-- **A parallel fan-out** (the four plan critics, an execute-spec wave, chart's research tickets): **one** `subagent` call whose `workflowScript` uses `runs.all([...])` with a stable `key` and `agent` per child, e.g. `const [a, b] = await runs.all([{ key: 'scope-creep', agent: 'plan-critic', task: '…' }, { key: 'over-engineering', agent: 'plan-critic', task: '…' }]); return [a.output, b.output]`. A skill instruction to "issue N Agent calls in one message so they run concurrently" becomes one script that awaits them together — not N sequential tool calls.
-
-This call shape is **interim**: agent dispatch is planned to move to a first-party in-process runtime, and this subsection will be replaced wholesale when it lands. The names table above and the per-skill dispatch instructions are unaffected by that move.
+- **One agent** (a scout, a reviewer, a research task): one `dispatch` call with one task.
+- **A parallel fan-out** (the four plan critics, chart's research tickets): **one** `dispatch` call with one task per child. A skill instruction to "issue N Agent calls in one message so they run concurrently" becomes one call whose tasks run concurrently — not N sequential calls.
+- **Tool allowlists are the enforcement.** Default tools are read-only (`read`, `grep`, `find`, `ls`) — critics, scouts, and research tasks fit as-is (the scout's CC `Bash` maps to pi's built-in `find`/`grep`/`ls`, so no `bash`). Any task whose tools include `bash`, `edit`, or `write` must set `allowTreeMutation: true` and runs sequentially after the read-only batch (the reviewer needs `bash` for `git diff HEAD`; builders need the full set). Never give a scout, reviewer, or critic `edit`/`write` — read-only is a design invariant, and the allowlist is what enforces it.
 
 **Engine `agentType` names** (scout/reviewer/builder stages inside `execute-contract.mjs`): the engine reads `args.agentNames` with CC defaults, so a CC manifest omits it. A pi manifest passes `{ "agentNames": { "scout": "scout", "reviewer": "reviewer", "builder": "worker" } }`. The agents must also be registered in pi's **workflow agent registry** (separate from pi-subagents' agent discovery) for the stages to bind their tools + prompts — the registry scans `<cwd>/.pi/agents/`, `~/.pi/agent/agents/`, and `~/.pi/agents/`, not package `agents/` dirs. An unregistered name still dispatches with a prose hint (`Act as workflow subagent type: scout`) but **loses its tool binding** — the read-only scout and reviewer run with full tools. The autopilot skill copies the agent files to `.pi/agents/` before invoking the engine to prevent this; see § 3.
 
 ## 3. Pi tool prerequisites
 
-The plugin calls three tools it deliberately does **not** bundle — install each once at the user level (`pi install npm:pi-subagents`, `pi install npm:@quintinshaw/pi-dynamic-workflows`, `pi install npm:@juicesharp/rpiv-ask-user-question`):
+The plugin calls three tools it deliberately does **not** bundle — install each once at the user level (`pi install npm:@nicknisi/pi-subagents`, `pi install npm:@quintinshaw/pi-dynamic-workflows`, `pi install npm:@juicesharp/rpiv-ask-user-question`):
 
 | Extension | Provides | Used by | Without it |
 |-----------|----------|---------|------------|
-| `npm:pi-subagents` | the `subagent` tool + agent discovery via the `pi-subagents` field | brainstorm (`Explore`), ideation (plan critics), execute-spec (scout, reviewer, wave dispatch) | every agent dispatch fails |
+| `npm:@nicknisi/pi-subagents` | the `dispatch` + `fleet` tools (first-party in-process children) | brainstorm (research), ideation (plan critics), execute-spec (scout, reviewer, wave dispatch), chart (research tickets) | every agent dispatch fails |
 | `npm:@quintinshaw/pi-dynamic-workflows` | the `workflow` tool | autopilot, express, get-goal-prompt | autopilot degrades to manual per-phase execution |
 | `npm:@juicesharp/rpiv-ask-user-question` | the `ask_user_question` tool | ideation (every gate, routing, failure-gate), execute-spec (HOLD/abort questions) | every interactive decision point fails — if no ask-user-question tool is available, ask in plain text with lettered options and state your recommendation — never skip the question |
 
@@ -60,5 +57,5 @@ Versions ≤ 0.23.0 bundled these three extensions. If pi fails to start with to
 
 - `${CLAUDE_PLUGIN_ROOT}` path resolution — resolved in Nick's setup by the user-level `claude-plugin-root.ts` pi extension (sets the env var, rewrites the token in tool calls); not bundled with the plugin. Without it: resolve `${CLAUDE_PLUGIN_ROOT}` relative to the skill's own directory (two levels up from `skills/{name}/`); never read the environment variable, which may be unset or point at a different package. Skills write `${CLAUDE_PLUGIN_ROOT}/…` as in CC.
 - Skill frontmatter (`name`, `description`, `allowed-tools`, `disable-model-invocation`, `argument-hint`) — parsed identically by both harnesses. Unknown fields are ignored.
-- The `pi` manifest in `package.json` — CC ignores it; pi uses it to discover `skills/`. The `pi-subagents` field (separate from the `pi` manifest) tells pi-subagents where to find `agents/`.
+- The `pi` manifest in `package.json` — CC ignores it; pi uses it to discover `skills/` and `extensions/`.
 - All script paths (`scripts/contract-gen.ts`, `scripts/verify.mjs`, `workflows/*.mjs`) — identical, run via `node` in both.

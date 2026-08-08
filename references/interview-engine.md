@@ -37,7 +37,7 @@ A project already at 5/5 gates with no open questions has nothing to resume. Say
 
 ### Intake sweep
 
-**If the work touches an existing codebase**, fire a parallel exploration sweep at intake so your first question is already informed. Dispatch 2–3 `Agent` calls with `subagent_type: "Explore"` **in a single message** (so they run in parallel), covering:
+**If the work touches an existing codebase**, fire a parallel exploration sweep at intake so your first question is already informed. Dispatch 2–3 `Agent` calls with `subagent_type: "Explore"` **in a single message** (so they run in parallel; in pi, one `dispatch` call with one read-only task per agent — see `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md` § 2), covering:
 
 1. **Project structure** — frameworks, languages, conventions in use.
 2. **Adjacent code** — features similar to the brain dump's scope, abstractions you could extend, prior art to reuse.
