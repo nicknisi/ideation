@@ -94,7 +94,7 @@ export function readCompatTable(titlePrefix: string): CompatTable {
  * Asserted against § 1's table so the page's prose cannot outlive the support.
  */
 export function readHarnesses(): string[] {
-  const table = readCompatTable('The Workflow tool');
+  const table = readCompatTable('The engine invocation');
   const names = table.rows.map(r => cellByHeader(table, r, 'Harness'));
   if (names.length !== 2) {
     throw new Error(

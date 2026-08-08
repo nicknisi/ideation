@@ -34,18 +34,18 @@ wrap).
 
 | execute-contract concept | pi-shared construct | Notes |
 |---|---|---|
-| `agent(prompt, { agentType, schema, effort })` | `runtime.spawn({ prompt, systemPrompt, tools, outputSchema, thinkingLevel })` | schemas must be translated to TypeBox (`TSchema`) — mechanical |
+| `agent(prompt, { agentType, schema, effort })` | `runtime.spawn({ prompt, systemPrompt, tools, outputSchema, thinkingLevel })` | plain JSON Schema passes `Value.Check` verbatim (verified against 0.2.0) — no TypeBox translation needed |
 | `safeAgent` (never reject, typed failure) | built into `spawn` — returns `ok \| crashed \| empty \| schema_invalid \| aborted` | our stale-FAIL path needs `schema_invalid` distinct from schema-valid-FAIL; the runtime was designed to this requirement |
-| Wave planner (`computeWaves`, `propagateSkips`, `splitWavesByFileOverlap`) | **imported directly** from `workflows/wave-planner.mjs` — the extension is not sandboxed, so no inlined copy, no drift test needed on the pi side | the inlined copy in execute-contract.mjs stays for CC and keeps its drift test |
+| Wave planner (`computeWaves`, `propagateSkips`, `splitWavesByFileOverlap`) | unchanged — the shim loads the engine file as-is, inlined planner included; the existing drift test against `workflows/wave-planner.mjs` keeps covering it | |
 | Wave barrier (working-tree lock) | run phases sequentially, or `sharesTree` stages (tree stages never overlap anything) | every contract observed to date is linear; the stricter global exclusion is safe. Parallel-overlap within a wave is the one behavioral regression — accepted for v1 |
 | `parallel()` per wave | imperative `Promise.all` over `spawn()` (runtime caps concurrency at 4) | |
-| Skip propagation (failure skips dependents only) | keep `propagateSkips` — plain function | |
-| Review ⇄ fix loop (≤3 cycles, carried refutations, fix-between-never-after-last, stale-FAIL) | **does not fit `runWorkflow`** — see below. Keep `runReviewLoop` imperative over `runtime.spawn` | |
+| Skip propagation (failure skips dependents only) | unchanged — engine logic, exercised through the shim by `engine-host.test.mjs` | |
+| Review ⇄ fix loop (≤3 cycles, carried refutations, fix-between-never-after-last, stale-FAIL) | unchanged — engine logic; the shim test asserts `schema_invalid` maps to the verdict-less path, not a standing FAIL | |
 | Reviewer independence (fresh session, read-only, reviews `git diff HEAD`) | fresh hermetic spawn with `tools: ['read','grep','bash']`, same cwd | never `worktree: true` for review — an isolated reviewer sees an empty diff and vacuously passes |
-| Result schemas (SCOUT/BUILD/REVIEW/FIX/COMMIT/PHASE_RESULT) | TypeBox `outputSchema` per spawn | |
+| Result schemas (SCOUT/BUILD/REVIEW/FIX/COMMIT/PHASE_RESULT) | passed straight through as `outputSchema` | |
 | `effort: 'high'` for review, risk-based effort | `thinkingLevel` per spawn | |
-| git-as-journal resume (commit bodies carry spec paths) | unchanged — outer-loop concern of the autopilot skill | `runWorkflow`'s `resumeFrom` is not used by the engine port |
-| Engine invoked from the autopilot skill | autopilot calls the new extension tool with the manifest | replaces the read-file-into-`workflow`-tool dance |
+| git-as-journal resume (commit bodies carry spec paths) | unchanged — outer-loop concern of the autopilot skill | `runWorkflow`'s `resumeFrom` is not used |
+| Engine invoked from the autopilot skill | autopilot calls the bundled `run_ideation_contract` tool with the manifest; synchronous result | replaces the read-file-into-`workflow`-tool dance AND the `.pi/agents/` registry copy step |
 
 ## The one genuine gap: two-agent loops
 
@@ -55,11 +55,19 @@ with carried refutation state and a fix between cycles — it cannot be
 expressed as a gate, and a static needs-DAG can't express "run fix only when
 review returned verdict FAIL but the stage outcome was ok."
 
-So the engine port drives `runtime.spawn()` imperatively (a near-verbatim
-port of `runPhase`/`runReviewLoop`), not `runWorkflow`. Declarative specs
-stay available for the shapes that fit (the critic fan-out is a foreach;
-the intake sweep likewise). If `workflow.ts` later grows a cycle/loop
-construct, revisiting is cheap.
+So the engine migration does **not** use `runWorkflow`, and does not port the
+engine either. Instead `workflows/engine-host.mjs` **vm-wraps the same
+`execute-contract.mjs` body** (the exact pattern the smoke test uses) and
+backs its `agent()` global with `runtime.spawn()`. The engine stays the
+single source of truth for both harnesses — no port, no drift.
+`extensions/engine.ts` is the thin wiring layer: it registers the
+`run_ideation_contract` tool and creates the runtime. The shim is
+dependency-free (spawn injected) so the test suite still needs no install.
+
+If `workflow.ts` later grows a cycle/loop construct, a declarative re-write
+becomes possible — the per-phase pipeline is the reference use case: two
+alternating agent types, bounded at 3, carried state, "fix between cycles
+never after last," verdict-less distinct from standing FAIL.
 
 ## Tool-name mapping (agent frontmatter → spawn allowlist)
 
@@ -99,12 +107,16 @@ names. Skill text must translate:
 1. **PR A — dispatch migration** (skill-level): skills (ideation critics,
    brainstorm/chart Explore, execute-spec scout/reviewer), preflight,
    harness-compat § 2/§ 3, `package.json` manifest. Engine untouched (still
-   on dynamic-workflows). Reviewable on its own; every dispatch becomes
-   first-party.
-2. **PR B — engine extension**: `extensions/engine.ts` port of
-   execute-contract (spawn-based, imports wave-planner), autopilot/execute-spec
-   invocation swap, drop pi-dynamic-workflows from preflight + harness-compat,
-   TypeBox schema translation, smoke test against the orchestration fixture.
+   on dynamic-workflows). **Merged as #25.**
+2. **PR B — engine extension** (this section's implementation):
+   `workflows/engine-host.mjs` (the vm-wrap shim, spawn injected) +
+   `extensions/engine.ts` (the `run_ideation_contract` tool) +
+   `workflows/engine-host.test.mjs` (real engine, fake spawn — covers the
+   translation layer and the schema_invalid/stale-FAIL semantics).
+   Autopilot calls the tool instead of the `workflow` tool; the
+   `.pi/agents/` registry copy step is gone (the host reads `agents/*.md`
+   directly); pi-dynamic-workflows is dropped from preflight, harness-compat,
+   and the README. CC path untouched.
 
 ## Open questions for pi-extensions
 
