@@ -12,7 +12,7 @@ const agentCompat = readCompatTable('Agent \\(subagent\\) names');
 const depCompat = readCompatTable('Pi tool prerequisites');
 const harnesses = readHarnesses();
 
-const stages: Stage[] = ['whether', 'plan', 'execute'];
+const stages: Stage[] = ['route', 'whether', 'plan', 'execute'];
 const byStage = (s: Stage) => commands.filter(c => c.stage === s);
 
 /** What a project leaves on disk. Convention, so it is authored — but every
@@ -64,10 +64,10 @@ const artifacts = [
       </p>
       <h1 class="mt-3 text-[clamp(2.1rem,6vw,3.1rem)]">Which command, and what you get</h1>
       <p class="mt-5 max-w-[64ch] text-muted">
-        Six commands, two of which Claude can reach for on its own. They divide by the
-        question you are actually asking: <em>whether</em> to build the thing,
-        <em>how</em> to build it, or getting it <em>built</em>. This page is the reference;
-        the <a
+        Seven commands, three of which Claude can reach for on its own. They divide by the
+        question you are actually asking: <em>which way</em> to go at all, <em>whether</em>
+        to build the thing, <em>how</em> to build it, or getting it <em>built</em>. This page
+        is the reference; the <a
           class="text-accent underline decoration-line-strong underline-offset-2 hover:decoration-accent"
           href="/walkthrough/">illustrated walkthrough is its own page</a
         >.
@@ -90,8 +90,8 @@ const artifacts = [
     <section aria-labelledby="doors" class="border-t-[3px] border-double border-line-strong pt-11">
       <h2 id="doors" class="text-[clamp(1.6rem,4vw,2.1rem)]">Pick a door</h2>
       <p class="mt-4 max-w-[64ch] text-muted">
-        In the order you would meet them. Nothing below the first group writes anything
-        until you have approved a contract.
+        In the order you would meet them. Only the charting stage writes files before a
+        contract exists — and all it writes is a map of decisions, never a plan.
       </p>
 
       {
@@ -220,8 +220,12 @@ const artifacts = [
         Everything for one project lives in <code
           class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]"
           >docs/ideation/&lt;slug&gt;/</code
-        >. Planning artifacts are HTML because they exist to be decided on; specs are
-        Markdown because they exist to be executed.
+        >. Charting is the exception: a route map lives in <code
+          class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]"
+          >docs/chart/&lt;slug&gt;/</code
+        >, one Markdown file per decision ticket, and exists precisely because no project
+        slug has been earned yet. Planning artifacts are HTML because they exist to be
+        decided on; specs and tickets are Markdown because they exist to be executed.
       </p>
 
       <dl class="mt-9 space-y-5">
@@ -250,6 +254,19 @@ const artifacts = [
           >docs/ideation/learnings.md</code
         > sits above the project folders and is meant to be committed. It is the only part of
         this the next project reads.
+      </p>
+
+      <p
+        class="mt-4 max-w-[64ch] rounded-r-(--radius-guide) border-l border-accent bg-surface-1 py-3 pr-4 pl-4 text-[0.9375rem]"
+      >
+        <span class="label-mono mr-2 text-accent">a second exception</span>
+        <code class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]"
+          >docs/chart/&lt;slug&gt;/</code
+        > holds an open route map — <code
+          class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]"
+          >map.md</code
+        > plus one file per ticket — across as many sessions as the fog takes. When the route
+        clears, the map hands off to the interview and its tickets become contract evidence.
       </p>
     </section>
 
