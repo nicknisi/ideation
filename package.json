@@ -29,11 +29,6 @@
       "extensions/preflight.ts"
     ]
   },
-  "pi-subagents": {
-    "agents": [
-      "agents"
-    ]
-  },
   "scripts": {
     "test": "node scripts/lint-prompts.mjs && node --test 'workflows/*.test.mjs' 'scripts/*.test.mjs' 'test-fixtures/**/*.test.mjs'",
     "lint:prompts": "node scripts/lint-prompts.mjs",

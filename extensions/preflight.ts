@@ -23,8 +23,8 @@ type Capability = {
 /** Source of truth is references/harness-compat.md § 3. */
 const CAPABILITIES: Capability[] = [
 	{
-		tool: "subagent",
-		install: "npm:pi-subagents",
+		tool: "dispatch",
+		install: "npm:@nicknisi/pi-subagents",
 		without: "every agent dispatch fails — scout, reviewer, plan-critic, waves",
 	},
 	{

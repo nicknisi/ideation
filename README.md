@@ -548,13 +548,13 @@ For manual control, run specs individually:
 ### pi
 
 ```bash
-pi install npm:pi-subagents
+pi install npm:@nicknisi/pi-subagents
 pi install npm:@quintinshaw/pi-dynamic-workflows
 pi install npm:@juicesharp/rpiv-ask-user-question
 pi install git:github.com/nicknisi/ideation
 ```
 
-The three tools the plugin calls — [`pi-subagents`](https://github.com/nicknisi/pi-subagents) (the `subagent` tool), [`@quintinshaw/pi-dynamic-workflows`](https://github.com/QuintinShaw/pi-dynamic-workflows) (the `workflow` tool), and [`@juicesharp/rpiv-ask-user-question`](https://github.com/juicesharp/rpiv-ask-user-question) (the `ask_user_question` tool) — are deliberately **not** bundled. Pi allows one owner per tool name, so a bundled copy fatally conflicts with the same tool installed at the user level; installing them yourself makes your copies the only copies (pi dedupes `npm:` installs by name) and the plugin composes with whatever versions you already run. Details in [`references/harness-compat.md` § 3](references/harness-compat.md).
+The three tools the plugin calls — [`@nicknisi/pi-subagents`](https://github.com/nicknisi/pi-extensions) (the `dispatch` and `fleet` tools — first-party, in-process children), [`@quintinshaw/pi-dynamic-workflows`](https://github.com/QuintinShaw/pi-dynamic-workflows) (the `workflow` tool), and [`@juicesharp/rpiv-ask-user-question`](https://github.com/juicesharp/rpiv-ask-user-question) (the `ask_user_question` tool) — are deliberately **not** bundled. Pi allows one owner per tool name, so a bundled copy fatally conflicts with the same tool installed at the user level; installing them yourself makes your copies the only copies (pi dedupes `npm:` installs by name) and the plugin composes with whatever versions you already run. Details in [`references/harness-compat.md` § 3](references/harness-compat.md).
 
 ## Requirements
 
@@ -572,10 +572,12 @@ agent names, pi extension dependencies, and what does *not* differ — lives in
 [`references/harness-compat.md`](references/harness-compat.md), and the guide page
 renders it from that file at build time so the two cannot drift.
 
-Agent discovery in pi comes from the `pi-subagents` field in `package.json`, which
-points at [`agents/`](agents/); Claude Code ignores the unknown field. The agent files
-themselves are unchanged and keep their Claude Code tool format. Skill frontmatter,
-`${CLAUDE_PLUGIN_ROOT}` paths, and every `node` script are shared verbatim.
+In pi there is no agent registry: the agent definition travels with the call. A skill
+reads the file in [`agents/`](agents/) and passes its body as the dispatch task's
+`systemPrompt`, translating its frontmatter tool list to pi built-in names. The agent
+files themselves are unchanged and keep their Claude Code tool format — the translation
+lives in [`references/harness-compat.md` § 2](references/harness-compat.md). Skill
+frontmatter, `${CLAUDE_PLUGIN_ROOT}` paths, and every `node` script are shared verbatim.
 
 Nothing here is conditional at load time. A skill reads the same in both harnesses and
 names the translation inline where it dispatches an agent or the engine.
@@ -618,7 +620,7 @@ pnpm site:install   # install the site's dependencies
 ```
 
 **The plugin's tests need no install.** The root `package.json` declares no
-dependencies at all — the pi tools the skills call (`pi-subagents`,
+dependencies at all — the pi tools the skills call (`@nicknisi/pi-subagents`,
 `@quintinshaw/pi-dynamic-workflows`, `@juicesharp/rpiv-ask-user-question`) are
 user-level installs, never packages of this repo — and the test suite exercises
 the engine and scripts directly with `node --test`, so there is nothing to
