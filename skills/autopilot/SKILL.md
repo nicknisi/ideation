@@ -75,7 +75,7 @@ Assemble the manifest exactly per `${CLAUDE_PLUGIN_ROOT}/workflows/README.md`:
 - `prereqs` are **phase titles** — pass `contract-data.json`'s values straight through; do not remap to indices.
 - `strict: true` (express contracts only) makes the engine run each phase fail-closed, because no human reviewed the specs. The decision-point semantics live in **the gate-behavior table** (`${CLAUDE_PLUGIN_ROOT}/workflows/README.md`) — do not restate them here. Omit or set `false` for interactively approved contracts.
 - Before invoking, sanity-check that every `prereqs` entry matches some phase `title` (or a `completedPhases` entry), and that no two phases share a `title`. If a title doesn't resolve or appears twice, it's a manifest bug — report it rather than dispatching a broken graph (the engine will otherwise throw "Unknown prereq" or "Duplicate phase title(s)").
-- **`agentNames` (pi only — omit in Claude Code):** the engine dispatches scout/reviewer/builder stages by `agentType`, and the names differ by harness. Claude Code plugin-scopes them as `ideation:scout` / `ideation:reviewer` / `general-purpose` — these are the engine's defaults, so a CC manifest omits `agentNames` entirely. In pi, the workflow agentType registry uses bare local names and rejects colons, so pass `{ "agentNames": { "scout": "scout", "reviewer": "reviewer", "builder": "worker" } }`. The agents must be registered in pi's workflow agent registry (`.pi/agents/`, `~/.pi/agent/agents/`, or `~/.pi/agents/`) for the stages to bind their tools and prompts — an unregistered name falls back to default tools with no role prompt, losing read-only enforcement on scout/reviewer.
+- **`agentNames` (Claude Code only — omit in pi):** the engine dispatches scout/reviewer/builder stages by `agentType`, and Claude Code plugin-scopes those as `ideation:scout` / `ideation:reviewer` / `general-purpose` — these are the engine's defaults, so a CC manifest omits `agentNames` entirely. In pi, omit the field too, for a different reason: the pi engine host (`extensions/engine.ts`) doesn't use a name registry at all — it reads `agents/*.md` directly and passes each stage's tools and system prompt per spawn.
 
 ### Populate `files` from each spec's File Changes table
 
@@ -97,19 +97,13 @@ repo use consistent relative paths; no resolution or normalization).
 
 ## Step 4: Invoke the Engine
 
-1. Resolve the engine's **absolute path** — run `echo ${CLAUDE_PLUGIN_ROOT}/workflows/execute-contract.mjs` via `Bash` and confirm the file exists.
-2. **pi only — register the stage agents in the workflow registry.** The workflow engine's `agentType` registry is separate from pi-subagents' agent discovery: it scans `<cwd>/.pi/agents/`, `~/.pi/agent/agents/`, and `~/.pi/agents/` — not package `agents/` dirs. So `scout` and `reviewer` (the names you pass in `agentNames`) won't resolve, and the engine silently degrades: the stages keep a prose hint (`Act as workflow subagent type: scout`) but **lose their tool binding** — the read-only scout and reviewer run with full tools (Write/Edit), and the reviewer is no longer independent of the diff it reviews. That is a design invariant, not a crash. To prevent it, copy the agent files into the project's `.pi/agents/` before invoking:
-   ```bash
-   mkdir -p .pi/agents && cp ${CLAUDE_PLUGIN_ROOT}/agents/{scout,reviewer}.md .pi/agents/
-   ```
-   Project-local `.pi/agents/` wins collisions, is visible in the repo, and is removable. Verify they resolve: `ls .pi/agents/scout.md .pi/agents/reviewer.md`. The builder (`worker`) is deliberately not copied — an unregistered builder degrades to default tools with a prose hint, which matches what CC's `general-purpose` is anyway (full tools, no role prompt). (Claude Code skips this step — its workflow engine bridges to the plugin agent registry directly.)
-3. Call the **`Workflow`** tool with `args` set to the manifest object from Step 3 (pass it as an actual JSON value, **not** a stringified one). The parameter signature differs by harness — both run the same `execute-contract.mjs`:
-   - **Claude Code:** pass `scriptPath` set to that absolute path. The engine runs in the background and notifies on completion; watch progress with `/workflows`.
-   - **pi:** the `workflow` tool has no `scriptPath` parameter — `read` the file at that path and pass its full contents as `script` (with `args`), and set `background: false` so the result returns synchronously to this turn (you need it for the failure gate in Step 5). The engine is pi-dynamic-workflows-compatible: it declares `export const meta`, uses only the `agent()`/`parallel()`/`phase()`/`log()`/`args` globals that pi's workflow runtime injects, and has zero imports.
-4. Tell the user before it starts: how many phases, how many already skipped, and that you'll pause only if a phase fails.
-5. **Capture the returned `runId`** — you need it for same-session resume.
+1. Call the engine with `args` set to the manifest object from Step 3 (pass it as an actual JSON value, **not** a stringified one). The invocation differs by harness — both run the same `workflows/execute-contract.mjs`:
+   - **Claude Code:** call the **`Workflow`** tool with `scriptPath` set to the engine's absolute path (run `echo ${CLAUDE_PLUGIN_ROOT}/workflows/execute-contract.mjs` via `Bash` and confirm the file exists). The engine runs in the background and notifies on completion; watch progress with `/workflows`.
+   - **pi:** call the **`run_ideation_contract`** tool (registered by the plugin's bundled `extensions/engine.ts`) with the manifest as its parameters. Synchronous — the summary comes back as the tool result, in this turn, ready for the failure gate in Step 5. The tool runs the same engine file with stage agents spawned on the first-party in-process runtime; there is no agent-registry step.
+2. Tell the user before it starts: how many phases, how many already skipped, and that you'll pause only if a phase fails.
+3. **Claude Code only: capture the returned `runId`** — you need it for same-session resume. In pi, resume is the git skip pre-pass (Step 2) plus re-invoking the tool.
 
-**If the `Workflow` tool is unavailable** (feature not enabled in this Claude Code, or the pi `workflow` tool is absent): degrade gracefully — tell the user, then walk the phases yourself in dependency order using `/ideation:execute-spec <specPath>` per phase (the contract's per-phase commands), committing each before the next. For express contracts, carry the `--strict` semantics into this path too (per the gate-behavior table in `${CLAUDE_PLUGIN_ROOT}/workflows/README.md`). This is the legacy manual path.
+**If the engine is unavailable** (the `Workflow` feature not enabled in this Claude Code, or the pi plugin's engine extension failed to load): degrade gracefully — tell the user, then walk the phases yourself in dependency order using `/ideation:execute-spec <specPath>` per phase (the contract's per-phase commands), committing each before the next. For express contracts, carry the `--strict` semantics into this path too (per the gate-behavior table in `${CLAUDE_PLUGIN_ROOT}/workflows/README.md`). This is the legacy manual path.
 
 ## Step 5: Handle the Summary
 
@@ -168,7 +162,7 @@ Options:
 
 **If "Retry failed phases":**
 
-- **Same session:** re-invoke the `Workflow` tool with `resumeFromRunId: <runId>` (and the same `scriptPath` in Claude Code, or the same `script` in pi). Cached passing phases return instantly; only the failed/unreached phases re-run.
+- **Same session:** re-invoke the engine — in Claude Code, the `Workflow` tool with `resumeFromRunId: <runId>` and the same `scriptPath` (cached passing phases return instantly; only the failed/unreached phases re-run). In pi, call `run_ideation_contract` again with the same manifest — the Step 2 git pre-pass excludes everything already committed, so only what remains re-runs.
 - **New session, or resume rejected:** simply re-run this skill from Step 1 — the Step 2 git pre-pass re-derives `completedPhases` from the commits, so already-committed phases are skipped regardless. This is the cross-session resume path.
 
 **If "Stop here":** report completed vs. remaining and exit.
@@ -242,4 +236,4 @@ procedure and the `learnings.md` lifecycle.
 3. **The contract is the source of truth** — phase order, dependencies, and spec paths all come from `contract-data.json` (`contract.md` Execution Plan as fallback).
 4. **Subagents get clean contexts** — the engine runs each phase as five sibling agent stages (scout → build → review ⇄ fix → commit), each a fresh-context agent; the build stage runs execute-spec's build+verify halves as `--headless`, or `--headless --strict` when the manifest sets `strict` (semantics: the gate-behavior table in `workflows/README.md`). No phase inherits another's context.
 5. **Gate on failures, not successes** — the happy path is fully hands-off; the engine runs everything still reachable and only the skill pauses, after the run, when something failed.
-6. **Already-committed phases are durable** — each phase commits independently. The git pre-pass makes resume work across sessions; `resumeFromRunId` makes it instant within a session.
+6. **Already-committed phases are durable** — each phase commits independently. The git pre-pass makes resume work across sessions; in Claude Code, `resumeFromRunId` makes it instant within a session.

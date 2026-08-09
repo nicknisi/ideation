@@ -40,8 +40,8 @@ ideation SKILL.md § 5.4.)
    to run themselves (`! node …`) and stop. There is **no fallback template**.
 
 Then remind the user: enable auto mode (`/auto`) so tool calls don't block each turn, and
-confirm the Workflow feature is available (`Workflow` tool in Claude Code, `workflow` tool
-in pi). One **caveat, not a gate** — and honestly labeled: this detail was derived from
+confirm the engine is available (`Workflow` tool in Claude Code; in pi the plugin bundles
+its engine extension, so nothing further is needed). One **caveat, not a gate** — and honestly labeled: this detail was derived from
 Claude Code binary strings and could not be verified from this repo — `/goal` appears to
 require a trusted workspace and may refuse to run when hooks are restricted. If the paste
 is rejected, that is the likely reason; it is a property of the CLI session, not of this

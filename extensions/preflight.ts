@@ -28,11 +28,6 @@ const CAPABILITIES: Capability[] = [
 		without: "every agent dispatch fails — scout, reviewer, plan-critic, waves",
 	},
 	{
-		tool: "workflow",
-		install: "npm:@quintinshaw/pi-dynamic-workflows",
-		without: "autopilot degrades to manual per-phase execution",
-	},
-	{
 		tool: "ask_user_question",
 		install: "npm:@juicesharp/rpiv-ask-user-question",
 		without: "interview gates fall back to plain-text lettered options",
@@ -52,7 +47,7 @@ function render(pi: ExtensionAPI, ctx: ExtensionContext, full: boolean): string[
 	const shown = full ? CAPABILITIES : gaps;
 	const headline =
 		gaps.length === 0
-			? theme.fg("success", "all three pi tools installed")
+			? theme.fg("success", "all pi tools installed")
 			: theme.fg("warning", `${gaps.length} of ${CAPABILITIES.length} pi tools missing`);
 
 	const lines = [`${theme.fg("accent", "ideation")} ${theme.fg("dim", "·")} ${headline}`];

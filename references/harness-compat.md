@@ -2,20 +2,20 @@
 
 This plugin runs in two harnesses. Three things differ; everything else is shared.
 
-## 1. The Workflow tool
+## 1. The engine invocation
 
-Same engine script (`workflows/execute-contract.mjs`), different invocation parameter:
+Same engine script (`workflows/execute-contract.mjs`), different host:
 
 | Harness | Tool | How to invoke |
 |---------|------|---------------|
 | Claude Code | `Workflow` | `scriptPath: <abs path to execute-contract.mjs>`, `args: <manifest>`. Runs in the background; watch `/workflows`. |
-| pi | `workflow` | No `scriptPath` parameter. `read` the file, pass its contents as `script` with `args`, and set `background: false` (you need the result synchronously for the failure gate). |
+| pi | `run_ideation_contract` | Bundled — registered by `extensions/engine.ts`, which vm-wraps the same engine file and backs `agent()` with the first-party in-process spawn runtime (`@nicknisi/pi-shared`). Call it with the manifest as parameters; the summary returns synchronously as the tool result. |
 
-Both pass the same `args` manifest. `resumeFromRunId` works in both for same-session retry.
+Both pass the same `args` manifest. Resume after a failure: CC uses `resumeFromRunId` for same-session retry; in pi, re-invoke the tool — the git skip pre-pass excludes committed phases either way.
 
-The engine is pi-dynamic-workflows-compatible: it declares `export const meta`, uses only the `agent()` / `parallel()` / `phase()` / `log()` / `args` globals that pi's workflow runtime injects, and has zero imports.
+The engine script stays harness-agnostic: it declares `export const meta`, uses only the `agent()` / `parallel()` / `phase()` / `log()` / `args` globals, and has zero imports. The pi host (`workflows/engine-host.mjs`) supplies those globals; stage agents come from `agents/*.md` (body → `systemPrompt`, allowlist per stage), so there is no agent-registry step in pi.
 
-If the Workflow tool is unavailable in either harness, autopilot degrades to the manual per-phase path (`/ideation:execute-spec <specPath>` in dependency order).
+If the engine is unavailable in either harness (the `Workflow` feature off in CC, or the plugin's engine extension failed to load in pi), autopilot degrades to the manual per-phase path (`/ideation:execute-spec <specPath>` in dependency order).
 
 ## 2. Agent (subagent) names
 
@@ -35,17 +35,18 @@ The skills dispatch agents by name. Claude Code plugin-scopes agents as `<plugin
 - **A parallel fan-out** (the four plan critics, chart's research tickets): **one** `dispatch` call with one task per child. A skill instruction to "issue N Agent calls in one message so they run concurrently" becomes one call whose tasks run concurrently — not N sequential calls.
 - **Tool allowlists are the enforcement.** Default tools are read-only (`read`, `grep`, `find`, `ls`) — critics, scouts, and research tasks fit as-is (the scout's CC `Bash` maps to pi's built-in `find`/`grep`/`ls`, so no `bash`). Any task whose tools include `bash`, `edit`, or `write` must set `allowTreeMutation: true` and runs sequentially after the read-only batch (the reviewer needs `bash` for `git diff HEAD`; builders need the full set). Never give a scout, reviewer, or critic `edit`/`write` — read-only is a design invariant, and the allowlist is what enforces it.
 
-**Engine `agentType` names** (scout/reviewer/builder stages inside `execute-contract.mjs`): the engine reads `args.agentNames` with CC defaults, so a CC manifest omits it. A pi manifest passes `{ "agentNames": { "scout": "scout", "reviewer": "reviewer", "builder": "worker" } }`. The agents must also be registered in pi's **workflow agent registry** (separate from pi-subagents' agent discovery) for the stages to bind their tools + prompts — the registry scans `<cwd>/.pi/agents/`, `~/.pi/agent/agents/`, and `~/.pi/agents/`, not package `agents/` dirs. An unregistered name still dispatches with a prose hint (`Act as workflow subagent type: scout`) but **loses its tool binding** — the read-only scout and reviewer run with full tools. The autopilot skill copies the agent files to `.pi/agents/` before invoking the engine to prevent this; see § 3.
+**Engine stage agents** (scout/reviewer/builder inside `execute-contract.mjs`): in Claude Code the workflow runtime resolves `ideation:`-scoped names from the plugin's agent registry. In pi there is no registry on this path either — the engine host (`workflows/engine-host.mjs`) normalizes the engine's `agentType` strings (stripping any `ideation:` prefix, mapping `general-purpose`/`worker` to builder), reads `agents/scout.md` / `agents/reviewer.md` for the read-only stages' system prompts, and pins each stage's tool allowlist per spawn (see § 1). Scout and reviewer read-only is thus enforced by construction in both harnesses.
 
 ## 3. Pi tool prerequisites
 
-The plugin calls three tools it deliberately does **not** bundle — install each once at the user level (`pi install npm:@nicknisi/pi-subagents`, `pi install npm:@quintinshaw/pi-dynamic-workflows`, `pi install npm:@juicesharp/rpiv-ask-user-question`):
+The plugin calls two third-party tools it deliberately does **not** bundle — install each once at the user level (`pi install npm:@nicknisi/pi-subagents`, `pi install npm:@juicesharp/rpiv-ask-user-question`):
 
 | Extension | Provides | Used by | Without it |
 |-----------|----------|---------|------------|
 | `npm:@nicknisi/pi-subagents` | the `dispatch` + `fleet` tools (first-party in-process children) | brainstorm (research), ideation (plan critics), execute-spec (scout, reviewer, wave dispatch), chart (research tickets) | every agent dispatch fails |
-| `npm:@quintinshaw/pi-dynamic-workflows` | the `workflow` tool | autopilot, express, get-goal-prompt | autopilot degrades to manual per-phase execution |
 | `npm:@juicesharp/rpiv-ask-user-question` | the `ask_user_question` tool | ideation (every gate, routing, failure-gate), execute-spec (HOLD/abort questions) | every interactive decision point fails — if no ask-user-question tool is available, ask in plain text with lettered options and state your recommendation — never skip the question |
+
+The engine needs no external tool in pi: `extensions/engine.ts` is bundled with the plugin and drives the same `execute-contract.mjs` CC runs.
 
 **Why they are not bundled** (verified pi 0.83.0): pi allows one extension *file path* per tool name. A second path registering the same name is a fatal load error at startup (`Failed to load extension …: Tool "subagent" conflicts with …` — the process exits), and a copy bundled under this plugin's `node_modules/` is by definition a different path from a user-level install of the same tool. Bundling therefore crashes pi for every user who already installs these tools themselves. Unbundled, pi's package-identity dedup (one `npm:` name → one path under `~/.pi/agent/npm/`) guarantees a single copy, and your installed versions are the ones the plugin's skills call. Duplicate *skills* are milder — a `[Extension issues]` warning, first wins — but the same single-owner setup avoids those too.
 
