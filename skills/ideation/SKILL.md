@@ -265,7 +265,7 @@ Then apply the decision rule:
 
   The advisor weighs what a script can see: phase count, `risk: high` phases, the cmd-vs-judgment split, and how many `cmd` checks only inspect files rather than running anything. **Two facts it cannot see are yours to overlay**, and both only ever *remove* the walk-away option, never add it:
 
-  - **The `Workflow` tool is unavailable** in this harness (not enabled in Claude Code, or the pi `workflow` tool is absent) → autopilot's engine can't run. Recommend "I'll run phases myself".
+  - **The engine is unavailable** in this harness (the `Workflow` feature not enabled in Claude Code, or the plugin's bundled engine extension failed to load in pi) → autopilot's engine can't run. Recommend "I'll run phases myself".
   - **This session can't start a `/goal`** — it needs a trusted workspace and refuses when hooks are restricted. Discovering that at paste time, after the interview and the approval, is the worst moment for it. Signals: `/goal` errored earlier this session, or the user has said the workspace is untrusted. Then drop walk-away and say so in one line. **This is a caveat, not a verified mechanism** — it came from Claude Code binary strings and could not be confirmed from this repo, so never block on a negative check; when in doubt keep the option and let the paste fail with an explanation.
 
   If the advisor can't run (permission denial), say so and fall back to recommending "Watch it run now" — the conservative choice, and name it as a fallback rather than a recommendation.
