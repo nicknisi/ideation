@@ -1,6 +1,6 @@
 {
   "name": "ideation",
-  "version": "0.26.0",
+  "version": "0.26.1",
   "private": true,
   "description": "Whether, then how, then shipped — an evidence-gated interview turns a brain dump into an interactive HTML contract and Markdown specs, and a deterministic workflow engine executes them.",
   "repository": "github:nicknisi/ideation",
