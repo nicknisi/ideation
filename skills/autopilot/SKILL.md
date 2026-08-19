@@ -1,7 +1,6 @@
 ---
 name: autopilot
-description: Orchestrate full execution of an ideation project — reads the contract, builds an execution manifest, and runs all phases on the deterministic Workflow engine (parallel for independent phases, sequential for dependent ones). Auto-continues on success, gates on failure. Use after ideation is complete and specs are approved.
-disable-model-invocation: true
+description: Orchestrate full execution of an ideation project — reads the contract, builds an execution manifest, and runs all phases on the deterministic Workflow engine (parallel for independent phases, sequential for dependent ones). Auto-continues on success, gates on failure. Invoke only when the user explicitly asks to run an approved contract, or when an active /goal directs /ideation:autopilot.
 allowed-tools:
   - Read
   - Bash
