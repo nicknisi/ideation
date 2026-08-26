@@ -31,6 +31,8 @@ Read `gates.dimensions` and `openQuestions` from that file. Gates persisted as `
 Resuming {projectName}: {n}/5 gates ready — {m} open questions
 ```
 
+**Surface unconsumed review feedback before the open questions.** A denied or commented review writes `feedback-{date}.json` into the project dir. On resume, run one **bounded** glob over `docs/ideation/{slug}/feedback-*.json` (same bounded style as the unmined-notes scan), read each, and present its unresolved entries (pinned comments and deny reasons) as revision input ahead of the open questions — an orphaned comment whose block id no longer matches is shown as such, not migrated. A corrupt or hand-edited feedback file is skipped with a one-line warning; it never blocks the interview. These are inputs to the revision, not gate state: the engine writes nothing here.
+
 **Take only what is takeable.** An entry whose `blockedBy` ids have already closed is takeable now. A still-blocked entry stays unasked this session.
 
 **Route by `type`:**

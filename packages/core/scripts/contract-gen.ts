@@ -1,4 +1,5 @@
 import {
+  copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -181,6 +182,54 @@ function esc(s: string): string {
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
+}
+
+/** Content-derived, deterministic block id for an annotatable item:
+    `blk-{slug}-{hash}` where slug is the first four alphanumeric words and
+    hash is a 6-char FNV-1a of the FULL text. Same text → byte-identical id on
+    every render, so a comment pinned to a block survives regeneration; an
+    edit to the text changes the hash (and the id), which is the orphaning the
+    review surface renders rather than migrates. No allocation or persistence
+    layer — identity is a pure function of content. */
+function blockId(text: string): string {
+  const words = text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 4);
+  const slug = words.join('-') || 'block';
+  // FNV-1a 32-bit. Math.imul keeps the multiply in 32 bits; >>> 0 makes it
+  // unsigned before hex.
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  const hash = (h >>> 0).toString(16).padStart(6, '0').slice(-6);
+  return `blk-${slug}-${hash}`;
+}
+
+/** The slug half of a block id — the stable key a revision diff matches on.
+    Two revisions of the same item keep this even when the hash (and full id)
+    changes, so an edit reads as `changed` rather than remove+add. */
+function blockSlug(text: string): string {
+  return blockId(text).replace(/-[0-9a-f]{6}$/, '');
+}
+
+/** Title-slug for a phase's ledger anchor. Focus still keys off the numeric
+    `data-phase`, so the graph→ledger scroll is unaffected; only the human-
+    readable `id` changes from the array index to the title. */
+function phaseSlug(title: string): string {
+  const words = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 4);
+  return `phase-${words.join('-') || 'phase'}`;
 }
 
 function riskMeta(risk: string): { color: string; label: string } {
@@ -777,10 +826,10 @@ function buildScope(d: ContractData, f: Facts): string {
             </div>
             <ul class="items">
 ${items
-  .map(
-    it =>
-      `              <li><strong>${esc(it.item)}</strong>${it.reason ? ` <span class="why">— ${esc(it.reason)}</span>` : ''}</li>`,
-  )
+  .map(it => {
+    const bid = blockId(it.item);
+    return `              <li id="${bid}" data-block="${bid}"><strong>${esc(it.item)}</strong>${it.reason ? ` <span class="why">— ${esc(it.reason)}</span>` : ''}</li>`;
+  })
   .join('\n')}
             </ul>
           </div>`;
@@ -977,7 +1026,7 @@ ${f.phases
       .filter(Boolean)
       .join('\n              ');
     const choke = f.chokepoints.find(c => c.index === i);
-    return `        <div class="lrow" id="phase-${i}" data-phase="${i}">
+    return `        <div class="lrow" id="${phaseSlug(p.title)}" data-phase="${i}">
           <div class="lrow-n">${pad2(i + 1)}</div>
           <div class="lrow-head">
             <h3>${esc(p.title)}</h3>
@@ -1237,7 +1286,8 @@ function buildSuccess(
       const note = isJudge(c.check) ? c.check.judgment : '';
       body = `<span class="crit-check">${note ? esc(note) : 'No mechanical check, and no reviewer named. verify.mjs cannot certify this one.'}</span>`;
     }
-    return `          <li class="crit${isJ ? ' crit-judge' : ''}">
+    const bid = blockId(c.criterion);
+    return `          <li class="crit${isJ ? ' crit-judge' : ''}" id="${bid}" data-block="${bid}">
             <span class="crit-n">${pad2(n)}</span>
             <span class="crit-text">${esc(c.criterion)}${body}</span>
           </li>`;
@@ -1313,10 +1363,13 @@ function buildDecisionLog(d: ContractData): string {
       <ul class="decisions">
 ${items
   .map(
-    it => `        <li class="decision">
+    it => {
+      const bid = blockId(it.decision);
+      return `        <li class="decision" id="${bid}" data-block="${bid}">
           <h3>${esc(it.decision)}</h3>
           <p>${it.rejected ? `<span class="rejected">Instead of</span> ${esc(it.rejected)}. ` : ''}${esc(it.reason)}</p>
-        </li>`,
+        </li>`;
+    },
   )
   .join('\n')}
       </ul>`,
@@ -1362,7 +1415,7 @@ ${items
           .map(id => `<code>${esc(id)}</code>`)
           .join(', ')}`
       : '';
-    return `        <li class="openq">
+    return `        <li class="openq" id="oq-${esc(it.id)}">
           <span class="openq-type">${esc(it.type)}</span>
           <h3>${esc(it.question)}</h3>
           <p class="openq-meta"><code class="openq-id">${esc(it.id)}</code> · Blocks ${esc(gateLabel(it.gate))}${wait}</p>
@@ -1906,7 +1959,7 @@ const CLIENT_JS = String.raw`
       if (hint) hint.dataset.active = 'true';
       draw();
       if (scroll) {
-        var row = document.getElementById('phase-' + i);
+        var row = ledger ? ledger.querySelector('[data-phase="' + i + '"]') : null;
         if (row) row.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
       }
     };
@@ -1972,9 +2025,125 @@ const CLIENT_JS = String.raw`
 })();
 `;
 
-function generate(data: ContractData, paths: ContractPaths): string {
+// --- Revision diff ------------------------------------------------------
+//
+// When a revision supersedes an Approved predecessor whose contract-data.json
+// was archived, diff the two and render a "Changes since {date}" band ahead of
+// readiness. Items are matched by their block SLUG (the stable half of the
+// content-derived id): a slug present in both whose full text changed reads as
+// `changed`; a slug only on one side is `added`/`removed`. Untouched items are
+// not rendered. Absent archived data (legacy contracts, first revision) => no
+// band, computed by the caller passing prev = null.
+
+interface DiffRow {
+  status: 'added' | 'removed' | 'changed';
+  text: string;
+}
+
+function diffTextList(oldItems: string[], newItems: string[]): DiffRow[] {
+  const oldMap = new Map(oldItems.map(t => [blockSlug(t), t]));
+  const newMap = new Map(newItems.map(t => [blockSlug(t), t]));
+  const rows: DiffRow[] = [];
+  for (const [k, t] of newMap) {
+    if (!oldMap.has(k)) rows.push({ status: 'added', text: t });
+    else if (oldMap.get(k) !== t) rows.push({ status: 'changed', text: t });
+  }
+  for (const [k, t] of oldMap) {
+    if (!newMap.has(k)) rows.push({ status: 'removed', text: t });
+  }
+  return rows;
+}
+
+function diffPhaseList(oldP: Phase[], newP: Phase[]): DiffRow[] {
+  const sig = (p: Phase) =>
+    JSON.stringify([p.title, p.risk ?? 'low', p.notes ?? '', p.prereqs ?? []]);
+  const oldMap = new Map(oldP.map(p => [phaseSlug(p.title), p] as const));
+  const newMap = new Map(newP.map(p => [phaseSlug(p.title), p] as const));
+  const rows: DiffRow[] = [];
+  for (const [k, p] of newMap) {
+    if (!oldMap.has(k)) rows.push({ status: 'added', text: p.title });
+    else if (sig(oldMap.get(k) as Phase) !== sig(p))
+      rows.push({ status: 'changed', text: p.title });
+  }
+  for (const [k, p] of oldMap) {
+    if (!newMap.has(k)) rows.push({ status: 'removed', text: p.title });
+  }
+  return rows;
+}
+
+function critTexts(d: ContractData): string[] {
+  return (d.successCriteria ?? []).map(asCriterion).map(c => c.criterion);
+}
+function scopeTexts(d: ContractData): string[] {
+  return [
+    ...d.scope.mvp,
+    ...d.scope.full,
+    ...d.scope.stretch,
+    ...d.scope.outOfScope,
+  ].map(it => it.item);
+}
+function decisionTexts(d: ContractData): string[] {
+  return (Array.isArray(d.decisions) ? d.decisions : []).map(it => it.decision);
+}
+
+const DIFF_MARK: Record<DiffRow['status'], string> = {
+  added: '+',
+  removed: '−',
+  changed: '~',
+};
+
+function buildDiff(
+  prev: ContractData,
+  d: ContractData,
+  sinceDate: string,
+): string {
+  const cats: Array<[string, DiffRow[]]> = [
+    ['Success criteria', diffTextList(critTexts(prev), critTexts(d))],
+    ['Scope', diffTextList(scopeTexts(prev), scopeTexts(d))],
+    ['Decisions', diffTextList(decisionTexts(prev), decisionTexts(d))],
+    ['Phases', diffPhaseList(prev.execution.phases, d.execution.phases)],
+  ];
+  const withRows = cats.filter(([, rows]) => rows.length);
+  const total = withRows.reduce((n, [, rows]) => n + rows.length, 0);
+  const groups = withRows
+    .map(
+      ([label, rows]) => `      <div class="diff-group">
+        <h3>${esc(label)}</h3>
+        <ul class="diff-rows">
+${rows
+  .map(
+    r => `          <li class="diff-row diff-${r.status}"><span class="diff-mark" aria-hidden="true">${DIFF_MARK[r.status]}</span><span class="diff-tag sr-only">${r.status}</span><span class="diff-text">${esc(r.text)}</span></li>`,
+  )
+  .join('\n')}
+        </ul>
+      </div>`,
+    )
+    .join('\n');
+  const inner = total
+    ? groups
+    : `      <p class="diff-none">No structural changes since ${esc(sinceDate)}.</p>`;
+  return band(
+    'changes',
+    `${secHead(
+      'changes',
+      `Changes since ${sinceDate}`,
+      'What this revision added, dropped, or edited against the contract it supersedes. Matched by content — an edited item that kept its opening words reads as changed; a reworded one reads as one dropped and one added.',
+      `×${total}`,
+    )}
+${inner}`,
+    { wash: true },
+  );
+}
+
+function generate(
+  data: ContractData,
+  paths: ContractPaths,
+  prev: ContractData | null = null,
+  sinceDate = '',
+): string {
   const d = data;
   const f = deriveFacts(d);
+  const diff = prev ? buildDiff(prev, d, sinceDate) : '';
 
   return `<!doctype html>
 <html lang="en">
@@ -1999,6 +2168,7 @@ ${CSS}
 ${buildRunhead(d, f, paths)}
 ${buildMasthead(d, f)}
     <main>
+${diff}
 ${buildReadiness(d, f, paths)}
 ${buildProblemGoals(d)}
 ${buildScope(d, f)}
@@ -2131,6 +2301,11 @@ function nextLineagePath(
   }
 }
 
+// Predecessor data for the revision diff, populated by the lineage snapshot
+// below (or recovered from an already-archived file after it).
+let prevData: ContractData | null = null;
+let sinceDate = '';
+
 if (existsSync(outputPath)) {
   const existing = readFileSync(outputPath, 'utf8');
   // A Draft being overwritten is the same contract still converging
@@ -2177,6 +2352,38 @@ if (existsSync(outputPath)) {
       );
     }
 
+    // Archive the predecessor's contract-data.json alongside the html/md so the
+    // successor can diff against it. The generator reads NEW data from --input;
+    // the sibling data file next to the OUTPUT is the predecessor's only when
+    // --input is a SEPARATE file (the caller preserved it). When --input IS the
+    // sibling it already holds the new data — there is nothing to preserve, so
+    // skip silently rather than archive new-as-old. Copy, not rename: the
+    // sibling stays put for verify.mjs and the next render.
+    const dataSibling = join(outputDir, 'contract-data.json');
+    const inputIsSibling =
+      values.input !== undefined &&
+      resolve(values.input) === resolve(dataSibling);
+    if (!inputIsSibling && existsSync(dataSibling)) {
+      const archivedDataPath = nextLineagePath(
+        outputDir,
+        'contract-data',
+        existingDate,
+        '.json',
+      );
+      copyFileSync(dataSibling, archivedDataPath);
+      try {
+        prevData = JSON.parse(
+          readFileSync(archivedDataPath, 'utf8'),
+        ) as ContractData;
+        sinceDate = existingDate;
+      } catch {
+        prevData = null;
+      }
+      console.log(
+        `Archived superseded contract data to ${basename(archivedDataPath)}`,
+      );
+    }
+
     if (!data.supersedes) {
       data.supersedes = renamedBase;
     }
@@ -2185,7 +2392,26 @@ if (existsSync(outputPath)) {
   }
 }
 
-const html = generate(data, paths);
+// The diff band triggers off `supersedes` plus a readable archived data file.
+// If this run did not just archive one (a re-render of an already-superseding
+// revision), recover the predecessor from the dated file named by the
+// supersedes date. Absent (legacy contracts, first revision) => no band.
+if (!prevData && data.supersedes) {
+  const superseded = data.supersedes.match(/(\d{4}-\d{2}-\d{2})/);
+  if (superseded) {
+    const candidate = join(outputDir, `contract-data-${superseded[1]}.json`);
+    if (existsSync(candidate)) {
+      try {
+        prevData = JSON.parse(readFileSync(candidate, 'utf8')) as ContractData;
+        sinceDate = superseded[1];
+      } catch {
+        prevData = null;
+      }
+    }
+  }
+}
+
+const html = generate(data, paths, prevData, sinceDate);
 writeFileSync(outputPath, html, 'utf8');
 console.log(`Generated ${outputPath} (${html.length} bytes)`);
 

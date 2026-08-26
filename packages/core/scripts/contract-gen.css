@@ -2014,6 +2014,74 @@ body {
   }
 }
 
+/* Revision diff — "Changes since {date}" band */
+
+.diff-group {
+  margin-top: var(--s4);
+}
+.diff-group h3 {
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-muted, var(--line-strong));
+  margin: 0 0 var(--s2);
+}
+.diff-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+.diff-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  padding: var(--s1) var(--s2);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+}
+.diff-mark {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  width: 1ch;
+  flex: none;
+  text-align: center;
+}
+.diff-text {
+  font-family: var(--font-sans);
+}
+.diff-added {
+  background: var(--go-tint);
+  border-color: var(--go);
+}
+.diff-added .diff-mark {
+  color: var(--go);
+}
+.diff-removed {
+  background: var(--danger-tint);
+  border-color: var(--danger);
+}
+.diff-removed .diff-mark {
+  color: var(--danger);
+}
+.diff-removed .diff-text {
+  text-decoration: line-through;
+}
+.diff-changed {
+  background: var(--caution-tint);
+  border-color: var(--caution);
+}
+.diff-changed .diff-mark {
+  color: var(--caution);
+}
+.diff-none {
+  font-family: var(--font-sans);
+  color: var(--fg-muted, var(--line-strong));
+}
+
 /* ── Print — the contract as a paper document ──────────────── */
 
 @media print {

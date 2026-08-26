@@ -17,7 +17,8 @@
     ],
     "extensions": [
       "./extensions/preflight.ts",
-      "./extensions/engine.ts"
+      "./extensions/engine.ts",
+      "./extensions/review.ts"
     ]
   }
 }

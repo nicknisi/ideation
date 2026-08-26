@@ -1,6 +1,6 @@
 # Harness compatibility — Claude Code and pi
 
-This plugin runs in two harnesses. Four things differ; everything else is shared.
+This plugin runs in two harnesses. Five things differ; everything else is shared.
 
 ## 1. The engine invocation
 
@@ -65,6 +65,17 @@ The ideation interview's intake differs by harness; everything after intake (gat
 | Claude Code | **Classic interview** — unchanged. The mining front door lands in the CC port in a later phase; until then CC intake is the full interview from the first question. |
 
 The mining path is gated on the pi `workflow` tool carrying `ask()` (§ 3): missing or outdated → the skill says so in one line and uses the classic interview, exactly as reject-all does.
+
+## 5. The contract review surface
+
+Phase 3's full-review contract approval differs by harness. Everything else about approval (express finish, the scope-tier question, the "Needs changes" revision loop) is shared.
+
+| Harness | Full-review approval |
+|---------|----------------------|
+| pi | **Annotatable surface.** The `ideation_review` tool (bundled by `extensions/review.ts`) starts a localhost server, serves `contract.html` with the annotation bundle injected, opens the browser, and blocks until the reviewer approves (flips `contract-data.json` to Approved), denies with reasons (written to `feedback-{date}.json`), or dismisses. Dismiss/timeout falls back to the terminal question. |
+| Claude Code | **Terminal approval** — the `AskUserQuestion` in the ideation skill's Phase 3 step 7, unchanged. |
+
+This divergence is **permanent**, unlike the Phase 3/5 intake lag: the browser artifact is the review surface in pi, and CC keeps the terminal question. `ideation_review` is bundled (not a § 3 third-party prerequisite), so `extensions/preflight.ts` does not probe it; when the extension is absent or fails to load, the skill falls through to the terminal `AskUserQuestion` exactly as CC does. The tool registers a single tool name, so it can never trip pi's single-owner-per-tool-name rule (§ 3).
 
 ## What does NOT differ
 
