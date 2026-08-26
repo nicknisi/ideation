@@ -52,8 +52,14 @@ const REVIEW_STATUSES = [
   'not-run', // never reached review (strict scout HOLD, build failure, skip)
 ] as const;
 
+/** How the pi mining front door ended. Sourced from the sibling
+    contract-data.json's intake.miningOutcome; absent on legacy contracts that
+    predate the mining intake. Closed enum, mirroring the two above. */
+const MINING_OUTCOMES = ['picked', 'rejected-all', 'dismissed'] as const;
+
 type PhaseOutcome = (typeof PHASE_RESULTS)[number];
 type ReviewStatus = (typeof REVIEW_STATUSES)[number];
+type MiningOutcome = (typeof MINING_OUTCOMES)[number];
 
 /** One phase's outcome, mirroring the engine's results[] entry verbatim. */
 interface PhaseResult {
@@ -94,6 +100,15 @@ interface RunRecord {
   verify: { line: string; exitCode: number } | null;
   /** implementation-notes paths relative to the project dir, [] when none */
   notesFiles: string[];
+  /** user-facing questions asked during intake (intake.questionsAsked in the
+      sibling contract-data.json). Optional and additive: legacy contracts that
+      predate the mining intake carry no intake block, so this is omitted and
+      nothing renders. Note the naming asymmetry — the contract stores
+      questionsAsked, the run record exposes questionCount. */
+  questionCount?: number;
+  /** how the mining front door ended (intake.miningOutcome in the sibling
+      contract-data.json). Optional and additive; omitted on legacy contracts. */
+  miningOutcome?: MiningOutcome;
 }
 
 /** Which bucket a given result belongs in. The engine's summarize() derives
@@ -203,6 +218,26 @@ function validateRecord(data: unknown): string[] {
     errors.push(
       `strict: expected a boolean — true when the run dispatched with strict semantics — got ${typeName(data.strict)}`,
     );
+  }
+
+  // --- intake stats (optional, additive) ---
+  // Sourced from the sibling contract-data.json at generation time; a record
+  // may also carry them directly. Absent is always legal (legacy contracts);
+  // present must be well-typed, and miningOutcome's enum is closed the same way
+  // result/reviewStatus are — a junk value must never reach the flight strip.
+  if (data.questionCount !== undefined) {
+    if (
+      typeof data.questionCount !== 'number' ||
+      !Number.isInteger(data.questionCount) ||
+      data.questionCount < 0
+    ) {
+      errors.push(
+        `questionCount: expected a non-negative integer — user-facing questions asked at intake — got ${typeName(data.questionCount)}`,
+      );
+    }
+  }
+  if (data.miningOutcome !== undefined) {
+    requireEnum('miningOutcome', data.miningOutcome, MINING_OUTCOMES);
   }
 
   // --- notesFiles ---
@@ -387,6 +422,43 @@ function validateRecord(data: unknown): string[] {
   return errors;
 }
 
+/** Read intake stats from the sibling contract-data.json (same directory as
+    the run record). The mining intake writes { intake: { questionsAsked,
+    miningOutcome } } there at contract time; this maps questionsAsked →
+    questionCount and closes miningOutcome's enum. A missing file, missing
+    intake block, or junk value yields no field — legacy contracts predate the
+    intake block, and the report must never render `undefined`. */
+function readIntakeStats(inputPath: string): {
+  questionCount?: number;
+  miningOutcome?: MiningOutcome;
+} {
+  const sibling = join(dirname(resolve(inputPath)), 'contract-data.json');
+  if (!existsSync(sibling)) return {};
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(sibling, 'utf8'));
+  } catch {
+    return {};
+  }
+  if (!isObject(parsed) || !isObject(parsed.intake)) return {};
+  const intake = parsed.intake;
+  const out: { questionCount?: number; miningOutcome?: MiningOutcome } = {};
+  if (
+    typeof intake.questionsAsked === 'number' &&
+    Number.isInteger(intake.questionsAsked) &&
+    intake.questionsAsked >= 0
+  ) {
+    out.questionCount = intake.questionsAsked;
+  }
+  if (
+    typeof intake.miningOutcome === 'string' &&
+    (MINING_OUTCOMES as readonly string[]).includes(intake.miningOutcome)
+  ) {
+    out.miningOutcome = intake.miningOutcome as MiningOutcome;
+  }
+  return out;
+}
+
 // --- Helpers -------------------------------------------------------------
 
 /** Escapes &, <, >, " — not '. Every attribute this file emits is
@@ -505,6 +577,10 @@ interface Facts {
       dressed up as a measurement. */
   verifyCounts: VerifyCounts | null;
   verifyState: 'ok' | 'fail' | 'not-run';
+  /** Intake stats, present only when the sibling contract-data.json carried an
+      intake block (mining intake). Omitted for legacy contracts. */
+  questionCount?: number;
+  miningOutcome?: MiningOutcome;
 }
 
 function deriveFacts(d: RunRecord): Facts {
@@ -550,6 +626,8 @@ function deriveFacts(d: RunRecord): Facts {
         }
       : null,
     verifyState: !d.verify ? 'not-run' : d.verify.exitCode === 0 ? 'ok' : 'fail',
+    questionCount: d.questionCount,
+    miningOutcome: d.miningOutcome,
   };
 }
 
@@ -708,6 +786,34 @@ function buildFlightStrip(d: RunRecord, f: Facts): string {
         : `across ${f.phases.filter(p => p.reviewCycles > 0).length} ${plural(f.phases.filter(p => p.reviewCycles > 0).length, 'phase')} · 3 is the cap`,
     ),
   );
+
+  // Intake stats, rendered only when the sibling contract-data.json carried
+  // them (mining intake). Omitted entirely for legacy contracts — same
+  // never-render-`undefined` rule as the verify counts below.
+  if (typeof f.questionCount === 'number') {
+    cells.push(
+      cell(
+        'intake questions',
+        `<span class="num">${pad2(f.questionCount)}</span>`,
+        f.questionCount === 1
+          ? 'user-facing question asked at intake'
+          : 'user-facing questions asked at intake',
+      ),
+    );
+  }
+  if (f.miningOutcome) {
+    cells.push(
+      cell(
+        'mining',
+        `<span class="num">${esc(f.miningOutcome)}</span>`,
+        f.miningOutcome === 'picked'
+          ? 'the human picked a mined option'
+          : f.miningOutcome === 'rejected-all'
+            ? 'reject-all — fell back to the classic interview'
+            : 'the mining gate was dismissed',
+      ),
+    );
+  }
 
   // Display-only, and all-or-nothing: a VERIFY line the regex does not
   // recognise contributes its exit code and nothing else. The line itself is
@@ -1187,7 +1293,10 @@ if (violations.length) {
   process.exit(1);
 }
 
-const record = parsed as RunRecord;
+// Merge the intake stats from the sibling contract-data.json. They are sourced
+// there (not in the run record itself), so this happens after validation — a
+// legacy contract with no intake block simply contributes nothing.
+const record: RunRecord = { ...(parsed as RunRecord), ...readIntakeStats(values.input) };
 
 // Name the record the way the reader can act on it: repo-relative when it sits
 // inside the working directory, as given otherwise. An absolute path from the

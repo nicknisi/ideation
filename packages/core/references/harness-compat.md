@@ -1,6 +1,6 @@
 # Harness compatibility — Claude Code and pi
 
-This plugin runs in two harnesses. Three things differ; everything else is shared.
+This plugin runs in two harnesses. Four things differ; everything else is shared.
 
 ## 1. The engine invocation
 
@@ -39,20 +39,32 @@ The skills dispatch agents by name. Claude Code plugin-scopes agents as `<plugin
 
 ## 3. Pi tool prerequisites
 
-The plugin calls two third-party tools it deliberately does **not** bundle — install each once at the user level (`pi install npm:@nicknisi/pi-subagents`, `pi install npm:@juicesharp/rpiv-ask-user-question`):
+The plugin calls three third-party tools it deliberately does **not** bundle — install each once at the user level (`pi install npm:@nicknisi/pi-subagents`, `pi install npm:@juicesharp/rpiv-ask-user-question`, `pi install npm:@nicknisi/pi-workflows`):
 
 | Extension | Provides | Used by | Without it |
 |-----------|----------|---------|------------|
 | `npm:@nicknisi/pi-subagents` | the `dispatch` + `fleet` tools (first-party in-process children) | brainstorm (research), ideation (plan critics), execute-spec (scout, reviewer, wave dispatch), chart (research tickets) | every agent dispatch fails |
 | `npm:@juicesharp/rpiv-ask-user-question` | the `ask_user_question` tool | ideation (every gate, routing, failure-gate), execute-spec (HOLD/abort questions) | every interactive decision point fails — if no ask-user-question tool is available, ask in plain text with lettered options and state your recommendation — never skip the question |
+| `npm:@nicknisi/pi-workflows` | the `workflow` tool and the `agent()` / `parallel()` / `ask()` workflow globals | ideation (the mining front door, § 4) | the mining front door can't run — intake falls back to the classic interview. A version predating `ask()` (≤ 0.2.2) has the tool but no human gate; `/ideation-doctor` names it as installed-but-outdated |
 
-The engine needs no external tool in pi: `extensions/engine.ts` is bundled with the plugin and drives the same `execute-contract.mjs` CC runs.
+The engine needs no external tool in pi: `extensions/engine.ts` is bundled with the plugin and drives the same `execute-contract.mjs` CC runs. `extensions/preflight.ts` probes all three tools above at startup and `/ideation-doctor` — for `workflow` it also checks the installed version carries `ask()`.
 
 **Why they are not bundled** (verified pi 0.83.0): pi allows one extension *file path* per tool name. A second path registering the same name is a fatal load error at startup (`Failed to load extension …: Tool "subagent" conflicts with …` — the process exits), and a copy bundled under this plugin's `node_modules/` is by definition a different path from a user-level install of the same tool. Bundling therefore crashes pi for every user who already installs these tools themselves. Unbundled, pi's package-identity dedup (one `npm:` name → one path under `~/.pi/agent/npm/`) guarantees a single copy, and your installed versions are the ones the plugin's skills call. Duplicate *skills* are milder — a `[Extension issues]` warning, first wins — but the same single-owner setup avoids those too.
 
 Versions ≤ 0.23.0 bundled these three extensions. If pi fails to start with tool-conflict errors after an upgrade, update the plugin (`pi update git:github.com/nicknisi/ideation`) so the old bundled manifest is gone, then install the three tools as above.
 
 **Claude Code** needs none of these — it has `Agent`, `Workflow`, and `AskUserQuestion` as built-in tools. The `pi` manifest is ignored.
+
+## 4. The intake front door
+
+The ideation interview's intake differs by harness; everything after intake (gates, contract, specs, execution) is shared.
+
+| Harness | Intake |
+|---------|--------|
+| pi | **Mining-first.** Intake runs `workflows/mining.js` through the `workflow` tool (`action: run`, inline `script`): scout → candidates + grail → advisor → `ask()` gate. A picked option seeds Problem Clarity + Scope evidence and the declared-ignorance list becomes the interview queue; reject-all/dismiss falls back to the classic interview. See `references/interview-engine.md` § Phase 1. |
+| Claude Code | **Classic interview** — unchanged. The mining front door lands in the CC port in a later phase; until then CC intake is the full interview from the first question. |
+
+The mining path is gated on the pi `workflow` tool carrying `ask()` (§ 3): missing or outdated → the skill says so in one line and uses the classic interview, exactly as reject-all does.
 
 ## What does NOT differ
 

@@ -8,6 +8,17 @@ Accept whatever the user provides — scattered thoughts, voice transcripts, bul
 
 Acknowledge receipt. State what looks strong and what looks weak. Take a position. Then begin the interview.
 
+### Mine first (pi front door)
+
+**Harness-gated: this path runs in the pi port only.** In Claude Code the intake is the classic full interview from the first question, unchanged — the CC mining front door lands in a later phase (see `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md` § 4). Everything below applies to a **fresh** pi intake; a resumed project skips mining and goes straight to the resume path below, because its gate state and open questions already exist.
+
+Before interviewing, mine the model so the interview only asks what the code cannot answer. Requires the pi `workflow` tool carrying `ask()` (see `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md` § 3). If that tool is missing or too old, or mining throws mid-run, say so in one line and fall back to the classic interview with `miningOutcome: dismissed` — never block intake on it.
+
+1. **Run mining.** Read the pi port's mining workflow script `workflows/mining.js` (resolved under `${CLAUDE_PLUGIN_ROOT}` in the pi port) and run it through the `workflow` tool with `action: run` and the file as the inline `script`, args `{ problem, scope, constraints }` derived from the brain dump. It returns `{ decided, choice?, options, ignorance, miningOutcome }`.
+2. **`decided: true` (picked).** Map `choice` (title + gist) and the advisor's `why` onto **Problem Clarity** and **Scope Boundaries** evidence, citing the mined option as the artifact. Then interview **only** the `ignorance` questions, routing each by its `gate` tag through the question loop below exactly as a written open question would route. Mining shrinks the interview but never to zero: close with **one consolidated confirmation** question covering the advisor-derived goals and success criteria, because the evidence gates need artifacts the user accepts and Success Criteria can never be mined outright. This one-question floor holds even when `ignorance` is empty.
+3. **`decided: false` (reject-all or dismissed).** Fall back to the classic intake below, unchanged, and record the `miningOutcome` (`rejected-all` or `dismissed`) either way — G2's acceptance rate needs the denominator.
+4. **Count every user-facing question** asked during intake (each `AskUserQuestion` prompt, mined-path or classic), tracked internally alongside gate state like the scoreboard. The engine writes nothing; the calling skill's Phase 3 persists `{ questionsAsked, miningOutcome }` into `contract-data.json`.
+
 ### Resume an existing project
 
 Resume runs before the sweep, because it decides which gates get interviewed at all, and a resumed sweep is scoped to the open questions rather than to the whole brain dump.
