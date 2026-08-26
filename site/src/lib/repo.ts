@@ -13,20 +13,25 @@ import { dirname, join, resolve } from 'node:path';
 export function repoRoot(): string {
   let dir = resolve(process.cwd());
   for (let up = 0; up < 8; up++) {
-    if (existsSync(join(dir, '.claude-plugin', 'plugin.json'))) return dir;
+    if (existsSync(join(dir, 'packages', 'cc', '.claude-plugin', 'plugin.json'))) return dir;
     const parent = dirname(dir);
     if (parent === dir) break;
     dir = parent;
   }
   throw new Error(
     `could not find the ideation repo root above ${process.cwd()} ` +
-      '(looked for .claude-plugin/plugin.json). The guide reads skills/ and ' +
-      'references/ from there at build time.',
+      '(looked for packages/cc/.claude-plugin/plugin.json). The guide reads ' +
+      'skills/ and references/ from packages/core/ at build time.',
   );
 }
 
-/** A path inside the plugin repo, e.g. repoPath('skills'). */
-export const repoPath = (...parts: string[]): string => join(repoRoot(), ...parts);
+/** A path inside the shared core package, e.g. corePath('skills'). */
+export const corePath = (...parts: string[]): string =>
+  join(repoRoot(), 'packages', 'core', ...parts);
+
+/** A path inside the CC port package, e.g. ccPath('.claude-plugin', 'plugin.json'). */
+export const ccPath = (...parts: string[]): string =>
+  join(repoRoot(), 'packages', 'cc', ...parts);
 
 /**
  * The plugin's released version, from the manifest release-please bumps.
@@ -38,7 +43,7 @@ export const repoPath = (...parts: string[]): string => join(repoRoot(), ...part
  * build.
  */
 export function readVersion(): string {
-  const manifest = JSON.parse(readFileSync(repoPath('.claude-plugin', 'plugin.json'), 'utf8'));
+  const manifest = JSON.parse(readFileSync(ccPath('.claude-plugin', 'plugin.json'), 'utf8'));
   if (typeof manifest.version !== 'string') {
     throw new Error('.claude-plugin/plugin.json has no string "version"');
   }

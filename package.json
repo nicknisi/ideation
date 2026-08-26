@@ -21,25 +21,9 @@
     "interactive"
   ],
   "packageManager": "pnpm@11.10.0",
-  "dependencies": {
-    "@nicknisi/pi-shared": "^0.2.0"
-  },
-  "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "*",
-    "typebox": "*"
-  },
-  "pi": {
-    "skills": [
-      "./skills"
-    ],
-    "extensions": [
-      "extensions/preflight.ts",
-      "extensions/engine.ts"
-    ]
-  },
   "scripts": {
-    "test": "node scripts/lint-prompts.mjs && node --test 'workflows/*.test.mjs' 'scripts/*.test.mjs' 'test-fixtures/**/*.test.mjs'",
-    "lint:prompts": "node scripts/lint-prompts.mjs",
+    "test": "node packages/core/scripts/lint-prompts.mjs && node --test 'packages/core/workflows/*.test.mjs' 'packages/core/scripts/*.test.mjs' 'packages/core/test-fixtures/**/*.test.mjs'",
+    "lint:prompts": "node packages/core/scripts/lint-prompts.mjs",
     "dev": "pnpm -C site dev",
     "build": "pnpm -C site build",
     "preview": "pnpm -C site preview",

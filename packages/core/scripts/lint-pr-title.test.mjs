@@ -16,7 +16,7 @@ import { describe, it } from 'node:test';
 
 import { allowedTypes, lintPrTitle } from './lint-pr-title.mjs';
 
-const ROOT = join(dirname(new URL(import.meta.url).pathname), '..');
+const ROOT = join(dirname(new URL(import.meta.url).pathname), '..', '..', '..');
 const TYPES = allowedTypes();
 
 describe('lintPrTitle — accepts', () => {

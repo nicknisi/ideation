@@ -1,0 +1,7 @@
+{
+  "name": "@ideation/cc",
+  "version": "0.26.1",
+  "private": true,
+  "description": "Claude Code port of ideation: the .claude-plugin manifest plus plugin-root symlinks into core.",
+  "license": "MIT"
+}

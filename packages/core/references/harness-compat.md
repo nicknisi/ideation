@@ -58,5 +58,5 @@ Versions ≤ 0.23.0 bundled these three extensions. If pi fails to start with to
 
 - `${CLAUDE_PLUGIN_ROOT}` path resolution — resolved in Nick's setup by the user-level `claude-plugin-root.ts` pi extension (sets the env var, rewrites the token in tool calls); not bundled with the plugin. Without it: resolve `${CLAUDE_PLUGIN_ROOT}` relative to the skill's own directory (two levels up from `skills/{name}/`); never read the environment variable, which may be unset or point at a different package. Skills write `${CLAUDE_PLUGIN_ROOT}/…` as in CC.
 - Skill frontmatter (`name`, `description`, `allowed-tools`, `disable-model-invocation`, `argument-hint`) — parsed identically by both harnesses. Unknown fields are ignored.
-- The `pi` manifest in `package.json` — CC ignores it; pi uses it to discover `skills/` and `extensions/`.
+- The `pi` manifest in `packages/pi/package.json` — CC ignores it; pi uses it to discover `skills/` and `extensions/`.
 - All script paths (`scripts/contract-gen.ts`, `scripts/verify.mjs`, `workflows/*.mjs`) — identical, run via `node` in both.

@@ -16,9 +16,9 @@ import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createSubagentRuntime } from "@nicknisi/pi-shared";
 import { Type } from "typebox";
-import { runContractEngine } from "../workflows/engine-host.mjs";
+import { runContractEngine } from "../../core/workflows/engine-host.mjs";
 
-const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../core");
 
 const Phase = Type.Object({
 	title: Type.String(),

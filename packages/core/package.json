@@ -1,0 +1,7 @@
+{
+  "name": "@ideation/core",
+  "version": "0.26.1",
+  "private": true,
+  "description": "Shared ideation core: skills, agents, references, scripts, workflows, and test fixtures.",
+  "license": "MIT"
+}

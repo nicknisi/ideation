@@ -14,9 +14,9 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from 'yaml';
-import { repoPath } from './repo';
+import { corePath } from './repo';
 
-const SKILLS_DIR = repoPath('skills');
+const SKILLS_DIR = corePath('skills');
 
 /** Tools that can put bytes on disk. Bash belongs here: `echo > file` writes. */
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit', 'Bash']);

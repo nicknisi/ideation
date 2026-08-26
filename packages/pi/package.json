@@ -1,0 +1,23 @@
+{
+  "name": "@ideation/pi",
+  "version": "0.26.1",
+  "private": true,
+  "description": "pi port of ideation: the pi manifest and engine extensions.",
+  "license": "MIT",
+  "dependencies": {
+    "@nicknisi/pi-shared": "^0.2.0"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "pi": {
+    "skills": [
+      "./skills"
+    ],
+    "extensions": [
+      "./extensions/preflight.ts",
+      "./extensions/engine.ts"
+    ]
+  }
+}

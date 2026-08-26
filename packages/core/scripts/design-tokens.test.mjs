@@ -23,13 +23,18 @@ import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SELF = fileURLToPath(import.meta.url);
-const repoRoot = resolve(SELF, '..', '..');
+const repoRoot = resolve(SELF, '..', '..', '..', '..');
+const coreRoot = resolve(SELF, '..', '..');
 
 /** The renounced world's signature values, built without the '#' so this file
     does not trip the census it enforces. A coincidence is a smell — rename the
     literal, don't exempt it. */
 const RENOUNCED = ['1a1a2e', '16213e', 'e94560', '0f3460'].map((h) => `#${h}`);
-const ROOTS = ['skills', 'scripts', 'README.md'];
+const ROOTS = [
+  ['skills', coreRoot],
+  ['scripts', coreRoot],
+  ['README.md', repoRoot],
+];
 
 function* walk(path) {
   if (statSync(path).isFile()) {
@@ -45,8 +50,8 @@ function* walk(path) {
 describe('renounced command-deck palette', () => {
   it('appears nowhere under skills/, scripts/, or README.md', () => {
     const offenders = [];
-    for (const root of ROOTS) {
-      for (const file of walk(join(repoRoot, root))) {
+    for (const [root, base] of ROOTS) {
+      for (const file of walk(join(base, root))) {
         // Self-exemption: this file contains the literals. Compare resolved
         // paths, not substrings, so a rename can't silently re-include it.
         if (resolve(file) === resolve(SELF)) continue;

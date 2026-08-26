@@ -26,7 +26,7 @@ For efforts too big for one agent session and wrapped in fog — the way from he
 
 **Plan, don't do** is the default — chart produces decisions, not deliverables. When the destination is a build, it hands off to `/ideation:ideation` with the route walked as the intake evidence (destination, route/decisions, rejected alternatives, out-of-scope), so ideation's interview starts at the open questions. Already can see the route? Skip to ideation. Still weighing whether to build at all? Use brainstorm.
 
-Full behavior lives in [skills/chart/SKILL.md](skills/chart/SKILL.md).
+Full behavior lives in [packages/core/skills/chart/SKILL.md](packages/core/skills/chart/SKILL.md).
 
 ### brainstorm
 
@@ -40,7 +40,7 @@ Pressure-test whether an idea is worth building at all — "should I do X," "whi
 [the idea or decision you're weighing]
 ```
 
-Full behavior lives in [skills/brainstorm/SKILL.md](skills/brainstorm/SKILL.md). Already decided to build? Skip straight to ideation. Too big to see the route? Start with chart.
+Full behavior lives in [packages/core/skills/brainstorm/SKILL.md](packages/core/skills/brainstorm/SKILL.md). Already decided to build? Skip straight to ideation. Too big to see the route? Start with chart.
 
 ### ideation
 
@@ -124,7 +124,7 @@ Shared (`references/`):
 
 Skill-specific:
 
-- `html-guide.md` - components and constraints for ephemeral comparison/visualization artifacts (`contract.html` is rendered only by `scripts/contract-gen.ts`)
+- `html-guide.md` - components and constraints for ephemeral comparison/visualization artifacts (`contract.html` is rendered only by `packages/core/scripts/contract-gen.ts`)
 - `prd-template.md` - PRD template
 - `spec-template.md` - Implementation spec template (includes feedback loops and failure modes)
 
@@ -284,7 +284,7 @@ search too...
 
 **Prefer to watch it happen?** The [ideation site](https://ideation.engineering/) walks one fictional feature — a bookmark garden — through the whole loop as an animated, self-contained page: the interview scoreboard, the plan critics, the routing fork, execution waves, and the learning the next interview inherits. After cloning, `cd site && pnpm dev` serves both pages at `localhost:4321`. The command reference lives at [ideation.engineering/guide](https://ideation.engineering/guide/).
 
-**Prefer to read the artifacts?** [`test-fixtures/orchestration/`](test-fixtures/orchestration/) is a full synthetic contract plus specs you can read without running anything — the dependency graph is the point — and [`skills/ideation/examples/`](skills/ideation/examples/) holds a worked contract, PRD, and spec. For a real run, unedited: [`docs/ideation/ux-dejank/`](docs/ideation/ux-dejank/) is the archived dogfood project that de-janked this plugin's own UX — contract, specs, gate evidence, and implementation notes exactly as the run produced them, reds and all (the archive's README explains the reds).
+**Prefer to read the artifacts?** [`packages/core/test-fixtures/orchestration/`](packages/core/test-fixtures/orchestration/) is a full synthetic contract plus specs you can read without running anything — the dependency graph is the point — and [`packages/core/skills/ideation/examples/`](packages/core/skills/ideation/examples/) holds a worked contract, PRD, and spec. For a real run, unedited: [`docs/ideation/ux-dejank/`](docs/ideation/ux-dejank/) is the archived dogfood project that de-janked this plugin's own UX — contract, specs, gate evidence, and implementation notes exactly as the run produced them, reds and all (the archive's README explains the reds).
 
 ## Full Workflow Diagram
 
@@ -441,7 +441,7 @@ Orchestrates full project execution — reads the contract, walks the phase depe
 - Reads `contract-data.json` for phase titles, dependencies, and spec paths (falls back to parsing the contract's Execution Plan for older projects)
 - **Git skip pre-pass** — commits referencing a phase's slug-qualified spec path mark it complete, so re-running the command resumes where it left off, even across sessions
 - Computes execution waves — groups of phases whose blockers are all satisfied; phases declaring overlapping `files` are serialized within a wave
-- Runs each phase as **five sibling agent stages** (scout → build → review ⇄ fix → commit), each a fresh-context agent — a workflow subagent can't spawn subagents, so the scout and reviewer are siblings of the builder, not its children (see [`workflows/README.md`](workflows/README.md))
+- Runs each phase as **five sibling agent stages** (scout → build → review ⇄ fix → commit), each a fresh-context agent — a workflow subagent can't spawn subagents, so the scout and reviewer are siblings of the builder, not its children (see [`packages/core/workflows/README.md`](packages/core/workflows/README.md))
 - Independent phases within a wave run in parallel; high-risk phases build and fix at elevated effort, and review always runs at high effort
 - **Full auto** — continues without pausing on success; a phase whose spec the repo already satisfies returns **NO-OP** (done, not failed — it never re-dispatches)
 - **Honest review reporting** — every result carries a `reviewStatus`; a validation-only commit (reviewer unavailable, non-strict) leads the report with `WARNING — UNREVIEWED CODE COMMITTED` instead of a bare PASS, and strict runs fail closed instead
@@ -449,7 +449,7 @@ Orchestrates full project execution — reads the contract, walks the phase depe
 - Each phase commits independently, with the slug-qualified spec path verbatim in the commit body — that string is what the resume pre-pass and `scripts/verify.mjs` grep for
 - After the run, `scripts/verify.mjs` executes the contract's acceptance checks and its `VERIFY` line is quoted in the completion report
 
-> _The wave planning and parallel dispatch run on a deterministic [dynamic Workflow](https://claude.com/blog/introducing-dynamic-workflows-in-claude-code) engine in [`workflows/`](workflows/README.md) — see its README for the `args` contract and return shape._
+> _The wave planning and parallel dispatch run on a deterministic [dynamic Workflow](https://claude.com/blog/introducing-dynamic-workflows-in-claude-code) engine in [`packages/core/workflows/`](packages/core/workflows/README.md) — see its README for the `args` contract and return shape._
 
 **Example execution:**
 
@@ -501,7 +501,7 @@ Execution is layered — three roles, one engine underneath:
 
 | Role        | What                                                                                                                                                                              | Reach for it when                                  |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| **Engine**  | `/ideation:autopilot` — drives the deterministic [Workflow](workflows/README.md) that plans dependency waves, dispatches phases in parallel, and returns schema-validated results | You want to run the project and watch it           |
+| **Engine**  | `/ideation:autopilot` — drives the deterministic [Workflow](packages/core/workflows/README.md) that plans dependency waves, dispatches phases in parallel, and returns schema-validated results | You want to run the project and watch it           |
 | **Wrapper** | A `/goal` from `get-goal-prompt` — a durability layer that _drives_ autopilot across hours/sessions and re-runs failed phases each turn                                                    | You want to start it and walk away (unattended)    |
 | **Unit**    | `/ideation:execute-spec` — executes one phase (scout → build → verify-review-fix → commit)                                                                                        | You want fine-grained, one-phase-at-a-time control |
 
@@ -553,13 +553,13 @@ pi install npm:@juicesharp/rpiv-ask-user-question
 pi install git:github.com/nicknisi/ideation
 ```
 
-The two tools the plugin calls — [`@nicknisi/pi-subagents`](https://github.com/nicknisi/pi-extensions) (the `dispatch` and `fleet` tools — first-party, in-process children) and [`@juicesharp/rpiv-ask-user-question`](https://github.com/juicesharp/rpiv-ask-user-question) (the `ask_user_question` tool) — are deliberately **not** bundled. Pi allows one owner per tool name, so a bundled copy fatally conflicts with the same tool installed at the user level; installing them yourself makes your copies the only copies (pi dedupes `npm:` installs by name) and the plugin composes with whatever versions you already run. The engine needs no external tool: the plugin bundles `extensions/engine.ts`, which runs the contract engine on first-party in-process spawns. Details in [`references/harness-compat.md` § 3](references/harness-compat.md).
+The two tools the plugin calls — [`@nicknisi/pi-subagents`](https://github.com/nicknisi/pi-extensions) (the `dispatch` and `fleet` tools — first-party, in-process children) and [`@juicesharp/rpiv-ask-user-question`](https://github.com/juicesharp/rpiv-ask-user-question) (the `ask_user_question` tool) — are deliberately **not** bundled. Pi allows one owner per tool name, so a bundled copy fatally conflicts with the same tool installed at the user level; installing them yourself makes your copies the only copies (pi dedupes `npm:` installs by name) and the plugin composes with whatever versions you already run. The engine needs no external tool: the plugin bundles `packages/pi/extensions/engine.ts`, which runs the contract engine on first-party in-process spawns. Details in [`packages/core/references/harness-compat.md` § 3](packages/core/references/harness-compat.md).
 
 ## Requirements
 
 Both runtimes are full citizens: **Claude Code** (the tools are built in) and **pi** (via the two user-level tool installs named above). Two caveats for a fresh setup:
 
-- **`${CLAUDE_PLUGIN_ROOT}` resolution.** Skill bodies reference it; in pi it resolves via a user-level `claude-plugin-root` extension — the one piece of Nick's own setup not bundled. The caveat and its fallback (resolve relative to the skill directory) are owned by [`references/harness-compat.md`](references/harness-compat.md#what-does-not-differ).
+- **`${CLAUDE_PLUGIN_ROOT}` resolution.** Skill bodies reference it; in pi it resolves via a user-level `claude-plugin-root` extension — the one piece of Nick's own setup not bundled. The caveat and its fallback (resolve relative to the skill directory) are owned by [`packages/core/references/harness-compat.md`](packages/core/references/harness-compat.md#what-does-not-differ).
 - **A Workflow engine** for `/ideation:autopilot`, `/ideation:express`, and `/ideation:get-goal-prompt`. Without one, the fallback is [Manual Cross-Session Execution](#manual-cross-session-execution): run `/ideation:execute-spec` per phase, in dependency order.
 
 ## Harness support
@@ -568,14 +568,14 @@ The plugin targets **Claude Code** and runs in **pi**. Skills, agents, reference
 scripts are the same files in both; three things carry a translation, and each skill
 names it inline at the point it dispatches. The full matrix — the Workflow tool API,
 agent names, pi extension dependencies, and what does *not* differ — lives in
-[`references/harness-compat.md`](references/harness-compat.md), and the guide page
+[`packages/core/references/harness-compat.md`](packages/core/references/harness-compat.md), and the guide page
 renders it from that file at build time so the two cannot drift.
 
 In pi there is no agent registry: the agent definition travels with the call. A skill
-reads the file in [`agents/`](agents/) and passes its body as the dispatch task's
+reads the file in [`packages/core/agents/`](packages/core/agents/) and passes its body as the dispatch task's
 `systemPrompt`, translating its frontmatter tool list to pi built-in names. The agent
 files themselves are unchanged and keep their Claude Code tool format — the translation
-lives in [`references/harness-compat.md` § 2](references/harness-compat.md). Skill
+lives in [`packages/core/references/harness-compat.md` § 2](packages/core/references/harness-compat.md). Skill
 frontmatter, `${CLAUDE_PLUGIN_ROOT}` paths, and every `node` script are shared verbatim.
 
 Nothing here is conditional at load time. A skill reads the same in both harnesses and
@@ -593,15 +593,15 @@ Current owners:
 
 | Knowledge           | Owner                            | Backed by                                                              |
 | ------------------- | -------------------------------- | ---------------------------------------------------------------------- |
-| Check semantics     | `scripts/verify.mjs`             | `scripts/verify.test.mjs`                                              |
-| Planner             | `workflows/wave-planner.mjs`     | `workflows/wave-planner.test.mjs` (incl. the engine-mirror drift suite) |
-| Gates               | `references/confidence-rubric.md` | `site/src/lib/gates.ts` (build throws unless exactly 5 gates parse)    |
-| Goal string         | `scripts/contract-gen.ts`        | `scripts/contract-gen.test.mjs`                                        |
-| Express semantics   | `skills/ideation/SKILL.md`       | — (prose owner; the express alias carries no section references)       |
-| Gate behavior       | `workflows/README.md`            | `workflows/execute-contract.smoke.test.mjs` covers the engine row-by-row |
-| Harness translation | `references/harness-compat.md`   | — (prose owner; the guide page renders from it at build time)          |
-| Question cadence    | `references/interview-engine.md` | — (prose owner; core rule 1)                                           |
-| Learning capture    | `references/learning-filter.md`  | — (prose owner; both skills point here)                                |
+| Check semantics     | `packages/core/scripts/verify.mjs`             | `packages/core/scripts/verify.test.mjs`                                              |
+| Planner             | `packages/core/workflows/wave-planner.mjs`     | `packages/core/workflows/wave-planner.test.mjs` (incl. the engine-mirror drift suite) |
+| Gates               | `packages/core/references/confidence-rubric.md` | `site/src/lib/gates.ts` (build throws unless exactly 5 gates parse)    |
+| Goal string         | `packages/core/scripts/contract-gen.ts`        | `packages/core/scripts/contract-gen.test.mjs`                                        |
+| Express semantics   | `packages/core/skills/ideation/SKILL.md`       | — (prose owner; the express alias carries no section references)       |
+| Gate behavior       | `packages/core/workflows/README.md`            | `packages/core/workflows/execute-contract.smoke.test.mjs` covers the engine row-by-row |
+| Harness translation | `packages/core/references/harness-compat.md`   | — (prose owner; the guide page renders from it at build time)          |
+| Question cadence    | `packages/core/references/interview-engine.md` | — (prose owner; core rule 1)                                           |
+| Learning capture    | `packages/core/references/learning-filter.md`  | — (prose owner; both skills point here)                                |
 
 When you add knowledge, add it to its owner. When you catch yourself restating a rule in a
 second file, that's the signal one of the two copies is in the wrong place.
@@ -646,7 +646,7 @@ merging — release-please groups entries by commit type, which is not how a
 stranger reads a changelog. (0.21.0 shipped raw and stayed the worst section
 in the file until it was curated by hand.)
 
-The version that matters lives in **`.claude-plugin/plugin.json`** — Claude Code
+The version that matters lives in **`packages/cc/.claude-plugin/plugin.json`** — Claude Code
 resolves a plugin's version from that file first, and it is what decides whether
 an installed copy sees an update. release-please bumps it as part of the release
 PR, so it is never edited by hand. `marketplace.json` deliberately carries **no**

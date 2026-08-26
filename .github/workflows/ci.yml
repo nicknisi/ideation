@@ -36,7 +36,7 @@ jobs:
         run: node --run test
 
       - name: Render orchestration fixture (contract-gen smoke test)
-        run: node scripts/contract-gen.ts --input test-fixtures/orchestration/contract-data.json --output /tmp/ci.html
+        run: node packages/core/scripts/contract-gen.ts --input packages/core/test-fixtures/orchestration/contract-data.json --output /tmp/ci.html
 
       # The orchestration fixture is Approved with every gate ready, so it can
       # never carry an open question — an open question *is* a gate that did not
@@ -44,7 +44,7 @@ jobs:
       # criterion asserts the stale-blockedBy path, so run it through verify
       # rather than just rendering it.
       - name: Verify open-questions fixture (openQuestions renderers)
-        run: node scripts/verify.mjs test-fixtures/open-questions/contract-data.json
+        run: node packages/core/scripts/verify.mjs packages/core/test-fixtures/open-questions/contract-data.json
 
   # The guide derives its command table from skills/*/SKILL.md and its gates
   # from references/confidence-rubric.md, and throws if either disagrees with

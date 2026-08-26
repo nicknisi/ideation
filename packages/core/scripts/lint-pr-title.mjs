@@ -19,7 +19,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-const ROOT = join(dirname(new URL(import.meta.url).pathname), '..');
+const ROOT = join(dirname(new URL(import.meta.url).pathname), '..', '..', '..');
 
 /** Types release-please is configured to recognize, plus the spec's `revert`. */
 export function allowedTypes(configPath = join(ROOT, 'release-please-config.json')) {

@@ -22,7 +22,7 @@
       "extra-files": [
         {
           "type": "json",
-          "path": ".claude-plugin/plugin.json",
+          "path": "packages/cc/.claude-plugin/plugin.json",
           "jsonpath": "$.version"
         },
         {

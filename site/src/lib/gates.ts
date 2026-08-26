@@ -6,9 +6,9 @@
  * of it on a docs page would drift the first time someone sharpened a wording.
  */
 import { readFileSync } from 'node:fs';
-import { repoPath } from './repo';
+import { corePath } from './repo';
 
-const RUBRIC = repoPath('references', 'confidence-rubric.md');
+const RUBRIC = corePath('references', 'confidence-rubric.md');
 
 export interface Gate {
   /** Heading name, e.g. "Problem Clarity". */

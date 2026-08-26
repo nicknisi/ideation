@@ -7,9 +7,9 @@
  * reference says, and fails the build if the tables stop being parseable.
  */
 import { readFileSync } from 'node:fs';
-import { repoPath } from './repo';
+import { corePath } from './repo';
 
-const COMPAT = repoPath('references', 'harness-compat.md');
+const COMPAT = corePath('references', 'harness-compat.md');
 
 /** One row of a compat table, cells in column order. Markdown inline code is kept. */
 export type CompatRow = string[];
