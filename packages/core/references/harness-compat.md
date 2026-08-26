@@ -62,9 +62,9 @@ The ideation interview's intake differs by harness; everything after intake (gat
 | Harness | Intake |
 |---------|--------|
 | pi | **Mining-first.** Intake runs `workflows/mining.js` through the `workflow` tool (`action: run`, inline `script`): scout → candidates + grail → advisor → `ask()` gate. A picked option seeds Problem Clarity + Scope evidence and the declared-ignorance list becomes the interview queue; reject-all/dismiss falls back to the classic interview. See `references/interview-engine.md` § Phase 1. |
-| Claude Code | **Classic interview** — unchanged. The mining front door lands in the CC port in a later phase; until then CC intake is the full interview from the first question. |
+| Claude Code | **Mining-first, conversational.** The Agent tool fans out three candidates + one holy grail in a single message, an advisor ranks them (its JSON validated before the gate), and an `AskUserQuestion` gates the pick — recommendation first, `none — reject all / re-mine` last. A pick seeds Problem Clarity + Scope evidence and the declared-ignorance list becomes the interview queue; reject-all/dismiss falls back to the classic interview. Same prompts as pi (`references/mining-prompts.md`), gated conversationally because Workflow scripts have no verified mid-run user-ask. See `references/interview-engine.md` § Phase 1. |
 
-The mining path is gated on the pi `workflow` tool carrying `ask()` (§ 3): missing or outdated → the skill says so in one line and uses the classic interview, exactly as reject-all does.
+The pi mining path is gated on the `workflow` tool carrying `ask()` (§ 3): missing or outdated → the skill says so in one line and uses the classic interview, exactly as reject-all does. Claude Code needs no such tool (Agent + `AskUserQuestion` are built in), so its only fallback trigger is reject-all, dismiss, or a malformed advisor result.
 
 ## 5. The contract review surface
 

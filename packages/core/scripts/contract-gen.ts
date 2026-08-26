@@ -32,6 +32,10 @@ const CSS = readFileSync(join(__dirname, 'contract-gen.css'), 'utf8');
 interface ScopeItem {
   item: string;
   reason?: string;
+  /** Provenance: `mined` = contributed by the mining front door (renders a
+      model-assumed badge); `user` or absent = no badge. Additive/optional,
+      display-only — verify.mjs never reads it. */
+  source?: 'mined' | 'user';
 }
 
 interface DecisionItem {
@@ -41,6 +45,8 @@ interface DecisionItem {
   rejected?: string;
   /** Why */
   reason: string;
+  /** Provenance: `mined` renders a model-assumed badge; `user`/absent none. */
+  source?: 'mined' | 'user';
 }
 
 interface OpenQuestion {
@@ -107,12 +113,16 @@ interface SuccessCriterion {
       or coerces it to a judgment when it plainly isn't shell. Absent = judgment,
       unstated. */
   check?: Check | string;
+  /** Provenance: `mined` renders a model-assumed badge; `user`/absent none. */
+  source?: 'mined' | 'user';
 }
 
 /** Post-normalization shape — what every builder below actually sees. */
 interface NormalizedCriterion {
   criterion: string;
   check?: Check;
+  /** Carried through normalization (verify.mjs drops it — it is display-only). */
+  source?: 'mined' | 'user';
 }
 
 /** verify.mjs owns the runtime rule; these restate it as type predicates so
@@ -211,6 +221,15 @@ function blockId(text: string): string {
   return `blk-${slug}-${hash}`;
 }
 
+/** The model-assumed provenance badge for an item the mining front door
+    contributed. `mined` renders the badge; `user` or absent renders nothing —
+    the badge measures what the model assumed, not what the user reviewed. */
+function provenanceBadge(source?: 'mined' | 'user'): string {
+  return source === 'mined'
+    ? ' <span class="provenance">model-assumed</span>'
+    : '';
+}
+
 /** The slug half of a block id — the stable key a revision diff matches on.
     Two revisions of the same item keep this even when the hash (and full id)
     changes, so an edit reads as `changed` rather than remove+add. */
@@ -244,7 +263,13 @@ function riskMeta(risk: string): { color: string; label: string } {
 }
 
 function asCriterion(c: string | SuccessCriterion): NormalizedCriterion {
-  return normalizeCriterion(c) as NormalizedCriterion;
+  const normalized = normalizeCriterion(c) as NormalizedCriterion;
+  // verify.mjs owns normalization but deliberately drops `source` (it is a
+  // display-only tag, never a check input). Carry it back onto the normalized
+  // shape so the badge renders on criteria, which buildSuccess iterates as
+  // NormalizedCriterion rather than the raw SuccessCriterion.
+  if (typeof c === 'object' && c.source) normalized.source = c.source;
+  return normalized;
 }
 
 function phaseCommand(phase: Phase, slug: string, index: number): string {
@@ -828,7 +853,7 @@ function buildScope(d: ContractData, f: Facts): string {
 ${items
   .map(it => {
     const bid = blockId(it.item);
-    return `              <li id="${bid}" data-block="${bid}"><strong>${esc(it.item)}</strong>${it.reason ? ` <span class="why">— ${esc(it.reason)}</span>` : ''}</li>`;
+    return `              <li id="${bid}" data-block="${bid}"><strong>${esc(it.item)}</strong>${it.reason ? ` <span class="why">— ${esc(it.reason)}</span>` : ''}${provenanceBadge(it.source)}</li>`;
   })
   .join('\n')}
             </ul>
@@ -1289,7 +1314,7 @@ function buildSuccess(
     const bid = blockId(c.criterion);
     return `          <li class="crit${isJ ? ' crit-judge' : ''}" id="${bid}" data-block="${bid}">
             <span class="crit-n">${pad2(n)}</span>
-            <span class="crit-text">${esc(c.criterion)}${body}</span>
+            <span class="crit-text">${esc(c.criterion)}${provenanceBadge(c.source)}${body}</span>
           </li>`;
   };
 
@@ -1366,7 +1391,7 @@ ${items
     it => {
       const bid = blockId(it.decision);
       return `        <li class="decision" id="${bid}" data-block="${bid}">
-          <h3>${esc(it.decision)}</h3>
+          <h3>${esc(it.decision)}${provenanceBadge(it.source)}</h3>
           <p>${it.rejected ? `<span class="rejected">Instead of</span> ${esc(it.rejected)}. ` : ''}${esc(it.reason)}</p>
         </li>`;
     },
@@ -2233,6 +2258,38 @@ if (malformed.length) {
   console.error(
     `contract-data.json has ${malformed.length} malformed successCriteria entr${malformed.length === 1 ? 'y' : 'ies'}:\n` +
       malformed.map(e => `  ${e}`).join('\n'),
+  );
+  process.exit(1);
+}
+
+// Render-time rejection of an invalid `source` provenance tag. The field is
+// optional everywhere (legacy data without it renders no badge), but a present
+// value must be one of the two enum members — anything else is a data bug the
+// renderer refuses rather than silently dropping.
+const VALID_SOURCE = new Set(['mined', 'user']);
+const badSource = (v: unknown): boolean =>
+  v !== undefined && !(typeof v === 'string' && VALID_SOURCE.has(v));
+const sourceErrors: string[] = [];
+(data.successCriteria ?? []).forEach((c, i) => {
+  if (typeof c === 'object' && c !== null && badSource((c as SuccessCriterion).source))
+    sourceErrors.push(`  successCriteria[${i}].source is not 'mined' | 'user'`);
+});
+for (const [tier, items] of Object.entries(data.scope ?? {})) {
+  if (!Array.isArray(items)) continue;
+  items.forEach((it, i) => {
+    if (typeof it === 'object' && it !== null && badSource((it as ScopeItem).source))
+      sourceErrors.push(`  scope.${tier}[${i}].source is not 'mined' | 'user'`);
+  });
+}
+(data.decisions ?? []).forEach((it, i) => {
+  if (badSource((it as DecisionItem).source))
+    sourceErrors.push(`  decisions[${i}].source is not 'mined' | 'user'`);
+});
+if (sourceErrors.length) {
+  console.error(
+    `contract-data.json has ${sourceErrors.length} invalid provenance tag${sourceErrors.length === 1 ? '' : 's'}:\n` +
+      sourceErrors.join('\n') +
+      "\n  A `source` tag, when present, must be 'mined' or 'user'.",
   );
   process.exit(1);
 }

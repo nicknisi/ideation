@@ -10,14 +10,112 @@ Acknowledge receipt. State what looks strong and what looks weak. Take a positio
 
 ### Mine first (pi front door)
 
-**Harness-gated: this path runs in the pi port only.** In Claude Code the intake is the classic full interview from the first question, unchanged — the CC mining front door lands in a later phase (see `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md` § 4). Everything below applies to a **fresh** pi intake; a resumed project skips mining and goes straight to the resume path below, because its gate state and open questions already exist.
+**Harness-gated by mechanism, not by whether it runs.** Both ports mine first on a fresh intake; they differ only in how the mining agents are dispatched and how the human gates the result (see `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md` § 4). The pi port runs `workflows/mining.js` through the `workflow` tool; Claude Code runs the same flow conversationally via the Agent tool and `AskUserQuestion` (the *Claude Code branch* below). Everything here applies to a **fresh** intake; a resumed project skips mining and goes straight to the resume path below, because its gate state and open questions already exist.
 
-Before interviewing, mine the model so the interview only asks what the code cannot answer. Requires the pi `workflow` tool carrying `ask()` (see `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md` § 3). If that tool is missing or too old, or mining throws mid-run, say so in one line and fall back to the classic interview with `miningOutcome: dismissed` — never block intake on it.
+Before interviewing, mine the model so the interview only asks what the code cannot answer. In pi this requires the `workflow` tool carrying `ask()` (see `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md` § 3); in Claude Code the Agent and `AskUserQuestion` tools are built in. If the required tool is missing or too old, or mining throws mid-run, say so in one line and fall back to the classic interview with `miningOutcome: dismissed` — never block intake on it.
 
-1. **Run mining.** Read the pi port's mining workflow script `workflows/mining.js` (resolved under `${CLAUDE_PLUGIN_ROOT}` in the pi port) and run it through the `workflow` tool with `action: run` and the file as the inline `script`, args `{ problem, scope, constraints }` derived from the brain dump. It returns `{ decided, choice?, options, ignorance, miningOutcome }`.
-2. **`decided: true` (picked).** Map `choice` (title + gist) and the advisor's `why` onto **Problem Clarity** and **Scope Boundaries** evidence, citing the mined option as the artifact. Then interview **only** the `ignorance` questions, routing each by its `gate` tag through the question loop below exactly as a written open question would route. Mining shrinks the interview but never to zero: close with **one consolidated confirmation** question covering the advisor-derived goals and success criteria, because the evidence gates need artifacts the user accepts and Success Criteria can never be mined outright. This one-question floor holds even when `ignorance` is empty.
+1. **Run mining.** *pi:* read the mining workflow script `workflows/mining.js` and the shared prompt reference `${CLAUDE_PLUGIN_ROOT}/references/mining-prompts.md`, then run the script through the `workflow` tool with `action: run`, the file as the inline `script`, and args `{ problem, scope, constraints, promptsDoc }` — `promptsDoc` is the full contents of the prompt reference (the script fails loudly if it is absent) and the rest derive from the brain dump. *Claude Code:* run the *Claude Code branch* below instead. Either way mining returns `{ decided, choice?, options, ignorance, miningOutcome }`.
+2. **`decided: true` (picked).** Map `choice` (title + gist) and the advisor's `why` onto **Problem Clarity** and **Scope Boundaries** evidence, citing the mined option as the artifact. Then interview **only** the `ignorance` questions, routing each by its `gate` tag through the question loop below exactly as a written open question would route. Mining shrinks the interview but never to zero: close with **one consolidated confirmation** question covering the advisor-derived goals and success criteria, because the evidence gates need artifacts the user accepts and Success Criteria can never be mined outright. This one-question floor holds even when `ignorance` is empty. **Tag provenance as you map:** every contract item the mining output contributes — the seeded problem statement, the advisor-derived goals and success criteria, mined scope items, and any `decisions` entry from a rejected option — is written into `contract-data.json` with `source: 'mined'`, so the contract renders it with a model-assumed badge. Anything the user answers in the ignorance interview or edits in the consolidated confirmation is `source: 'user'` (or the tag is dropped): the badge measures what the model assumed and the user did not review, so a user edit flips it, and blanket-tagging the whole mining output would drain the signal.
 3. **`decided: false` (reject-all or dismissed).** Fall back to the classic intake below, unchanged, and record the `miningOutcome` (`rejected-all` or `dismissed`) either way — G2's acceptance rate needs the denominator.
 4. **Count every user-facing question** asked during intake (each `AskUserQuestion` prompt, mined-path or classic), tracked internally alongside gate state like the scoreboard. The engine writes nothing; the calling skill's Phase 3 persists `{ questionsAsked, miningOutcome }` into `contract-data.json`.
+
+#### Claude Code branch
+
+Claude Code's Workflow scripts have no verified mid-run user-ask, so the mining flow runs conversationally with the same prompts and the same gate semantics as the pi port. The prompt bodies below are quoted verbatim from `${CLAUDE_PLUGIN_ROOT}/references/mining-prompts.md`; edit them there, never here (`test-fixtures/mining/prompt-drift.test.mjs` fails a one-sided edit).
+
+1. **Fan out in one message.** Dispatch four read-only `Agent` calls (`subagent_type: "Explore"`, tools per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md` § 2): three candidates (letters A/B/C) and one holy grail, each grounded in the intake sweep's problem-area map. If the sweep did not already cover the area, ground first with the scout prompt.
+
+   Scout prompt:
+
+   ```text
+   <!-- prompt:scout -->
+   Ground the problem area in the ACTUAL code, read-only. Do not propose a
+   solution — map the terrain a solution would live in.
+
+   {{brief}}
+
+   Report: the files, modules, and existing patterns a change here would touch;
+   what already exists that could be extended or reused; and any constraint the
+   code imposes that the brief does not mention. Cite paths. Read only.
+   <!-- /prompt:scout -->
+   ```
+
+   Candidate prompt (interpolate the candidate letter and the scout map):
+
+   ```text
+   <!-- prompt:candidate -->
+   Propose ONE practical candidate solution (candidate {{letter}}) for the
+   problem below, grounded in the codebase map that follows. Practical means
+   buildable now, within our own code, without upstream changes to code we do not
+   own.
+
+   {{brief}}
+
+   --- Codebase map (read-only scout pass) ---
+   {{scout}}
+   --- end map ---
+
+   Return a short paragraph: the approach, what it touches, and why it is a
+   sensible practical option. One candidate only.
+   <!-- /prompt:candidate -->
+   ```
+
+   Holy-grail prompt:
+
+   ```text
+   <!-- prompt:grail -->
+   Propose the HOLY-GRAIL solution for the problem below: the best possible
+   outcome ignoring effort and current constraints. Do not curb yourself to what
+   is buildable now — that is the advisor's job. Name the upstream or external
+   changes it would require if any.
+
+   {{brief}}
+
+   --- Codebase map (read-only scout pass) ---
+   {{scout}}
+   --- end map ---
+
+   Return a short paragraph.
+   <!-- /prompt:grail -->
+   ```
+
+2. **Advise.** Run one advisor agent over the four outputs using the advisor prompt, which carries the option / recommendation / rejection / ignorance schema:
+
+   ```text
+   <!-- prompt:advisor -->
+   You are the mining advisor. Rank the options below for PRACTICALITY and
+   SIMPLICITY, recommend exactly one, and declare your ignorance.
+
+   {{brief}}
+
+   --- Practical candidates ---
+   {{candidates}}
+
+   --- Holy grail ---
+   {{grail}}
+   --- end options ---
+
+   Rules:
+   - Curb any option that needs upstream changes to code we do not own: keep it in
+     the list but mark its gist "UNIMPLEMENTABLE NOW — <why>" and never recommend
+     it.
+   - Recommend the simplest option that actually solves the problem.
+   - Declare your ignorance: list every question you CANNOT answer from the code —
+     goals, priorities, taste, success criteria. Tag each with the evidence gate
+     it blocks (problem | goals | criteria | scope | consistency) and say why the
+     code cannot answer it. An empty list is legal only when the code genuinely
+     answers everything, which is rare.
+
+   Return JSON matching the provided schema:
+   { options: [{id, title, gist}], recommended, why,
+     rejections: [{id, reason}],
+     ignorance: [{question, gate, whyNotAnswerable}] }
+   <!-- /prompt:advisor -->
+   ```
+
+   Claude Code has no runtime schema gate like pi's `agent(..., {schema})`, so validate the advisor's returned JSON against that shape **before** the gate: each option carries `{id, title, gist}`, `recommended` names one of them, and `ignorance` is a list of `{question, gate, whyNotAnswerable}`. Malformed output → fall back to the classic interview with a one-line note and `miningOutcome: dismissed`, exactly as the pi dismiss path does.
+
+3. **Gate with `AskUserQuestion`.** Offer the recommended option first (labelled "(recommended)"), then the remaining options, and `none — reject all / re-mine` always last. A pick routes into step 2 above (ignorance interview, consolidated confirmation, mined-item tagging); reject-all or dismiss falls back to the classic interview. Record `miningOutcome` (`picked` | `rejected-all` | `dismissed`) on every path — the same denominator the pi port keeps.
 
 ### Resume an existing project
 

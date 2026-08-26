@@ -1519,6 +1519,26 @@ body {
   margin-inline-start: var(--s2);
 }
 
+/* Model-assumed provenance badge — the A2 mitigation made visible. Rides next
+   to any criterion / scope item / decision the mining front door contributed
+   (source: 'mined'). Flat hairline, quiet, mirrors the inline-chip family. */
+.provenance {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: var(--s2);
+  font-family: var(--font-mono);
+  font-size: var(--t-kicker);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--muted);
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
 /* ── Decisions ─────────────────────────────────────────────── */
 
 .decisions {

@@ -24,6 +24,15 @@ const SRC = readFileSync(
   // failure is the point. Do not loosen this regex.
 ).replace(/export\s+const\s+meta\s*=/, 'const meta =');
 
+// The refactored script reads its prompt bodies from references/mining-prompts.md,
+// passed in as args.promptsDoc (the skill resolves ${CLAUDE_PLUGIN_ROOT} and
+// hands the contents in; here the test reads the real file). No new injected
+// global — the vm wrapper's stub set is unchanged; the reference rides in on args.
+const PROMPTS = readFileSync(
+  join(__dirname, '..', '..', 'references', 'mining-prompts.md'),
+  'utf8',
+);
+
 /** Compile the script body into a callable async function with injected globals. */
 function loadScript() {
   const wrapped = `(async function(args, agent, parallel, ask, log){\n${SRC}\n})`;
@@ -34,6 +43,7 @@ const ARGS = {
   problem: 'Intake asks too many questions the code could answer',
   scope: 'the pi front door',
   constraints: 'no upstream changes',
+  promptsDoc: PROMPTS,
 };
 
 /** An advisor stub with 3 options + 2 ignorance entries; recommended is 'b',
@@ -173,5 +183,23 @@ describe('mining — gate-outcome enum on every path', () => {
     const { result } = await run({ answer: 'b', advisor: emptyIgnorance });
     assert.equal(result.decided, true);
     assert.deepEqual(result.ignorance, []);
+  });
+});
+
+describe('mining — missing prompt reference', () => {
+  it('throws loudly before any agent dispatch when promptsDoc is absent', async () => {
+    const run_ = loadScript();
+    let dispatched = false;
+    const agent = async () => {
+      dispatched = true;
+      return '';
+    };
+    const parallel = async thunks => Promise.all(thunks.map(t => t()));
+    const ask = async () => undefined;
+    await assert.rejects(
+      run_({ problem: 'x' }, agent, parallel, ask, () => {}),
+      /mining-prompts\.md/,
+    );
+    assert.equal(dispatched, false, 'no agent runs before the reference check');
   });
 });
