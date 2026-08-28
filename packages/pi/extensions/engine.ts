@@ -14,9 +14,20 @@
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { createSubagentRuntime } from "@nicknisi/pi-shared";
 import { Type } from "typebox";
-import { runContractEngine } from "../../core/workflows/engine-host.mjs";
+
+// ponytail: lazy imports — from this repo's tree, @nicknisi/pi-shared resolves to
+// an npm copy whose dist value-imports @earendil-works/pi-coding-agent, which pi's
+// module alias doesn't intercept there: a second 7.2MB pi bundle through jiti,
+// ~4.5s at startup. Pay it on the first engine run instead. Upgrade path: make
+// pi's @earendil-works/* alias apply regardless of importer location.
+async function loadEngineDeps() {
+	const [{ createSubagentRuntime }, { runContractEngine }] = await Promise.all([
+		import("@nicknisi/pi-shared"),
+		import("../../core/workflows/engine-host.mjs"),
+	]);
+	return { createSubagentRuntime, runContractEngine };
+}
 
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../core");
 
@@ -49,6 +60,7 @@ export default function (pi: ExtensionAPI) {
 		}),
 
 		async execute(_toolCallId, params, _signal, onUpdate, _ctx) {
+			const { createSubagentRuntime, runContractEngine } = await loadEngineDeps();
 			const runtime = createSubagentRuntime({ namespace: "ideation-engine" });
 			const summary = await runContractEngine(params, {
 				spawn: opts => runtime.spawn(opts),
