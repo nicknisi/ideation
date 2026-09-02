@@ -34,4 +34,4 @@ jobs:
       - name: Lint the PR title
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
-        run: node scripts/lint-pr-title.mjs
+        run: node packages/core/scripts/lint-pr-title.mjs
