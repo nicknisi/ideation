@@ -48,7 +48,7 @@
     {
       "criterion": "The open-questions section renders in both outputs, and a blockedBy id naming a closed entry does not render as still-waiting.",
       "check": {
-        "cmd": "node scripts/contract-gen.ts --input test-fixtures/open-questions/contract-data.json --output /tmp/oq-fixture.html --md-output /tmp/oq-fixture.md && grep -q 'aria-labelledby=\"open-questions-h\"' /tmp/oq-fixture.html && ! grep -qE '^- .skip-vs-fail-accounting.*already-closed' /tmp/oq-fixture.md",
+        "cmd": "node packages/core/scripts/contract-gen.ts --input packages/core/test-fixtures/open-questions/contract-data.json --output /tmp/oq-fixture.html --md-output /tmp/oq-fixture.md && grep -q 'aria-labelledby=\"open-questions-h\"' /tmp/oq-fixture.html && ! grep -qE '^- .skip-vs-fail-accounting.*already-closed' /tmp/oq-fixture.md",
         "expect": "exits 0"
       }
     }
