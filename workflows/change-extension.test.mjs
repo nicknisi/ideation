@@ -23,6 +23,8 @@ const rawBrief = { schemaVersion: 1, id: 'demo', title: 'Demo', revision: 1, why
 const brief = validateBrief(rawBrief);
 const hash = briefFingerprint(brief);
 
+/** Wait for background work on wall-clock time, not a fixed number of event-loop turns. */
+const until = async (ready, ms = 5000) => { const end = Date.now() + ms; while (!ready() && Date.now() < end) await new Promise(r => setTimeout(r, 5)); };
 // A durable-looking run record the renderer and selection logic accept.
 const makeRun = (state, over = {}) => ({ id: 'r', repoRoot: '__ROOT__', ownerId: 'session', brief, briefHash: hash,
   sequence: 1, updatedAt: Date.now(), state, units: [], evidence: [], usage: { totalTokens: 0 }, ...over });
@@ -152,7 +154,7 @@ test('a failed background worker leaves a persistent visible handoff instead of 
   const h = await harness(t, { runner }); root = h.root;
   await writeFile(join(root, 'b.json'), JSON.stringify(brief));
   await h.commands.ideation.handler('approve b.json', h.ctx);
-  for (let i = 0; i < 100 && !h.messages.length; i++) await new Promise(r => setImmediate(r));
+  await until(() => h.messages.length > 0);
   assert.equal(h.messages.length, 1);
   assert.match(h.messages[0][0].content, /Ideation needs attention/);
   assert.match(h.messages[0][0].content, /outdated Anthropic client/);
@@ -247,7 +249,7 @@ test('starting fresh copies the agreement but cannot reset budgets or discard pr
   assert.equal(old.units[0].attempts, 2);
   h.ctx.ui.confirm = async () => true;
   await h.commands.ideation.handler('approve', h.ctx);
-  for (let i = 0; i < 100 && !starts; i++) await new Promise(r => setImmediate(r));
+  await until(() => starts > 0);
   assert.equal(approvals, 1); assert.equal(starts, 1); assert.equal(stops, 1);
   assert.equal(created.brief.revision, old.brief.revision + 1);
   assert.deepEqual(created.brief.authority, old.brief.authority);
@@ -270,7 +272,7 @@ test('a rejected resume of another run cannot change the active run’s approved
   await mkdir(join(root, '.git/ideation/runs/older'), { recursive: true });
   await writeFile(join(root, '.git/ideation/runs/older/frontdoor.json'), JSON.stringify({ model: 'another/expensive-model', briefPath: join(root, 'b.json') }));
   await h.commands.ideation.handler('approve b.json', h.ctx);
-  for (let i = 0; i < 100 && !models.length; i++) await new Promise(r => setImmediate(r));
+  await until(() => models.length > 0);
   await assert.rejects(h.commands.ideation.handler('resume older', h.ctx), /already active/);
   release(); await completed;
   assert.deepEqual(models, ['provider/model', 'provider/model']);
