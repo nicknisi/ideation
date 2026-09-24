@@ -580,12 +580,22 @@ For manual control, run specs individually:
 ### pi
 
 ```bash
-pi install npm:@nicknisi/pi-subagents
-pi install npm:@juicesharp/rpiv-ask-user-question
 pi install git:github.com/nicknisi/ideation
+pi install npm:@nicknisi/pi-artifacts  # optional: live contract pages
 ```
 
-The two tools the plugin calls — [`@nicknisi/pi-subagents`](https://github.com/nicknisi/pi-extensions) (the `dispatch` and `fleet` tools — first-party, in-process children) and [`@juicesharp/rpiv-ask-user-question`](https://github.com/juicesharp/rpiv-ask-user-question) (the `ask_user_question` tool) — are deliberately **not** bundled. Pi allows one owner per tool name, so a bundled copy fatally conflicts with the same tool installed at the user level; installing them yourself makes your copies the only copies (pi dedupes `npm:` installs by name) and the plugin composes with whatever versions you already run. The engine needs no external tool: the plugin bundles `extensions/engine.ts`, which runs the contract engine on first-party in-process spawns. Details in [`references/harness-compat.md` § 3](references/harness-compat.md).
+That is all the native `/ideation` change workflow needs (Pi 0.87.1 or newer). Without
+[`@nicknisi/pi-artifacts`](https://www.npmjs.com/package/@nicknisi/pi-artifacts) 1.5.0+,
+contracts are saved as local HTML you refresh by hand.
+
+The planning path — interview, critics, contract, autopilot — also calls two tools:
+
+```bash
+pi install npm:@nicknisi/pi-subagents
+pi install npm:@juicesharp/rpiv-ask-user-question
+```
+
+Those two tools — [`@nicknisi/pi-subagents`](https://github.com/nicknisi/pi-extensions) (the `dispatch` and `fleet` tools — first-party, in-process children) and [`@juicesharp/rpiv-ask-user-question`](https://github.com/juicesharp/rpiv-ask-user-question) (the `ask_user_question` tool) — are deliberately **not** bundled. Pi allows one owner per tool name, so a bundled copy fatally conflicts with the same tool installed at the user level; installing them yourself makes your copies the only copies (pi dedupes `npm:` installs by name) and the plugin composes with whatever versions you already run. The engine needs no external tool: the plugin bundles `extensions/engine.ts`, which runs the contract engine on first-party in-process spawns. Details in [`references/harness-compat.md` § 3](references/harness-compat.md).
 
 ## Requirements
 
