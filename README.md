@@ -1,8 +1,8 @@
 # Ideation Plugin
 
-> 🌱 **[ideation.engineering](https://ideation.engineering/)** — the pitch, install, and an illustrated walkthrough of the whole loop.
+> 🌱 **[ideation.engineering](https://ideation.engineering/)** — the two ways in (Pi and Claude Code), install, and a worked walkthrough of each.
 >
-> 📖 **[ideation.engineering/guide](https://ideation.engineering/guide/)** — which command to run for your situation, what each one writes, and the five gates the interview will not skip.
+> 📖 **[ideation.engineering/guide](https://ideation.engineering/guide/)** — which command to run in Pi or Claude Code, what each one writes, what approval means, and the five gates the planning interview will not skip.
 >
 > 📓 **[CHANGELOG.md](CHANGELOG.md)** — what shipped in each release, newest first.
 
@@ -10,8 +10,9 @@ Transform brain dumps into structured implementation artifacts through a convers
 
 ## Pi-native change workflow
 
-The opt-in native path agrees on a **compact change brief**, then creates working
-plans just in time rather than requiring every implementation recipe upfront:
+In Pi, `/ideation` runs the change workflow. It agrees on a **compact change brief**,
+then creates working plans just in time rather than requiring every implementation
+recipe upfront:
 
 ```text
 /ideation
@@ -29,7 +30,8 @@ ideation's paper/graphite-and-cobalt field-guide design, with before/after views
 SVG dependencies, and deliverable-to-verification maps. No file paths to manage,
 raw JSON dumps, or document-sized approval dialogs. With the optional artifacts service ([`@nicknisi/pi-artifacts`](https://www.npmjs.com/package/@nicknisi/pi-artifacts) 1.5.0+), that same page updates live and
 annotations reach the coordinating session; without it, a local HTML snapshot
-remains available. Feedback never grants permission.
+remains available. With 1.6.0+, the live draft page also offers **Approve in Pi**,
+which only brings up the same terminal confirmation. Feedback never grants permission.
 
 Pause/resume/stop operate at explicit boundaries. Ready for review is not accepted,
 merged or deployed; `/ideation accept` records final human judgment against current
@@ -41,7 +43,9 @@ contract and receipt land in `docs/ideation/<change-id>/` for you to commit or n
 See [the native workflow guide](docs/native-workflow.md) and
 [the worked brief](test-fixtures/native-change/brief.json). The old skills and
 Claude Code integration remain supported. This new native front door is Pi-only;
-the brief, renderer, verifier primitives and existing engine are portable.
+the brief, renderer, verifier primitives and existing engine are portable. In Pi, the
+planning path below runs as `/skill:<name>` — `/skill:ideation`, `/skill:chart`,
+`/skill:express`, `/skill:autopilot` and so on.
 
 ## Skills
 
@@ -602,14 +606,15 @@ Those two tools — [`@nicknisi/pi-subagents`](https://github.com/nicknisi/pi-ex
 
 ## Requirements
 
-Both runtimes are full citizens: **Claude Code** (the tools are built in) and **pi** (via the two user-level tool installs named above). Two caveats for a fresh setup:
+Both runtimes are full citizens: **Claude Code** (the tools are built in) and **pi** (the change workflow needs only the plugin; the planning path uses the two user-level tool installs named above). Two caveats for a fresh setup:
 
 - **`${CLAUDE_PLUGIN_ROOT}` resolution.** Skill bodies reference it; in pi it resolves via a user-level `claude-plugin-root` extension — the one piece of Nick's own setup not bundled. The caveat and its fallback (resolve relative to the skill directory) are owned by [`references/harness-compat.md`](references/harness-compat.md#what-does-not-differ).
 - **A Workflow engine** for `/ideation:autopilot`, `/ideation:express`, and `/ideation:get-goal-prompt`. Without one, the fallback is [Manual Cross-Session Execution](#manual-cross-session-execution): run `/ideation:execute-spec` per phase, in dependency order.
 
 ## Harness support
 
-The plugin targets **Claude Code** and runs in **pi**. Skills, agents, references, and
+The plugin targets **Claude Code** and runs in **pi**, where `/ideation` is the change
+workflow and the planning skills run as `/skill:<name>`. Skills, agents, references, and
 scripts are the same files in both; three things carry a translation, and each skill
 names it inline at the point it dispatches. The full matrix — the Workflow tool API,
 agent names, pi extension dependencies, and what does *not* differ — lives in

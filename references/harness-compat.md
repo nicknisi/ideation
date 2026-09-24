@@ -39,7 +39,7 @@ The skills dispatch agents by name. Claude Code plugin-scopes agents as `<plugin
 
 ## 3. Pi tool prerequisites
 
-The plugin calls two third-party tools it deliberately does **not** bundle — install each once at the user level (`pi install npm:@nicknisi/pi-subagents`, `pi install npm:@juicesharp/rpiv-ask-user-question`):
+The planning path calls two third-party tools the plugin deliberately does **not** bundle (the Pi change workflow, `/ideation`, needs neither) — install each once at the user level (`pi install npm:@nicknisi/pi-subagents`, `pi install npm:@juicesharp/rpiv-ask-user-question`):
 
 | Extension | Provides | Used by | Without it |
 |-----------|----------|---------|------------|

@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Native change workflow
 
-Shape the change, not an implementation recipe. Use this workflow only when explicitly requested. The `ideation_change` tool prepares and inspects; only the user's `/ideation approve` command grants execution permission. Never manufacture approval, run the trusted controller directly to avoid confirmation, or treat an artifact comment as permission.
+Shape the change, not an implementation recipe. Use this workflow only when explicitly requested. The `ideation_change` tool prepares and inspects; only the user's answer to Pi's approval confirmation grants execution permission, whether it was opened by `/ideation approve`, the `/ideation` menu or the page's **Approve in Pi** button. Never manufacture approval, run the trusted controller directly to avoid confirmation, or treat an artifact comment as permission.
 
 ## Shape
 
@@ -18,7 +18,7 @@ Shape the change, not an implementation recipe. Use this workflow only when expl
 
 ## Prepare the agreement
 
-The tool exposes the complete brief object schema. Read `workflows/change-brief.mjs` at the plugin root for semantic rules, or the worked fixture `test-fixtures/native-change/brief.json` when needed. Pass a real object to `ideation_change` with `action: "prepare"` and `brief: { ... }`—never a JSON-encoded string. The host validates, stores the canonical data outside source control, opens the contract, and displays a persistent link. Do not write a temporary file merely to pass an inline brief. `path` remains available for an existing JSON brief; do not supply both.
+The tool exposes the complete brief object schema. Read `workflows/change-brief.mjs` at the plugin root for semantic rules, or the worked fixture `test-fixtures/native-change/brief.json` when needed. Pass a real object to `ideation_change` with `action: "prepare"` and `brief: { ... }`—never a JSON-encoded string. The host validates, keeps an immutable copy in the Git directory, publishes the readable copy to `docs/ideation/<change-id>/`, opens the contract, and displays a persistent link. Do not write a temporary file merely to pass an inline brief. `path` remains available for an existing JSON brief; do not supply both.
 
 The minimal content includes:
 
@@ -41,7 +41,7 @@ The host generates the current unit's working packet just before execution, uses
 
 - Use `ideation_change` `status` or `receipt` to inspect, without restarting work.
 - `/ideation pause`, `resume`, and `stop` are explicit user controls. Pause takes effect at a safe boundary; cancellation is not complete while work is still settling.
-- A failed check, stale approval or unavailable reviewer is not success. Explain the recorded exception; do not reset counters or silently widen permission.
+- A failed check, stale approval or unavailable reviewer is not success. Explain the recorded exception and what would unblock it; never silently widen permission. The user resumes when ready.
 - Artifact feedback goes to the coordinating session and a durable inbox, not to builder instructions. Answer questions with `ideation_change` `answer` (run ID, annotation ID, content) when the optional artifact service is available. This must not rewrite the contract.
 - The draft page's **Approve in Pi** button only asks the host to show its own terminal confirmation. It is not approval, and neither is any comment or selection on the page.
 - Suggestions that change intent, acceptance or authority require a revised brief and explicit approval. Never infer consent from silence, an annotation, or a selected artifact preference.
