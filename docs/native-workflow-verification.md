@@ -13,7 +13,7 @@ Implementation and subsequent dogfood fixes verified locally on 2026-09-23–24.
 
 The native tests cover strict brief validation, scoped child tools, actual temporary
 Git worktrees and commits, hooks, cancellation of command process groups, stale
-source/approval, budgets, lease ownership, interrupted recovery, no-op verification,
+source/approval, runs that no budget can stop, lease ownership, interrupted recovery, no-op verification,
 independent review, boundary pause/resume, rejection of model/headless approval,
 artifact adoption, optional-provider fallback, URL changes on restart, feedback
 routing, and escaped/stable contract markup. Fixtures disable commit signing only
@@ -94,7 +94,7 @@ its cropped 390px image is not a valid mobile viewport test.) Theme cycling and
 print disclosure behavior are also covered by script-level tests.
 
 New regression tests cover contextual planning/revision, one stable draft page,
-fresh approvals without silent budget resets, cancellation of blocked runs while
+fresh approvals, resume that always continues, cancellation of blocked runs while
 retaining work, cancellation/timeouts of Git staging filters and commit hooks
 without bypassing signing, contradictory reviewer verdicts, and preservation of
 the active run's approved model. Final focused review also added regressions for
@@ -111,7 +111,7 @@ when another draft exists, and pnpm package-local dependency snapshots.
 - This is a trusted local tool policy, not an OS/network sandbox. Approved test
   commands can execute repository code with host permissions.
 - There is no auto-restart daemon or automatic merge/push/deployment. Process
-  interruption requires explicit reconciliation/resume within preserved budgets.
+  interruption requires explicit reconciliation and resume.
 - The compact-brief vs current-express empirical study proposed in the research
   artifact has **not** been run. The execution modes are available to evaluate;
   no productivity or reliability improvement is asserted yet.

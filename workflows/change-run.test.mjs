@@ -110,7 +110,7 @@ test('missing reviewer and missing evidence cannot complete', async t => {
   }
 });
 
-test('hook failures are permanent, attempts and budget survive reload without automatic work', async t => {
+test('a failing hook stops to ask; reload does nothing on its own, and every explicit resume tries again', async t => {
   const f = await fixture(t, { workspace: { commitWorkspace: async () => { throw new Error('hook rejected'); } } });
   const r = await f.runner.approve('brief.json');
   const failed = await f.runner.start(r.id); assert.equal(failed.state, 'needs-decision');
@@ -120,8 +120,8 @@ test('hook failures are permanent, attempts and budget survive reload without au
   t.after(() => reload.dispose());
   assert.equal((await reload.status(r.id)).usage.totalTokens, 3); assert.equal(f.calls.length, count);
   assert.equal((await reload.resume(r.id)).units[0].attempts, 2);
-  const exhausted = await reload.resume(r.id);
-  assert.equal(exhausted.units[0].attempts, 2); assert.equal(exhausted.state, 'needs-decision');
+  const again = await reload.resume(r.id);
+  assert.equal(again.units[0].attempts, 3, 'no allowance runs out'); assert.equal(again.state, 'needs-decision');
 });
 
 test('stale integrated evidence blocks explicit acceptance', async t => {
@@ -167,11 +167,14 @@ test('boundary pause and shutdown persist only after settlement', async t => {
   }
 });
 
-test('unknown token accounting exhausts budget rather than inventing zero usage', async t => {
-  const f = await fixture(t, { spawn: async () => ({ ok: true, data: { plan: 'plan' } }) });
-  const r = await f.runner.approve('brief.json'); const result = await f.runner.start(r.id);
-  assert.equal(result.state, 'needs-decision'); assert.equal(result.usage.totalTokens, brief.authority.maxTokens);
-  assert.equal((await f.runner.resume(r.id)).units[0].attempts, 1);
+test('usage is information only: a worker that reports none is not a reason to stop', async t => {
+  const f = await fixture(t);
+  const runner = createChangeRunner({ repoRoot: f.root, pluginRoot: f.root, dependencies: f.dependencies,
+    spawn: async opts => ({ ...(await f.spawn(opts)), usage: undefined }) });
+  t.after(() => runner.dispose());
+  const r = await runner.approve('brief.json'); const result = await runner.start(r.id);
+  assert.equal(result.state, 'ready-for-review', result.attention?.message);
+  assert.ok(Number.isFinite(result.usage.totalTokens), 'only what workers reported is recorded');
 });
 
 test('dead host reconciliation is inert and durable', async t => {
@@ -232,12 +235,15 @@ test('transient planning failures retry within the persisted attempt budget', as
   assert.equal(result.usage.totalTokens, 5);
 });
 
-test('duration budget is not reset by resume', async t => {
+test('elapsed time never stops a run, even for a brief that still carries an old duration budget', async t => {
   let clock = 1000;
-  const f = await fixture(t, { now: () => clock, spawn: async () => { clock += 60001; return ok({ plan: 'plan' }); } });
-  const r = await f.runner.approve('brief.json');
-  assert.equal((await f.runner.start(r.id)).state, 'needs-decision');
-  assert.equal((await f.runner.resume(r.id)).units[0].attempts, 1);
+  const f = await fixture(t, { now: () => clock });
+  const runner = createChangeRunner({ repoRoot: f.root, pluginRoot: f.root, dependencies: f.dependencies, now: () => clock,
+    spawn: async opts => { clock += 60 * 60 * 1000; return f.spawn(opts); } });
+  t.after(() => runner.dispose());
+  const r = await runner.approve('brief.json');
+  const result = await runner.start(r.id);
+  assert.equal(result.state, 'ready-for-review', result.attention?.message);
 });
 
 test('listing a shared Git run store skips other worktrees instead of breaking this workspace', async t => {

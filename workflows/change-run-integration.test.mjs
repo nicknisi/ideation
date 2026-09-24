@@ -137,7 +137,7 @@ test('pause after last authorized spawn waits and resumes the SAME live attempt;
   assert.equal(r.units[0].attempts, 1); assert.equal(f.stages.filter(x => x.startsWith('build:')).length, 1);
 });
 
-test('shutdown persists interruption source lineage; restart never expands exhausted attempt authority', async t => {
+test('shutdown persists interruption source lineage; resume picks the same run back up', async t => {
   let entered, unblock;
   const started = new Promise(r => { entered = r; }); const gate = new Promise(r => { unblock = r; });
   const f = await fixture(t, { block: async opts => { if (opts.agent.startsWith('build:')) { entered(); await gate; } } });
@@ -148,8 +148,8 @@ test('shutdown persists interruption source lineage; restart never expands exhau
   assert.equal(interrupted.interruptions[0].units[0].attempt, 1);
   const reload = createChangeRunner(f.config); t.after(() => reload.dispose());
   const r = await reload.resume(a.id);
-  assert.equal(r.state, 'needs-decision'); assert.match(r.attention.message, /Attempts exhausted/);
-  assert.equal(r.units[0].attempts, 1); assert.equal(f.stages.filter(x => x.startsWith('build:')).length, 1);
+  assert.equal(r.state, 'ready-for-review', r.attention?.message);
+  assert.equal(r.units[0].attempts, 2); assert.equal(f.stages.filter(x => x.startsWith('build:')).length, 2);
 });
 
 test('status detects stale live source and acceptance rechecks confirmation identity', async t => {

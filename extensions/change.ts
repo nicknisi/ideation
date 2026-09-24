@@ -105,7 +105,17 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
         }
         return s.previous.get(hash);
       };
-      s.bridge = createArtifactConsumer({ events: pi.events, stateDir: join(stateDir, 'views'), onFeedback: deliverFeedback, warn: (m: string) => notify(s, m, 'warning') });
+      // "Approve in Pi" on the draft page asks this session to open its normal
+      // confirmation. Only that terminal answer approves; a request is never
+      // permission, and anything that can reach the local server could send one.
+      const requestApproval = async (id: string, action: string) => {
+        if (action !== 'approve' || !s.live || current !== s || !s.ctx.hasUI || s.ctx.mode === 'rpc') return false;
+        const prepared = s.prepared;
+        if (!prepared || prepared.previewId !== id || s.busy || s.approving || s.confirming) return false;
+        void approveChange(s, s.ctx, '', prepared).catch((e: Error) => notify(s, e.message, 'error'));
+        return true;
+      };
+      s.bridge = createArtifactConsumer({ events: pi.events, stateDir: join(stateDir, 'views'), onFeedback: deliverFeedback, actions: ['approve'], onRequest: requestApproval, warn: (m: string) => notify(s, m, 'warning') });
       s.motion = createMotion();
       s.motionOn = await motionPreference();
       const presented = () => {
@@ -260,6 +270,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
   // Serialized per session; a run's files follow its recorded state, never go backwards.
   const publishDocs = (s: any, brief: any, html: string, run?: any) => {
     s.docsTail = (s.docsTail ?? Promise.resolve()).then(async () => {
+      if (!s.live) return;
       if (run) {
         const last = s.docsPublished.get(run.id);
         if (last && (last.sequence >= run.sequence || last.state === run.state)) return;
@@ -277,6 +288,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
   // request from the contract page. Only the terminal confirmation approves.
   async function approveChange(s: any, ctx: any, arg: string, prepared: any) {
     if (s.busy) throw new Error('An owned run is already active');
+    if (s.confirming) throw new Error('An approval confirmation is already open');
     if (!ctx.hasUI) throw new Error('Interactive confirmation required; headless cannot approve');
     const briefPath = arg || prepared?.briefPath;
     if (!briefPath) throw new Error('No prepared brief in this session. Run /ideation plan <idea>, or /ideation approve <brief-path>.');
@@ -297,16 +309,20 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
     const docs = await docsFor(s, brief), exclude = [docs.rel];
     const source = typeof s.runner.uncommitted === 'function' ? await s.runner.uncommitted({ exclude }) : { head: '', paths: [] };
     const count = source.paths.length, files = `${count} uncommitted file${count === 1 ? '' : 's'}`;
-    let includeUncommitted = false;
-    if (count) {
-      const leave = `Start from the last commit (${source.head.slice(0, 7)}) and leave my changes alone`;
-      const include = `Include my ${files} as the starting point`;
-      const picked = await ctx.ui.select(`${files} in this checkout. Where should the run start?`, [leave, include, 'Cancel']);
-      if (picked !== leave && picked !== include) return;
-      includeUncommitted = picked === include;
-    }
-    const starting = `Starting point: ${source.head ? source.head.slice(0, 12) : 'the last commit'}${count ? (includeUncommitted ? ` + ${files}` : ` (${files} left out)`) : ''}.`;
-    if (!await ctx.ui.confirm(restartOf ? 'Start a fresh run?' : 'Approve change?', (restartOf ? 'Fresh budgets require this new approval. Previous work is kept.\n' : '') + approvalText(brief) + `\n${starting}\nBrief: v${brief.revision} / ${hash.slice(0, 12)}\nModel: ${summaryText(model)}\nContract: ${link(preview.url, 'open full agreement')}`)) return;
+    let includeUncommitted = false, confirmed = false;
+    s.confirming = true;
+    try {
+      if (count) {
+        const leave = `Start from the last commit (${source.head.slice(0, 7)}) and leave my changes alone`;
+        const include = `Include my ${files} as the starting point`;
+        const picked = await ctx.ui.select(`${files} in this checkout. Where should the run start?`, [leave, include, 'Cancel']);
+        if (picked !== leave && picked !== include) return;
+        includeUncommitted = picked === include;
+      }
+      const starting = `Starting point: ${source.head ? source.head.slice(0, 12) : 'the last commit'}${count ? (includeUncommitted ? ` + ${files}` : ` (${files} left out)`) : ''}.`;
+      confirmed = await ctx.ui.confirm(restartOf ? 'Start a fresh run?' : 'Approve change?', (restartOf ? 'The fresh run starts over in a new worktree. Previous work is kept.\n' : '') + approvalText(brief).replace(/\n(?=[^\n]*$)/, `\n${starting}\n`) + `\nBrief: v${brief.revision} / ${hash.slice(0, 12)}\nModel: ${summaryText(model)}\nContract: ${link(preview.url, 'open full agreement')}`);
+    } finally { s.confirming = false; }
+    if (!confirmed) return;
     if (s.busy) throw new Error('An owned run is already active');
     if (!s.live || briefFingerprint(await briefAt(s, briefPath)) !== hash) throw new Error('Brief/session changed during confirmation');
     // Immutable confirmation copy closes the read/approve race without modifying the checkout.
@@ -353,10 +369,8 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
             choices.push({ label: 'Open the live contract', action: 'review', arg: run.id });
             if (['running','verifying'].includes(run.state)) choices.push({ label: 'Pause at a safe point', action: 'pause', arg: run.id }, { label: 'Stop this run', action: 'stop', arg: run.id });
             if (['paused','interrupted','needs-decision','ready'].includes(run.state)) {
-              const limits = run.brief.authority;
-              const budgetLeft = (run.usage?.totalTokens ?? 0) < limits.maxTokens && (run.startedAt == null || Date.now() - run.startedAt < limits.maxDurationMs);
-              const attemptsLeft = !(run.units ?? []).some((u: any) => u.state !== 'completed' && u.attempts >= limits.maxAttempts);
-              if ((s.busy && (run.state === 'paused' || run.pauseRequested)) || (budgetLeft && attemptsLeft)) choices.push({ label: 'Resume approved work', action: 'resume', arg: run.id });
+              // There is no budget to run out: approved work can always be resumed.
+              if (!s.busy || run.state === 'paused' || run.pauseRequested) choices.push({ label: 'Resume approved work', action: 'resume', arg: run.id });
               choices.push({ label: 'Set this run aside (keep its work)', action: 'stop', arg: run.id });
             }
             if (!s.busy && ['needs-decision','interrupted','cancelled'].includes(run.state)) choices.push({ label: 'Start fresh (new approval)', action: 'fresh', arg: run.id });

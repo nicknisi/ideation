@@ -12,6 +12,14 @@
 .native-document .lead { max-width: 72ch; font-size: var(--t-lead); line-height: 1.7; }
 .document-meta { font: var(--t-meta)/1.5 var(--font-mono); color: var(--muted); }
 .native-document .review-guidance { margin-top: var(--s5); font: var(--t-small)/1.6 var(--font-sans); color: var(--muted); }
+/* Page-requested approval: a request to Pi, which confirms in the terminal. */
+.native-document .approve-request-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin-top: var(--s4); }
+.native-document .approve-request-row:has(.approve-request[hidden]) { display: none; }
+.native-document .approve-request { font: 600 var(--t-small)/1 var(--font-sans); color: var(--surface-2); background: var(--accent); border: 1px solid var(--accent); border-radius: var(--radius); padding: var(--s2) var(--s4); box-shadow: var(--press); cursor: pointer; transition: transform .15s var(--ease), box-shadow .15s var(--ease); }
+.native-document .approve-request:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 0 var(--line); }
+.native-document .approve-request[aria-busy=true] { cursor: progress; opacity: .75; }
+.native-document .approve-status { font: var(--t-small)/1.5 var(--font-sans); color: var(--muted); }
+@media print { .native-document .approve-request-row { display: none; } }
 .document-nav { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: var(--s3) var(--s5); padding: var(--s3) 0; background: var(--bg); border-block: 1px solid var(--line); font: var(--t-small)/1.5 var(--font-sans); }
 .native-document section { border-top: 1px solid var(--line); padding: var(--s7) 0; }
 .native-document figure { margin: 0; }
@@ -145,6 +153,8 @@
   .verification-row .evidence-state { grid-column: 3; }
 }
 @media(max-width:1000px) { .brief-stamp { position: static; display: inline-grid; margin: var(--s6) 0 0 var(--s2); } }
+/* The stamp lands at 1.7x; on narrow screens that must not scroll the page sideways. clip, unlike hidden, keeps sticky and inner scrollers working. */
+body.native-document { overflow-x: clip; }
 @media(max-width:640px) {
   .native-document main { padding: var(--s5) var(--s4) var(--s7); }
   .native-document section { padding: var(--s6) 0; }

@@ -13,11 +13,10 @@ function validateCheck(check) {
   return result;
 }
 
-const AUTHORITY_BOUNDS = {
-  maxDurationMs: [1800000, 1000, 86400000], maxStageMs: [300000, 1, 86400000],
-  maxTokens: [200000, 1, Number.MAX_SAFE_INTEGER], maxAttempts: [2, 1, 3],
-  maxReviewCycles: [3, 1, 3], maxTurns: [40, 1, 100], maxToolCalls: [200, 1, 1000],
-};
+// Runs have no budgets. Briefs written before that still carry these fields;
+// they are accepted unchanged (so their fingerprints and approvals still hold)
+// and ignored. New briefs neither need nor advertise them.
+const LEGACY_LIMITS = ['maxDurationMs', 'maxStageMs', 'maxTokens', 'maxAttempts', 'maxReviewCycles', 'maxTurns', 'maxToolCalls'];
 const textSchema = { type: 'string', minLength: 1, pattern: '\\S' };
 const slugSchema = { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' };
 const stringsSchema = { type: 'array', items: textSchema };
@@ -69,10 +68,6 @@ export const briefSchema = {
       paths: { ...stringsSchema, minItems: 1, uniqueItems: true, description: 'Exact repo-relative files or directory prefixes ending in /. Dot permits ordinary project files, never protected internals or dependency manifests.' },
       commands: { ...stringsSchema, uniqueItems: true, description: 'Allowed exact shell commands. Include every acceptance cmd verbatim. Approved scripts run with host permissions, not in an OS sandbox.' },
       allowLocalCommit: { type: 'boolean', default: true },
-      ...Object.fromEntries(Object.entries(AUTHORITY_BOUNDS).map(([key, [value, minimum, maximum]]) => [key, {
-        type: 'integer', default: value, minimum, maximum,
-        ...(key === 'maxStageMs' ? { description: 'Must not exceed maxDurationMs; set both when changing the total duration.' } : key === 'maxTokens' ? { description: 'Scheduling budget checked between workers; one running worker can overshoot it. Per-worker time/turn/tool limits still apply.' } : {}),
-      }])),
     }, ['paths']),
   }, ['schemaVersion', 'id', 'title', 'revision', 'why', 'change', 'mustHold', 'acceptance', 'units', 'authority']),
   description: 'Inline compact change brief as a JSON OBJECT, not a JSON-encoded string. Supply this or path, never both. Preparation does not authorize execution.',
@@ -178,7 +173,7 @@ export function validateBrief(raw) {
   b.executionMode = raw.executionMode === undefined ? 'strict' : raw.executionMode;
   if (!['strict','adaptive'].includes(b.executionMode)) fail('executionMode', 'invalid mode');
   const a = raw.authority;
-  object(a, Object.keys(briefSchema.properties.authority.properties), 'authority');
+  object(a, [...Object.keys(briefSchema.properties.authority.properties), ...LEGACY_LIMITS], 'authority');
   b.authority = { paths: list(a.paths, 'authority.paths', path, true), commands: strings(a.commands, 'authority.commands') };
   unique(b.authority.paths, 'authority.paths'); unique(b.authority.commands, 'authority.commands');
   for (const cmd of b.authority.commands) {
@@ -187,8 +182,7 @@ export function validateBrief(raw) {
   for (const c of b.acceptance) if (c.check.cmd && !b.authority.commands.includes(c.check.cmd)) fail('authority.commands', `missing exact command for ${c.id}`);
   b.authority.allowLocalCommit = a.allowLocalCommit === undefined ? true : a.allowLocalCommit;
   if (typeof b.authority.allowLocalCommit !== 'boolean') fail('authority.allowLocalCommit', 'expected boolean');
-  for (const [key, [fallback,min,max]] of Object.entries(AUTHORITY_BOUNDS)) b.authority[key] = integer(a[key], fallback, min, max, `authority.${key}`);
-  if (b.authority.maxStageMs > b.authority.maxDurationMs) fail('authority.maxStageMs', 'must not exceed maxDurationMs');
+  for (const key of LEGACY_LIMITS) if (a[key] !== undefined) b.authority[key] = integer(a[key], undefined, 1, Number.MAX_SAFE_INTEGER, `authority.${key}`);
   return b;
 }
 
