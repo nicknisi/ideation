@@ -4,8 +4,8 @@ import tailwind from '@tailwindcss/vite';
 // Deployed to Cloudflare from this directory: root `site`, build `pnpm build`,
 // output `site/dist`. A static build needs no Cloudflare adapter.
 //
-// Every page is a real Astro route: / and /walkthrough in the Industry design
-// system, /guide in the older field-guide one. All three ship from one deploy.
+// Every page is a real Astro route in the one field-guide design world. The Pi
+// walkthrough's contract pages are static endpoints rendered by the plugin itself.
 export default defineConfig({
   site: 'https://ideation.engineering',
   build: {

@@ -1,13 +1,13 @@
 @import 'tailwindcss';
 
 /* ═══════════════════════════════════════════════════════════════════
-   The ideation field guide, as Tailwind theme tokens.
+   The ideation field guide, as Tailwind theme tokens — the whole site.
 
    These values are the committed visual world; DESIGN.md (repo root)
    is the token authority, and this file is one of its two canonical
    declarations (the other is scripts/contract-gen.css): paper ground,
-   ink, ONE cobalt accent, serif display, letterpress offset chips,
-   hairline rules, 3px radii, graphite dark deck — never navy.
+   ink, ONE cobalt accent, serif display, letterpress offset, hairline
+   rules, 3px radii, graphite dark deck — never navy.
 
    Tailwind's default palette is cleared on purpose. If `bg-blue-500` is
    reachable someone will reach for it, and the whole point of this world
@@ -34,6 +34,7 @@
   --danger: #bb3a2c;
   --danger-tint: #f8e2de;
   --press-line: #dededf;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -128,6 +129,9 @@
   body {
     overflow-x: clip;
   }
+  html {
+    scroll-padding-top: 5rem;
+  }
   body {
     margin: 0;
     font-family: var(--font-serif);
@@ -146,6 +150,10 @@
     text-wrap: balance;
     margin: 0;
   }
+  p {
+    margin: 0;
+    text-wrap: pretty;
+  }
   ::selection {
     background: var(--accent-tint);
   }
@@ -160,7 +168,7 @@
   box-shadow: 3px 3px 0 0 var(--press-line);
 }
 
-/* Small uppercase mono label — for labels and measurements, never as costume. */
+/* Small uppercase mono label — over a measurement, never as a costume. */
 @utility label-mono {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
@@ -179,5 +187,369 @@
     pointer-events: none;
     opacity: 0.05;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+@layer components {
+  /* ── Prose furniture ─────────────────────────────────────────────── */
+  .link {
+    color: var(--accent);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 2px;
+    transition: text-decoration-color 0.15s;
+  }
+  .link:hover {
+    text-decoration-color: var(--accent);
+  }
+  .code {
+    font-family: var(--font-mono);
+    font-size: 0.84em;
+    background: var(--wash);
+    border-radius: 2px;
+    padding: 0.08em 0.35em;
+    overflow-wrap: anywhere;
+  }
+  .rule-double {
+    border-top: 3px double var(--line-strong);
+  }
+  .diamond {
+    display: inline-block;
+    flex: none;
+    width: 0.62em;
+    height: 0.62em;
+    background: var(--accent);
+    transform: rotate(45deg);
+  }
+
+  /* ── The press stamp. Mirrors change-render's .brief-stamp: the page and
+     the product share one mark for draft / approved / ready / accepted. ─── */
+  .stamp {
+    display: inline-grid;
+    justify-items: center;
+    gap: 2px;
+    padding: 0.45rem 1rem 0.4rem;
+    border: 3px double currentColor;
+    border-radius: 4px;
+    font-family: var(--font-sans);
+    text-transform: uppercase;
+    white-space: nowrap;
+    transform: rotate(-4deg);
+    opacity: 0.9;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.6 2.15'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.6 2.15'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .stamp strong {
+    font-size: 1.05rem;
+    line-height: 1.1;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+  }
+  .stamp span {
+    font: 600 0.6875rem/1.3 var(--font-mono);
+    letter-spacing: 0.12em;
+  }
+  .stamp.is-sm {
+    padding: 0.35rem 0.7rem 0.3rem;
+  }
+  .stamp.is-sm strong {
+    font-size: 0.8125rem;
+    letter-spacing: 0.12em;
+  }
+  .stamp.is-sm span {
+    font-size: 0.5625rem;
+    letter-spacing: 0.08em;
+  }
+  .stamp.is-faint {
+    color: var(--faint);
+  }
+  .stamp.is-accent {
+    color: var(--accent);
+  }
+  .stamp.is-go {
+    color: var(--go);
+  }
+
+  /* ── The graphite deck: a Pi terminal. Always dark, like the terminal it
+     depicts; roles are Pi's dark theme, with dim/muted lifted to WCAG AA. ── */
+  .deck {
+    background: #1a1c20;
+    color: #d4d4d4;
+    border: 1px solid #000;
+    border-radius: 4px;
+    box-shadow: 3px 3px 0 0 var(--press-line);
+    overflow: hidden;
+    color-scheme: dark;
+  }
+  .deck-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.9rem;
+    border-bottom: 1px solid #2d3036;
+    font: 500 0.75rem/1 var(--font-mono);
+    color: #9a9a9a;
+  }
+  .deck-bar i {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    background: #3a3d44;
+  }
+  .deck-bar span {
+    margin-left: 0.4rem;
+  }
+  .deck-body {
+    padding: 1rem 1.1rem 1.1rem;
+    overflow-x: auto;
+    font: 400 0.8125rem/1.55 var(--font-mono);
+  }
+  .deck pre {
+    margin: 0;
+    font: inherit;
+    white-space: pre;
+  }
+  .deck a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: currentColor;
+    text-underline-offset: 2px;
+  }
+  .deck .t-accent,
+  .deck .prompt {
+    color: #8abeb7;
+  }
+  .deck .t-borderAccent {
+    color: #00d7ff;
+  }
+  .deck .t-success {
+    color: #b5bd68;
+  }
+  .deck .t-error {
+    color: #e07a7a;
+  }
+  .deck .t-warning {
+    color: #ffff00;
+  }
+  .deck .t-muted,
+  .deck .quiet {
+    color: #9a9a9a;
+  }
+  .deck .quiet {
+    white-space: pre-wrap;
+  }
+  .deck .t-dim {
+    color: #878787;
+  }
+  .deck .t-text,
+  .deck .t-toolTitle {
+    color: #d4d4d4;
+  }
+  .deck .t-b {
+    font-weight: 700;
+  }
+  .deck .user {
+    display: block;
+    background: #343541;
+    padding: 0.35rem 0.6rem;
+    border-radius: 2px;
+    white-space: pre-wrap;
+  }
+  .deck .tool {
+    display: block;
+    background: #283228;
+    padding: 0.5rem 0.7rem;
+    border-radius: 2px;
+  }
+  .deck .dialog {
+    display: block;
+    max-width: 64ch;
+    border: 1px solid #5f87ff;
+    border-radius: 3px;
+    padding: 0.75rem 0.9rem;
+    white-space: pre-wrap;
+  }
+  .deck .choice {
+    display: inline-block;
+    padding: 0 0.5rem;
+    margin-right: 0.6rem;
+    border-radius: 2px;
+  }
+  .deck .choice.is-on {
+    background: #2d3a55;
+    color: #e9e9e4;
+  }
+
+  /* ── A framed document: the address bar names what you are looking at. ── */
+  .sheet {
+    border: 1px solid var(--line-strong);
+    border-radius: 4px;
+    background: var(--surface-2);
+    box-shadow: 3px 3px 0 0 var(--press-line);
+    overflow: hidden;
+  }
+  .sheet-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 0.9rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-1);
+    font: 500 0.75rem/1.2 var(--font-mono);
+    color: var(--muted);
+  }
+  .sheet-bar > :first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── One bordered strip of cells, instead of N floating cards. ────────── */
+  .strip {
+    display: grid;
+    border: 1px solid var(--line-strong);
+    border-radius: 4px;
+    background: var(--surface-1);
+  }
+  .strip > * {
+    padding: 1.1rem 1.25rem;
+  }
+  .strip > * + * {
+    border-left: 1px solid var(--line);
+  }
+  .strip > .strip-row {
+    grid-column: 1 / -1;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  @media (max-width: 760px) {
+    .strip {
+      grid-template-columns: minmax(0, 1fr) !important;
+    }
+    .strip > * + * {
+      border-left: 0;
+      border-top: 1px solid var(--line);
+    }
+  }
+
+  /* ── Hover lift: the press offset grows by a pixel. ───────────────────── */
+  .lift {
+    transition:
+      box-shadow 0.18s var(--ease),
+      transform 0.18s var(--ease);
+  }
+  .lift:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 0 var(--press-line);
+  }
+}
+
+/* ═══ Motion — ink & press ═══════════════════════════════════════════════
+   Everything is authored visible. The pre-paint script sets
+   data-motion="on" only when motion is welcome; the reveal script then
+   marks elements as they arrive. Reduced motion and print never animate,
+   and still show the stamp, the ink and the ticks. */
+@keyframes stamp-thunk {
+  0% {
+    opacity: 0;
+    transform: scale(1.7) rotate(-11deg) translate(6px, -8px);
+  }
+  62% {
+    opacity: 0.95;
+    transform: scale(0.96) rotate(-3.5deg);
+  }
+  78% {
+    transform: scale(1.02) rotate(-4.4deg);
+  }
+  100% {
+    opacity: 0.9;
+    transform: scale(1) rotate(-4deg);
+  }
+}
+@keyframes ink-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes wash-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+[data-motion='on'] [data-settle]:not(.is-seen) {
+  opacity: 0;
+  transform: translateY(12px);
+}
+[data-motion='on'] [data-settle].is-seen {
+  animation: settle 0.6s var(--ease) both;
+}
+[data-motion='on'] [data-stamp]:not(.is-seen) {
+  opacity: 0;
+}
+[data-motion='on'] [data-stamp].is-seen {
+  animation: stamp-thunk 0.62s var(--ease) both;
+}
+[data-motion='on'] [data-ink] path,
+[data-motion='on'] path[data-ink] {
+  stroke-dasharray: 1;
+}
+[data-motion='on'] [data-ink]:not(.is-seen) path,
+[data-motion='on'] path[data-ink]:not(.is-seen) {
+  stroke-dashoffset: 1;
+}
+[data-motion='on'] [data-ink].is-seen path,
+[data-motion='on'] path[data-ink].is-seen {
+  animation: ink-draw 0.8s var(--ease) both;
+}
+[data-motion='on'] [data-wash]:not(.is-seen)::before {
+  clip-path: inset(0 100% 0 0);
+}
+[data-motion='on'] [data-wash].is-seen::before {
+  animation: wash-in 1.1s var(--ease) 0.25s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media print {
+  :root {
+    color-scheme: light;
+  }
+  .site-header,
+  .theme-toggle,
+  .copy,
+  .no-print {
+    display: none !important;
+  }
+  .grain::after {
+    display: none;
+  }
+  [data-track-panel] {
+    display: block !important;
   }
 }

@@ -1,0 +1,21 @@
+---
+/**
+ * The press mark the product stamps on a contract: draft (faint), approved,
+ * ready for review, accepted. Same shape as change-render's .brief-stamp.
+ * `press` lets it thunk in once on arrival; without motion it is simply there.
+ */
+interface Props {
+  label: string;
+  sub?: string;
+  tone?: 'faint' | 'accent' | 'go';
+  press?: boolean;
+  class?: string;
+  style?: string;
+}
+const { label, sub, tone = 'accent', press = false, class: className = '', style } = Astro.props;
+---
+
+<span class:list={['stamp', `is-${tone}`, className]} data-stamp={press ? '' : undefined} style={style}>
+  <strong>{label}</strong>
+  {sub && <span>{sub}</span>}
+</span>
