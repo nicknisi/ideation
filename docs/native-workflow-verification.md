@@ -127,6 +127,8 @@ After `/reload` (or a fresh Pi session) in your target repository:
 /ideation
 ```
 
-The source must be clean before approval. The workflow does not stash, commit or
-hide existing user changes. The artifacts bridge is optional; without it, the
+Uncommitted work does not block approval. When the checkout has any, approval asks
+whether the run starts from the last commit (leaving the changes alone) or includes
+them as its starting point. Either way the workflow does not stash, commit or hide
+existing user changes. The artifacts bridge is optional; without it, the
 persistent link opens a local HTML snapshot that can be refreshed manually.

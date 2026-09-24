@@ -276,3 +276,12 @@ test('print and reduced motion are still and final', () => {
   assert.ok(reduced.includes('path.flow { display: none; }'));
   assert.ok(!/\[data-motion=on\]/.test(layout.replace(/\[data-motion=on\]\[data-fresh\]/g, '')), 'hidden entrance states always require both opt-in flags');
 });
+
+test('run provenance says when uncommitted work was part of the starting point', () => {
+  const b = fresh();
+  const plain = renderBrief(b, { run: { ...runFor(b, 'running'), approvedHead: 'head-abc', includedChanges: [] } });
+  assert.ok(plain.includes('<dt>Started from</dt><dd>head-abc (last commit)</dd>'));
+  const included = renderBrief(b, { run: { ...runFor(b, 'running'), approvedHead: 'head-abc', includedChanges: ['a.js', 'b.md'] } });
+  assert.ok(included.includes('<dd>head-abc + 2 uncommitted file(s)</dd>'));
+  assert.ok(!renderBrief(b, { run: runFor(b, 'running') }).includes('Started from'), 'older runs render unchanged');
+});

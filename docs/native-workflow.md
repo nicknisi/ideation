@@ -43,10 +43,25 @@ in a new revision and asks for explicit approval of fresh budgets. Only after th
 approval is the prior run set aside; its worktree and work are retained.
 
 The model tool accepts `action: "prepare", brief: { ... }` as a typed object, not a
-JSON-encoded string. The host stores the canonical JSON outside the source checkout;
-neither the user nor the model needs a temporary-file workaround. Existing `path`
-input is still supported. Preparation never approves. Source must be clean before
-execution (local artifact previews are not source changes).
+JSON-encoded string. The host stores an immutable canonical copy in the Git directory
+and publishes the readable copy to `docs/ideation/<change-id>/`; neither the user nor
+the model needs a temporary-file workaround. Existing `path` input is still supported.
+Preparation never approves.
+
+Uncommitted work never blocks approval. If the checkout has any, approval asks where
+the run should start:
+
+- **From the last commit** — your changes are left exactly where they are and are not
+  part of the run.
+- **Including your uncommitted files** — tracked edits, staged changes and untracked
+  (non-ignored) files are snapshotted as the run's starting commit, built in a private
+  Git index. Your files, index and HEAD are not touched, and the included files do not
+  count against the approved paths.
+
+The confirmation states the starting point, and the contract's run record keeps it.
+The run's branch is created from that recorded starting point even if HEAD moves
+afterwards. Local artifact previews and the change's own `docs/ideation/` files are
+never treated as your uncommitted work.
 
 Headless sessions cannot approve or accept. The model tool exposes only `prepare`,
 `status`, `receipt`, `feedback`, and `answer`. Human artifact feedback is persisted
@@ -67,9 +82,20 @@ worktree after manifests and lockfiles match. No install command
 or dependency change is silently authorized, and the worker cannot patch dependency
 internals to make its checks pass. Other environment setup may need explicit work.
 
-State, immutable approval copies, model/owner metadata, child artifacts and HTML views
-live under the Git common directory's `ideation/`, so previewing does not dirty the
-source checkout. Receipts/worktrees remain available after execution. Session exit,
+The documents are yours to keep. Each change gets `docs/ideation/<change-id>/` in the
+checkout (or `<change-id>-change/` when a planning-path project already uses that
+folder):
+
+- `brief.json` — the agreement, rewritten on each revision;
+- `contract.html` — the self-contained contract page, refreshed when the run changes
+  state (draft, approved, running, ready for review, accepted, and so on);
+- `receipt.json` — the source-bound record of units, checks and decisions, written
+  once the run is ready for review and again on acceptance.
+
+Nothing commits them. Commit them with the change if you want them in history, or
+ignore `docs/ideation/` if you do not. Run state, immutable approval copies,
+model/owner metadata, child artifacts, worktrees and live HTML views stay under the
+Git common directory's `ideation/` and remain available after execution. Session exit,
 reload or switch disposes feedback subscriptions and interrupts owned work. There is
 no auto-restart daemon: inspect status and explicitly resume after reconciliation.
 A previously approved run may be resumed in a headless host: the command waits for

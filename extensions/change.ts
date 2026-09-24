@@ -1,4 +1,4 @@
-import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { readFile, mkdir, writeFile, rename, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,7 +40,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
     if (!s) return;
     s.live = false;
     clearInterval(s.repaint);
-    await Promise.allSettled([s.bridge.dispose(), s.runner.dispose()]);
+    await Promise.allSettled([s.bridge.dispose(), s.runner.dispose(), s.docsTail]);
     if (s.ctx.hasUI) { s.ctx.ui.setStatus('ideation', undefined); s.ctx.ui.setWidget('ideation', undefined); }
     s.widget = undefined;
   }
@@ -64,7 +64,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
       const stateDir = join(resolve(ctx.cwd, await git('rev-parse', '--git-common-dir')), 'ideation');
       const tui = ctx.mode === 'tui' ? await loadTui() : undefined;
       if (epoch !== generation) throw new Error('Session changed during initialization');
-      const s: any = { ctx, cwd: ctx.cwd, repoRoot, ownerId, stateDir, live: true, shown: new Map(), drafts: new Map(), tui };
+      const s: any = { ctx, cwd: ctx.cwd, repoRoot, ownerId, stateDir, live: true, shown: new Map(), drafts: new Map(), docsPublished: new Map(), tui };
       const runtime = runtimeFactory({ namespace: 'ideation-change', artifactsDir: join(stateDir, 'children') });
       // Model tool path: RECORD to the run inbox only. Never emit a self-directed follow-up,
       // which would loop the coordinator's own feedback straight back into itself.
@@ -146,7 +146,9 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
         s.shown.set(run.id, Math.max(s.shown.get(run.id) ?? -1, run.sequence));
         // The durable renderer + evidence view runs first; a UI failure below must never
         // invalidate the contract that was already produced and published.
-        const view = await s.bridge.update(run.id, renderBrief(run.brief, { run, previous: await s.priorBrief(run.brief) }), { sequence: run.sequence, open });
+        const html = renderBrief(run.brief, { run, previous: await s.priorBrief(run.brief) });
+        const view = await s.bridge.update(run.id, html, { sequence: run.sequence, open });
+        void publishDocs(s, run.brief, html, run);
         if (s.live && current === s && s.ctx.hasUI && run.sequence === s.shown.get(run.id)) {
           s.paint(run, view);
         }
@@ -236,6 +238,100 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
     else { const r = chooseRun(runs, s.repoRoot, s.ownerId); if (r) await s.show(r); }
   } catch { /* Git is optional until invoked. */ } });
   pi.on('session_shutdown', shutdown);
+  // The Pi workflow's documents, written into the checkout for the user to keep
+  // or not: nothing commits them. Run state and immutable approval copies stay
+  // in the Git directory. A folder that already holds a planning-path project
+  // with the same slug is never written into.
+  const docsFor = async (s: any, brief: any) => {
+    const base = join(s.repoRoot, 'docs', 'ideation');
+    const planning = await stat(join(base, brief.id, 'contract-data.json')).then(() => true, () => false);
+    const folder = planning ? `${brief.id}-change` : brief.id;
+    return { dir: join(base, folder), rel: `docs/ideation/${folder}/` };
+  };
+  const receiptOf = (r: any) => ({
+    schemaVersion: 1, change: r.brief.id, revision: r.brief.revision, briefHash: r.briefHash, run: r.id, state: r.state,
+    branch: r.branch, baseRevision: r.baseRevision, approvedHead: r.approvedHead ?? null, includedChanges: r.includedChanges ?? [],
+    sourceRevision: r.sourceRevision,
+    units: (r.units ?? []).map((u: any) => ({ id: u.id, title: u.title, state: u.state, attempts: u.attempts, reviewStatus: u.reviewStatus, commitHash: u.commitHash, summary: u.summary })),
+    evidence: (r.evidence ?? []).map((e: any) => ({ criterionId: e.criterionId, status: e.status, command: e.command, sourceRevision: e.sourceRevision, durationMs: e.durationMs, output: typeof e.output === 'string' ? e.output.slice(-4000) : e.output })),
+    decisions: r.decisions ?? [], usage: r.usage, updatedAt: r.updatedAt,
+  });
+  const atomic = async (path: string, data: string) => { const tmp = `${path}.${randomUUID()}.tmp`; await writeFile(tmp, data); await rename(tmp, path); };
+  // Serialized per session; a run's files follow its recorded state, never go backwards.
+  const publishDocs = (s: any, brief: any, html: string, run?: any) => {
+    s.docsTail = (s.docsTail ?? Promise.resolve()).then(async () => {
+      if (run) {
+        const last = s.docsPublished.get(run.id);
+        if (last && (last.sequence >= run.sequence || last.state === run.state)) return;
+        s.docsPublished.set(run.id, { sequence: run.sequence, state: run.state });
+      }
+      const { dir } = await docsFor(s, brief);
+      await mkdir(dir, { recursive: true });
+      await atomic(join(dir, 'brief.json'), JSON.stringify(brief, null, 2) + '\n');
+      await atomic(join(dir, 'contract.html'), html);
+      if (run && ['ready-for-review', 'accepted'].includes(run.state)) await atomic(join(dir, 'receipt.json'), JSON.stringify(receiptOf(run), null, 2) + '\n');
+    }).catch((e: Error) => { if (!s.docsWarned) { s.docsWarned = true; notify(s, `Could not write docs/ideation: ${e.message}`, 'warning'); } });
+    return s.docsTail;
+  };
+  // One approval path for the command, the guided menu, Start fresh and a
+  // request from the contract page. Only the terminal confirmation approves.
+  async function approveChange(s: any, ctx: any, arg: string, prepared: any) {
+    if (s.busy) throw new Error('An owned run is already active');
+    if (!ctx.hasUI) throw new Error('Interactive confirmation required; headless cannot approve');
+    const briefPath = arg || prepared?.briefPath;
+    if (!briefPath) throw new Error('No prepared brief in this session. Run /ideation plan <idea>, or /ideation approve <brief-path>.');
+    const brief = await briefAt(s, briefPath), hash = briefFingerprint(brief);
+    if (!ctx.model) throw new Error('Select a model before approval');
+    const model = `${ctx.model.provider}/${ctx.model.id}`;
+    // Render and open the complete contract (risk, units, evidence states, full authority)
+    // before asking. The renderer runs independently of any UI outcome.
+    if (!arg && (await s.runner.status()).some((r: any) => r.briefHash === hash)) throw new Error('This change already has an approved run. Open /ideation to resume or review it.');
+    const matchingPrepared = prepared?.briefHash === hash;
+    const previewId = matchingPrepared ? prepared.previewId ?? `preview:${s.ownerId}:${prepared.briefPath}` : `approval-preview:${s.ownerId}:${randomUUID()}`;
+    const preview = await s.bridge.update(previewId, renderBrief(brief, { previous: s.drafts.get(brief.id)?.previous ?? await s.priorBrief(brief) }), { sequence: Date.now(), open: !matchingPrepared && ctx.mode !== 'rpc' });
+    if (!matchingPrepared) await openLocal(s, preview);
+    ctx.ui.setStatus('ideation', link(preview.url, 'review contract'));
+    const restartOf = prepared?.briefHash === hash ? prepared.restartOf : undefined;
+    // Uncommitted work never blocks approval. Ask where the run should start;
+    // neither answer stashes, commits or edits the user's files.
+    const docs = await docsFor(s, brief), exclude = [docs.rel];
+    const source = typeof s.runner.uncommitted === 'function' ? await s.runner.uncommitted({ exclude }) : { head: '', paths: [] };
+    const count = source.paths.length, files = `${count} uncommitted file${count === 1 ? '' : 's'}`;
+    let includeUncommitted = false;
+    if (count) {
+      const leave = `Start from the last commit (${source.head.slice(0, 7)}) and leave my changes alone`;
+      const include = `Include my ${files} as the starting point`;
+      const picked = await ctx.ui.select(`${files} in this checkout. Where should the run start?`, [leave, include, 'Cancel']);
+      if (picked !== leave && picked !== include) return;
+      includeUncommitted = picked === include;
+    }
+    const starting = `Starting point: ${source.head ? source.head.slice(0, 12) : 'the last commit'}${count ? (includeUncommitted ? ` + ${files}` : ` (${files} left out)`) : ''}.`;
+    if (!await ctx.ui.confirm(restartOf ? 'Start a fresh run?' : 'Approve change?', (restartOf ? 'Fresh budgets require this new approval. Previous work is kept.\n' : '') + approvalText(brief) + `\n${starting}\nBrief: v${brief.revision} / ${hash.slice(0, 12)}\nModel: ${summaryText(model)}\nContract: ${link(preview.url, 'open full agreement')}`)) return;
+    if (s.busy) throw new Error('An owned run is already active');
+    if (!s.live || briefFingerprint(await briefAt(s, briefPath)) !== hash) throw new Error('Brief/session changed during confirmation');
+    // Immutable confirmation copy closes the read/approve race without modifying the checkout.
+    const approvedDir = join(s.stateDir, 'approvals'); await mkdir(approvedDir, { recursive: true });
+    const path = join(approvedDir, `${hash}.json`); await writeFile(path, JSON.stringify(brief));
+    s.approving = true;
+    let run: any;
+    try {
+      run = await s.runner.approve(path, { includeUncommitted, exclude });
+      if (run.briefHash !== hash) throw new Error('Approval fingerprint mismatch');
+      await writeFile(join(s.stateDir, 'runs', run.id, 'frontdoor.json'), JSON.stringify({ ownerId: s.ownerId, model, briefPath: resolve(s.cwd, briefPath) }));
+      await s.bridge.adopt(run.id, previewId);
+      if (restartOf) {
+        const prior = await s.runner.status(restartOf);
+        if (!['accepted', 'cancelled'].includes(prior.state)) await s.runner.stop(restartOf);
+      }
+      s.prepared = undefined; s.drafts.delete(brief.id);
+      pi.appendEntry('ideation:handoff', { runId: run.id, briefHash: hash, repoRoot: s.repoRoot });
+    } finally { s.approving = false; }
+    s.model = model;
+    background(s, 'start', run.id);
+    await s.show(run);
+    notify(s, `Approval recorded. Starting ${summaryText(brief.title)} in an isolated workspace. The contract will update as work progresses.`);
+    return;
+  }
   pi.registerCommand('ideation', {
     description: 'Open ideation: review or approve your prepared change, follow progress, or control a run. Also: plan <idea>, approve [path], status, review, pause, resume, stop, accept, motion [on|off].',
     handler: async (args, ctx) => {
@@ -315,49 +411,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
           await showPrepared(s, prepared);
           action = 'approve'; arg = path;
         }
-        if (action === 'approve') {
-          if (s.busy) throw new Error('An owned run is already active');
-          if (!ctx.hasUI) throw new Error('Interactive confirmation required; headless cannot approve');
-          const briefPath = arg || prepared?.briefPath;
-          if (!briefPath) throw new Error('No prepared brief in this session. Run /ideation plan <idea>, or /ideation approve <brief-path>.');
-          const brief = await briefAt(s, briefPath), hash = briefFingerprint(brief);
-          if (!ctx.model) throw new Error('Select a model before approval');
-          const model = `${ctx.model.provider}/${ctx.model.id}`;
-          // Render and open the complete contract (risk, units, evidence states, full authority)
-          // before asking. The renderer runs independently of any UI outcome.
-          if (!arg && (await s.runner.status()).some((r: any) => r.briefHash === hash)) throw new Error('This change already has an approved run. Open /ideation to resume or review it.');
-          const matchingPrepared = prepared?.briefHash === hash;
-          const previewId = matchingPrepared ? prepared.previewId ?? `preview:${s.ownerId}:${prepared.briefPath}` : `approval-preview:${s.ownerId}:${randomUUID()}`;
-          const preview = await s.bridge.update(previewId, renderBrief(brief, { previous: s.drafts.get(brief.id)?.previous ?? await s.priorBrief(brief) }), { sequence: Date.now(), open: !matchingPrepared && ctx.mode !== 'rpc' });
-          if (!matchingPrepared) await openLocal(s, preview);
-          ctx.ui.setStatus('ideation', link(preview.url, 'review contract'));
-          const restartOf = prepared?.briefHash === hash ? prepared.restartOf : undefined;
-          if (!await ctx.ui.confirm(restartOf ? 'Start a fresh run?' : 'Approve change?', (restartOf ? 'Fresh budgets require this new approval. Previous work is kept.\n' : '') + approvalText(brief) + `\nBrief: v${brief.revision} / ${hash.slice(0, 12)}\nModel: ${summaryText(model)}\nContract: ${link(preview.url, 'open full agreement')}`)) return;
-          if (s.busy) throw new Error('An owned run is already active');
-          if (!s.live || briefFingerprint(await briefAt(s, briefPath)) !== hash) throw new Error('Brief/session changed during confirmation');
-          // Immutable confirmation copy closes the read/approve race without modifying the checkout.
-          const approvedDir = join(s.stateDir, 'approvals'); await mkdir(approvedDir, { recursive: true });
-          const path = join(approvedDir, `${hash}.json`); await writeFile(path, JSON.stringify(brief));
-          s.approving = true;
-          let run: any;
-          try {
-            run = await s.runner.approve(path);
-            if (run.briefHash !== hash) throw new Error('Approval fingerprint mismatch');
-            await writeFile(join(s.stateDir, 'runs', run.id, 'frontdoor.json'), JSON.stringify({ ownerId: s.ownerId, model, briefPath: resolve(s.cwd, briefPath) }));
-            await s.bridge.adopt(run.id, previewId);
-            if (restartOf) {
-              const prior = await s.runner.status(restartOf);
-              if (!['accepted', 'cancelled'].includes(prior.state)) await s.runner.stop(restartOf);
-            }
-            s.prepared = undefined; s.drafts.delete(brief.id);
-            pi.appendEntry('ideation:handoff', { runId: run.id, briefHash: hash, repoRoot: s.repoRoot });
-          } finally { s.approving = false; }
-          s.model = model;
-          background(s, 'start', run.id);
-          await s.show(run);
-          notify(s, `Approval recorded. Starting ${summaryText(brief.title)} in an isolated workspace. The contract will update as work progresses.`);
-          return;
-        }
+        if (action === 'approve') { await approveChange(s, ctx, arg, prepared); return; }
         if (action === 'status' && !arg) {
           const runs = await s.runner.status();
           if (prepared && !runs.some((r: any) => r.briefHash === prepared.briefHash)) { await showPrepared(s, prepared, false); notify(s, 'Your contract is ready. Open /ideation to review, approve or revise it.'); return; }
@@ -430,7 +484,9 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
         const previewId = draft?.previewId ?? `preview:${s.ownerId}:${randomUUID()}`;
         const previous = draft && briefFingerprint(draft.brief) !== briefFingerprint(b) ? draft.brief : draft?.previous ?? await s.priorBrief(b);
         const open = Boolean(ctx.hasUI) && ctx.mode !== 'rpc' && !draft;
-        result = await s.bridge.update(previewId, renderBrief(b, { previous }), { sequence: Date.now(), open });
+        const html = renderBrief(b, { previous });
+        result = await s.bridge.update(previewId, html, { sequence: Date.now(), open });
+        await publishDocs(s, b, html);
         if (open) await openLocal(s, result);
         result = { ...result, title: b.title, briefId: b.id, previewId, briefPath, briefHash: briefFingerprint(b), repoRoot: s.repoRoot, approved: false };
         s.prepared = result; s.drafts.set(b.id, { previewId, brief: b, previous });

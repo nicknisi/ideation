@@ -97,23 +97,33 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
     if (b.briefFingerprint(b.validateBrief(await json(r.briefPath))) !== r.briefHash || b.briefFingerprint(r.brief) !== r.briefHash)
       throw new Error('Approved brief changed; new explicit approval required');
   }
-  async function cleanSource() {
-    // Publishing the optional contract must not make its own approval impossible
-    // in projects that have not gitignored .pi/artifacts yet. Never ignore tracked edits.
-    const changes = (await git('status', '--porcelain', '-z', '--untracked-files=all')).split('\0').filter(Boolean);
-    if (changes.some(entry => !entry.startsWith('?? .pi/artifacts/'))) throw new Error('Source checkout is dirty; commit or remove changes before approval/start');
+  /** What an approval would leave out, so the front door can ask. Never blocks:
+   * uncommitted work is the user's, and the run is isolated from it either way. */
+  async function uncommitted({ exclude = [] } = {}) {
+    const { workspace: w } = await modules();
+    return { head: await git('rev-parse', 'HEAD'), paths: await w.uncommittedPaths(repoRoot, { exclude }) };
   }
-  async function approve(briefPath) {
+  /** includeUncommitted: start from a snapshot of the checkout as it is now
+   * (tracked edits and untracked files, minus `exclude` and host-written paths)
+   * instead of the last commit. Neither choice touches the user's files. */
+  async function approve(briefPath, { includeUncommitted = false, exclude = [] } = {}) {
     if (disposed) throw new Error('Runner disposed');
     const release = await lease();
     try {
-      const { brief: b } = await modules();
+      const { brief: b, workspace: w } = await modules();
       briefPath = resolve(repoRoot, briefPath);
       const brief = b.validateBrief(await json(briefPath));
-      await cleanSource();
       const id = `${brief.id}-${randomUUID()}`;
+      const head = await git('rev-parse', 'HEAD');
+      let baseRevision = head, includedChanges = [];
+      if (includeUncommitted) {
+        const paths = await w.uncommittedPaths(repoRoot, { exclude });
+        const snapshot = paths.length ? await w.snapshotWorkingTree(repoRoot, { ref: `refs/ideation/${id}/base`, exclude,
+          message: `ideation: uncommitted work included when ${brief.id} r${brief.revision} was approved` }) : null;
+        if (snapshot) { baseRevision = snapshot; includedChanges = paths; }
+      }
       const r = { schemaVersion: 1, id, briefHash: b.briefFingerprint(brief), brief, briefPath, repoRoot,
-        workspace: null, branch: null, baseRevision: await git('rev-parse', 'HEAD'), sourceRevision: null,
+        workspace: null, branch: null, baseRevision, approvedHead: head, includedChanges, sourceRevision: null,
         state: 'ready', sequence: 0, ownerId: null, hostPid: null, startedAt: null, updatedAt: now(),
         units: brief.units.map(u => ({ id: u.id, title: u.title, state: 'ready', attempts: 0, reviewStatus: 'not-run', commitHash: null, summary: '' })),
         evidence: [], attention: null, usage: { totalTokens: 0 }, decisions: [] };
@@ -216,9 +226,8 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
       if (r.reconciliationRequired) throw new Error('Workspace state could not be recorded safely; inspect it and make a fresh approval rather than blindly resuming.');
       if (ctx.abort.signal.aborted) throw new Error('Run aborted');
       if (!r.workspace) {
-        await cleanSource();
-        if (await git('rev-parse', 'HEAD') !== r.baseRevision) throw new Error('Approved source baseline changed');
-        const created = await w.createWorkspace(repoRoot, r.id);
+        // Built from the approved starting point, wherever HEAD has moved since.
+        const created = await w.createWorkspace(repoRoot, r.id, r.baseRevision);
         if (created.baseRevision !== r.baseRevision) throw new Error('Workspace baseline differs from approval');
         Object.assign(r, created);
         await save(r);
@@ -450,5 +459,5 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
     disposed = true;
     if (active) { const ctx = active; ctx.shutdown = true; ctx.abort.abort(); if (ctx.promise) await ctx.promise; }
   }
-  return { approve, start: id => launch(id, false), status, pause, resume, stop, accept, recordFeedback, dispose };
+  return { approve, uncommitted, start: id => launch(id, false), status, pause, resume, stop, accept, recordFeedback, dispose };
 }

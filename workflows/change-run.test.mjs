@@ -26,12 +26,12 @@ async function fixture(t, overrides = {}) {
   const calls = [];
   let revision = 'source-1';
   const workspace = {
-    createWorkspace: async (repo, id) => {
+    createWorkspace: async (repo, id, base = 'HEAD') => {
       calls.push('workspace');
       const path = join(root, '.git', 'workspaces', id);
       await mkdir(join(root, '.git', 'workspaces'), { recursive: true });
-      await git('worktree', 'add', '-b', `ideation/${id}`, path);
-      return { workspace: path, branch: `ideation/${id}`, baseRevision: await git('rev-parse', 'HEAD') };
+      await git('worktree', 'add', '-b', `ideation/${id}`, path, base);
+      return { workspace: path, branch: `ideation/${id}`, baseRevision: await git('rev-parse', base) };
     },
     sourceRevision: async () => revision,
     changedFiles: async () => ['src/file.js'],
@@ -75,14 +75,18 @@ test('approval is inert, serial host completion leaves judgments pending, accept
   assert.equal((await f.runner.accept(r.id)).state, 'accepted');
 });
 
-test('changed approval and changed initial source baseline fail closed', async t => {
-  for (const change of ['brief', 'source']) {
-    const f = await fixture(t); const r = await f.runner.approve('brief.json');
-    if (change === 'brief') await writeFile(join(f.root, 'brief.json'), JSON.stringify({ ...brief, title: 'Changed' }));
-    else { await writeFile(join(f.root, 'other'), 'new'); await f.git('add', 'other'); await f.git('commit', '-m', 'new baseline'); }
-    const result = await f.runner.start(r.id);
-    assert.equal(result.state, 'needs-decision'); assert.ok(!f.calls.includes('workspace'));
-  }
+test('a changed approval fails closed; a moved HEAD cannot change the approved starting point', async t => {
+  const f = await fixture(t); const r = await f.runner.approve('brief.json');
+  await writeFile(join(f.root, 'brief.json'), JSON.stringify({ ...brief, title: 'Changed' }));
+  const result = await f.runner.start(r.id);
+  assert.equal(result.state, 'needs-decision'); assert.ok(!f.calls.includes('workspace'));
+
+  const g = await fixture(t); const a = await g.runner.approve('brief.json');
+  await writeFile(join(g.root, 'other'), 'new'); await g.git('add', 'other'); await g.git('commit', '-m', 'new baseline');
+  const started = await g.runner.start(a.id);
+  assert.ok(g.calls.includes('workspace'));
+  assert.equal(started.baseRevision, a.baseRevision);
+  assert.equal(await g.git('-C', started.workspace, 'rev-parse', `${a.baseRevision}^{commit}`), a.baseRevision);
 });
 
 test('resume rejects an amended brief without resetting attempts', async t => {

@@ -39,8 +39,9 @@ const tuiStub = {
 };
 async function harness(t, { runner, service, runtime, hasUI = true, model = { provider: 'provider', id: 'model' } } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'ideation-ext-'));
-  t.after(() => rm(root, { recursive: true, force: true }));
   const handlers = {}, commands = {}, tools = {}, sent = [], messages = [], entries = [], notifications = [];
+  // Shut the session down first: it settles pending docs/ideation writes.
+  t.after(async () => { await handlers.session_shutdown?.(); await rm(root, { recursive: true, force: true }); });
   const pi = {
     on: (n, f) => handlers[n] = f,
     registerCommand: (n, v) => commands[n] = v,
@@ -435,4 +436,76 @@ test('the widget mounts once, animates only while work is live, and motion can b
   assert.match(h.notifications.at(-1), /overridden by PI_REDUCED_MOTION/);
   await h.handlers.session_shutdown();
   assert.equal(mounted.length, 0, 'shutdown disposes the widget and its timer');
+});
+
+test('uncommitted work asks where the run should start and never blocks approval', async t => {
+  for (const choice of ['cancel', 'leave', 'include', 'clean']) {
+    const approvals = []; let confirmText = '', asked = null, root = '';
+    const runner = {
+      status: async () => [],
+      uncommitted: async ({ exclude }) => { assert.deepEqual(exclude, ['docs/ideation/demo/']); return { head: 'abc1234def567890', paths: choice === 'clean' ? [] : ['src/wip.js', 'notes.md'] }; },
+      approve: async (path, options) => { approvals.push(options); await mkdir(join(root, '.git', 'ideation', 'runs', 'r'), { recursive: true }); return makeRun('ready', { repoRoot: root }); },
+      start: async () => new Promise(() => {}),
+      dispose: async () => {},
+    };
+    const h = await harness(t, { runner }); root = h.root;
+    await h.tools.ideation_change.execute('', { action: 'prepare', brief: rawBrief }, null, null, h.ctx);
+    h.ctx.ui.select = async (title, options) => {
+      asked = { title, options };
+      return choice === 'cancel' ? 'Cancel' : options[choice === 'include' ? 1 : 0];
+    };
+    h.ctx.ui.confirm = async (_title, text) => { confirmText = text; return true; };
+    await h.commands.ideation.handler('approve', h.ctx);
+    if (choice === 'clean') assert.equal(asked, null, 'a clean checkout asks nothing extra');
+    else {
+      assert.match(asked.title, /2 uncommitted files in this checkout/);
+      assert.match(asked.options[0], /Start from the last commit \(abc1234\) and leave my changes alone/);
+      assert.match(asked.options[1], /Include my 2 uncommitted files/);
+    }
+    if (choice === 'cancel') { assert.equal(approvals.length, 0); assert.equal(confirmText, ''); continue; }
+    assert.equal(approvals.length, 1);
+    assert.deepEqual(approvals[0], { includeUncommitted: choice === 'include', exclude: ['docs/ideation/demo/'] });
+    assert.match(confirmText, choice === 'include' ? /Starting point: abc1234def56 \+ 2 uncommitted files\./
+      : choice === 'leave' ? /Starting point: abc1234def56 \(2 uncommitted files left out\)\./ : /Starting point: abc1234def56\./);
+    await h.handlers.session_shutdown();
+  }
+});
+
+test('the brief, contract and receipt land in docs/ideation for you to keep; nothing commits them', async t => {
+  let run = makeRun('ready');
+  const runner = { status: async id => id ? run : [run], approve: async () => run, start: async () => new Promise(() => {}), dispose: async () => {} };
+  const h = await harness(t, { runner });
+  run = makeRun('running', { repoRoot: h.root, sequence: 2 });
+  await h.tools.ideation_change.execute('', { action: 'prepare', brief: rawBrief }, null, null, h.ctx);
+  const dir = join(h.root, 'docs', 'ideation', 'demo');
+  assert.deepEqual(JSON.parse(await readFile(join(dir, 'brief.json'), 'utf8')), brief);
+  assert.match(await readFile(join(dir, 'contract.html'), 'utf8'), /data-stamp-state="draft:1"/);
+  await assert.rejects(readFile(join(dir, 'receipt.json')), /ENOENT/, 'no receipt before there is evidence');
+
+  // Run pages follow recorded state; the receipt appears once the run is ready for review.
+  await h.commands.ideation.handler('status', h.ctx);
+  await until(async () => false, 50);
+  await h.handlers.session_shutdown();
+  assert.match(await readFile(join(dir, 'contract.html'), 'utf8'), /data-stamp-state="running:1"/);
+  run = makeRun('ready-for-review', { repoRoot: h.root, sequence: 3, branch: 'ideation/r', sourceRevision: 'src-1',
+    evidence: [{ criterionId: 'a', status: 'passed', sourceRevision: 'src-1', command: 'node --test', output: 'ok' }] });
+  await h.commands.ideation.handler('status', h.ctx);
+  await h.handlers.session_shutdown();
+  const receipt = JSON.parse(await readFile(join(dir, 'receipt.json'), 'utf8'));
+  assert.equal(receipt.state, 'ready-for-review');
+  assert.equal(receipt.branch, 'ideation/r');
+  assert.equal(receipt.evidence[0].status, 'passed');
+  assert.ok(!('workspace' in receipt), 'no machine-local paths');
+});
+
+test('a planning-path project with the same slug is never written into', async t => {
+  const runner = { status: async () => [], dispose: async () => {} };
+  const h = await harness(t, { runner });
+  await mkdir(join(h.root, 'docs', 'ideation', 'demo'), { recursive: true });
+  await writeFile(join(h.root, 'docs', 'ideation', 'demo', 'contract-data.json'), '{"planning":true}');
+  await h.tools.ideation_change.execute('', { action: 'prepare', brief: rawBrief }, null, null, h.ctx);
+  await h.handlers.session_shutdown();
+  assert.equal(await readFile(join(h.root, 'docs', 'ideation', 'demo', 'contract-data.json'), 'utf8'), '{"planning":true}');
+  await assert.rejects(readFile(join(h.root, 'docs', 'ideation', 'demo', 'contract.html')), /ENOENT/);
+  assert.ok(await readFile(join(h.root, 'docs', 'ideation', 'demo-change', 'contract.html'), 'utf8'));
 });
