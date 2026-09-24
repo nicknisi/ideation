@@ -59,6 +59,8 @@ export const meta = {
  *   strict?: boolean,            // fail closed on a scout HOLD or a verdict-less
  *                                // reviewer (express-approved contracts)
  *   phases: [{ title, specPath, prereqs: [titles], risk, files }],
+ *   executionMode?: 'strict' | 'adaptive', // adaptive omits scout only for risk:'low'
+ *   maxReviewCycles?: number,   // integer 1..3; default 3
  *   completedPhases?: [titles]   // already committed; excluded from dispatch
  * }
  *
@@ -371,6 +373,7 @@ function phaseNumberOf(phase, index) {
 
 /** Per-invocation inputs only — workflow, gates and format come from agents/scout.md. */
 function scoutPrompt(phase, a, n, priorMapLikely) {
+  if (a.native) return `Read ${phase.specPath} and inspect current source read-only. Assess readiness within the approved authority. Do not write context maps or other artifacts. Return JSON {verdict:"GO"|"HOLD", contextMap:string} with findings inline.`;
   const dir = dirOf(a.projectDir);
   return `Scout the codebase for one phase of the "${a.projectName}" ideation project.
 
@@ -400,6 +403,14 @@ Do not ask the user anything.`;
 }
 
 function buildPrompt(phase, a, scout) {
+  if (a.native) return `Implement "${phase.title}" directly from the approved packet ${phase.specPath}.
+Read the packet, project conventions, affected source and analogous patterns before editing.
+Inspect dependencies and blast radius. Scout findings (advisory): ${scout.contextMap ?? 'Inspect source yourself'}.
+Implement only the unit goal within approved paths and invariants. Run only explicitly authorized commands.
+Do not invoke skills or subagents. Do not write context maps, implementation notes or host packets.
+Do not stage or commit: the host prepares the diff, runs checks and commits after independent review.
+Return JSON {result:"BUILT"|"NO-OP"|"FAIL",summary:string,filesChanged:string[],patternFiles:string[],validation:"PASS"|"FAIL"|"NONE"}.
+NO-OP is only a claim of no source changes; the host verifies it and independent review remains mandatory.`;
   const flags = a.strict ? '--headless --strict' : '--headless';
   const dir = dirOf(a.projectDir);
   const holdNote =
@@ -439,7 +450,7 @@ and must not try.
    context map at the end of this prompt verbatim to ${dir}context-map.md — the
    scout is read-only and cannot write it itself. Then use its Key Patterns,
    Dependencies, Conventions and Risks instead of re-exploring.`
-      : `The scout stage FAILED (${scout.error}), so take that step's fallback: explore
+      : `${scout.omitted ? 'Adaptive low-risk execution omits the dedicated scout, so explore' : `The scout stage FAILED (${scout.error}), so take that step's fallback: explore`}
    inline — read every "Pattern to follow" path and every modified file, read
    analogues for new files, map the blast radius of each modified file, and read
    CLAUDE.md / README for conventions. Do not write ${dir}context-map.md.`
@@ -474,6 +485,7 @@ ${mapBlock}`;
 
 /** Per-invocation inputs only — workflow, severities and format come from agents/reviewer.md. */
 function reviewPrompt(phase, a, cycle, priorFindings, patternFiles) {
+  if (a.native) return `Independently review ${phase.specPath} against current source and git diff HEAD (host prepared new files). If the diff is empty, verify the existing implementation satisfies the unit and explicitly explain no-change evidence. Read source; never trust builder claims. Do not edit or stage. Prior findings: ${JSON.stringify(priorFindings)}. Return JSON {verdict:"PASS"|"FAIL",findings:string[],summary:string}.`;
   const prior =
     cycle > 1
       ? `Prior findings (cycle ${cycle - 1}); entries prefixed [REFUTED: …] are ones the
@@ -490,7 +502,7 @@ Pattern files:  ${
       ? patternFiles.join(', ')
       : 'none collected — extract the "Pattern to follow" paths from the spec yourself'
   }
-Cycle number:   ${cycle} of 3
+Cycle number:   ${cycle} of ${maxReviewCycles}
 
 ${prior}Run \`git diff HEAD\` yourself — the builder left everything unstaged and
 registered net-new files with \`git add -N\`.
@@ -506,12 +518,13 @@ Do not ask the user anything, and do not edit files.`;
 }
 
 function fixPrompt(phase, a, cycle, findings) {
+  if (a.native) return `Read ${phase.specPath} and repair these independently reviewed findings within approved authority: ${JSON.stringify(findings)}. Verify findings against source before editing. Run only approved commands. Do not write artifacts, stage, commit or invoke skills. Return JSON {result:"FIXED"|"FAIL",summary:string,carried:string[]} with inline evidence for any refutation.`;
   return `Fix review findings for one phase of the "${a.projectName}" ideation project.
 
 Phase: "${phase.title}"
 Spec:  ${phase.specPath}
 
-Review cycle ${cycle} of 3 returned FAIL. Blocking findings:
+Review cycle ${cycle} of ${maxReviewCycles} returned FAIL. Blocking findings:
 ${findings.map(f => `  ${f}`).join('\n') || '  (the reviewer reported FAIL without listing findings — re-read the diff against the spec)'}
 
 For each finding, VERIFY BEFORE ACTING: read the target code, then apply its
@@ -537,6 +550,7 @@ Do not ask the user anything.`;
 }
 
 function commitPrompt(phase, a, files, reviewCycles, reviewNote) {
+  if (a.native) return 'Host-only verified completion boundary. Do not spawn a child or stage/commit through an agent.';
   const dir = dirOf(a.projectDir);
   return `Commit one completed phase of the "${a.projectName}" ideation project.
 
@@ -597,6 +611,7 @@ async function runReviewLoop(phase, a, phaseLabel, patternFiles, fail) {
   let review = null;
   let reviewError = null;
 
+  // Three is the absolute legacy ceiling; callers may lower it, never raise it.
   while (cycle <= 3) {
     const res = await safeAgent(
       reviewPrompt(phase, a, cycle, carried, patternFiles),
@@ -615,7 +630,8 @@ async function runReviewLoop(phase, a, phaseLabel, patternFiles, fail) {
       break;
     }
     review = res.value;
-    if (review.verdict === 'PASS' || cycle === 3) break;
+    if (a.native && review.blocking !== undefined && review.blocking !== 0) review = { ...review, verdict: 'FAIL' };
+    if (review.verdict === 'PASS' || cycle === 3 || cycle === maxReviewCycles) break;
 
     const fixRes = await safeAgent(
       fixPrompt(phase, a, cycle, review.findings ?? []),
@@ -685,7 +701,8 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
   });
 
   // --- 1. SCOUT ------------------------------------------------------------
-  const scoutRes = await safeAgent(
+  const omitScout = a.executionMode === 'adaptive' && phase.risk === 'low';
+  const scoutRes = omitScout ? { ok: false, error: null } : await safeAgent(
     scoutPrompt(phase, a, phaseNumberOf(phase, index), priorMapLikely),
     {
       label: `scout:${title}`,
@@ -696,9 +713,11 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
   );
   const scout = scoutRes.ok
     ? { available: true, ...scoutRes.value }
-    : { available: false, error: scoutRes.error, verdict: null };
+    : { available: false, omitted: omitScout, error: scoutRes.error, verdict: null };
 
-  if (!scout.available) {
+  if (omitScout) {
+    log(`Adaptive low-risk phase "${title}": builder explores inline; reviewer remains required.`);
+  } else if (!scout.available) {
     // execute-spec's rule for an *unavailable* scout is "warn and explore inline"
     // in both modes; only a HOLD *verdict* is a strict stop condition.
     warnings.push(
@@ -741,7 +760,7 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
   if (build.validation === 'FAIL') {
     return fail(`Validation failed after build: ${build.summary}`);
   }
-  if (build.result === 'NO-OP') {
+  if (build.result === 'NO-OP' && !a.native) {
     // execute-spec: an empty diff skips review entirely and reports a no-op. It
     // is not a failure, and forcing it to FAIL re-dispatches the phase forever.
     log(`NO-OP ${title} — empty diff, review skipped`);
@@ -766,10 +785,11 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
   if (review === null) {
     // The reviewer crashed or never produced a verdict. This is the fork the
     // whole restructure exists for — make both branches visible in the result.
-    if (a.strict) {
-      log(`FAIL ${title}: reviewer unavailable under --strict — not committing`);
+    if (a.native || a.strict || a.executionMode === 'adaptive') {
+      const reviewPolicy = a.strict ? '--strict' : 'adaptive execution';
+      log(`FAIL ${title}: reviewer unavailable under ${reviewPolicy} — not committing`);
       return fail(
-        `Reviewer unavailable (${reviewError}). --strict fails closed: unreviewed code from a spec no human reviewed does not land. Changes left unstaged. Validation: ${build.validation ?? 'unknown'}.`,
+        `Reviewer unavailable (${reviewError}). ${reviewPolicy} fails closed: unreviewed code from a spec no human reviewed does not land. Changes left unstaged. Validation: ${build.validation ?? 'unknown'}.`,
       );
     }
     warnings.push(
@@ -798,7 +818,7 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
   const declared = phase.files ?? [];
   const files =
     (build.filesChanged ?? []).length > 0 ? build.filesChanged : declared;
-  if (files.length === 0) {
+  if (files.length === 0 && !a.native) {
     return fail(
       `Review ${reviewStatus}, but neither the builder nor the manifest named a file to stage — refusing to commit blind (never \`git add -A\`). Changes left unstaged.`,
       reviewStatus,
@@ -813,17 +833,17 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
       files,
       reviewCycles,
       review
-        ? `PASS on cycle ${reviewCycles} of 3`
+        ? `PASS on cycle ${reviewCycles} of ${maxReviewCycles}`
         : 'NOT REVIEWED — validation-only fallback',
     ),
     {
       label: `commit:${title}`,
       phase: phaseLabel,
       agentType: agentNames.builder,
-      schema: COMMIT_RESULT_SCHEMA,
+      schema: a.native ? { ...COMMIT_RESULT_SCHEMA, properties: { ...COMMIT_RESULT_SCHEMA.properties, result: { enum: ['COMMITTED', 'VERIFIED', 'NO-OP', 'FAILED'] } } } : COMMIT_RESULT_SCHEMA,
     },
   );
-  if (!commitRes.ok || commitRes.value.result !== 'COMMITTED') {
+  if (!commitRes.ok || !(a.native ? ['COMMITTED', 'VERIFIED', 'NO-OP'] : ['COMMITTED']).includes(commitRes.value.result)) {
     return fail(
       `Review ${reviewStatus}, but the commit stage failed (${commitRes.error ?? commitRes.value?.summary ?? 'no result'}). Changes left unstaged.`,
       reviewStatus,
@@ -833,12 +853,12 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
 
   return {
     title,
-    result: 'PASS',
+    result: a.native && commitRes.value.result === 'NO-OP' ? 'NO-OP' : 'PASS',
     reviewStatus,
     commitHash: commitRes.value.commitHash ?? null,
     // Warnings lead the summary — a validation-only PASS must not read as a
     // clean PASS in the skill's report.
-    summary: [...warnings, build.summary, review?.summary]
+    summary: [...warnings, build.summary, review?.summary, ...(a.native ? [commitRes.value.summary] : [])]
       .filter(Boolean)
       .join(' — '),
     findings: review?.findings ?? [],
@@ -906,6 +926,11 @@ log(
   }`,
 );
 
+const maxReviewCycles = a?.maxReviewCycles === undefined ? 3 : a.maxReviewCycles;
+if (!Number.isInteger(maxReviewCycles) || maxReviewCycles < 1 || maxReviewCycles > 3) {
+  return { ...summarize([]), error: 'maxReviewCycles must be an integer from 1 to 3' };
+}
+
 const phases = a?.phases ?? [];
 if (phases.length === 0) {
   log('No phases supplied in args — nothing to execute.');
@@ -950,6 +975,7 @@ try {
   }
 
   waves = splitWavesByFileOverlap(prereqWaves, phases);
+  if (a.native) waves = waves.flatMap(wave => wave.map(title => [title]));
 } catch (err) {
   log(`FAIL planning: ${err.message}`);
   return { ...summarize([]), error: err.message };
