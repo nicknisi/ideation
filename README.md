@@ -8,6 +8,38 @@
 
 Transform brain dumps into structured implementation artifacts through a conversational interview. HTML is used for interactive decision-making (the contract with evidence-gate readiness, visual comparisons during the interview). Markdown is used for reference documents (specs, PRDs) consumed directly by `/ideation:execute-spec`. Includes an execution workflow for implementing specs in fresh sessions with per-component feedback loops, adversarial plan critics, a Scout/Reviewer agent pipeline, and a push-based learning loop that captures lessons at completion and applies them visibly at future intakes.
 
+## Pi-native change workflow
+
+The opt-in native path agrees on a **compact change brief**, then creates working
+plans just in time rather than requiring every implementation recipe upfront:
+
+```text
+/ideation
+# Describe the change in conversation; review the contract it opens.
+/ideation approve
+# Or use /ideation again for review, revision, progress and run controls.
+```
+
+One explicit approval binds the change, exact command/path authority, model and
+budgets. Work runs in an isolated Git worktree, using the existing engine and
+independent review. A compact, theme-aware Pi component shows the current stage,
+real progress, and a persistent **contract/receipt link**. Contracts retain
+ideation's paper/graphite-and-cobalt field-guide design, with before/after views,
+SVG dependencies, and deliverable-to-verification maps. No file paths to manage,
+raw JSON dumps, or document-sized approval dialogs. With the optional artifacts service, that same page updates live and
+annotations reach the coordinating session; without it, a local HTML snapshot
+remains available. Feedback never grants permission.
+
+Pause/resume/stop operate at explicit boundaries. Ready for review is not accepted,
+merged or deployed; `/ideation accept` records final human judgment against current
+evidence. Approved commands execute trusted repository code, not inside an OS
+sandbox. Source must be clean; the workflow never stashes the user's changes.
+
+See [the native workflow guide](docs/native-workflow.md) and
+[the worked brief](test-fixtures/native-change/brief.json). The old skills and
+Claude Code integration remain supported. This new native front door is Pi-only;
+the brief, renderer, verifier primitives and existing engine are portable.
+
 ## Skills
 
 The arc runs **chart → whether → how → shipped**: chart finds the route when an effort is too big for one session and the route itself is unknown, brainstorm decides whether the idea is worth building, ideation plans how, and the execution commands below ship it.
