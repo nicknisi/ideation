@@ -244,7 +244,7 @@ const lede = 'max-w-[62ch] text-[1.0625rem] text-muted';
             <dl class="mt-3 grid gap-2 text-[0.9375rem]">
               <div><dt class="inline font-mono text-[0.84rem] text-accent">/ideation</dt> <dd class="inline text-muted">— the guided menu for whatever is in flight</dd></div>
               {
-                pi.subcommands.filter(s => ['plan', 'approve', 'pause', 'accept'].includes(s.name)).map(s => (
+                pi.subcommands.filter(s => ['plan', 'approve', 'accept', 'exit'].includes(s.name)).map(s => (
                   <div>
                     <dt class="inline font-mono text-[0.84rem] text-accent">{s.name}{s.args && ` ${s.args}`}</dt>{' '}
                     <dd class="inline text-muted">— {s.short}</dd>
@@ -260,6 +260,7 @@ const lede = 'max-w-[62ch] text-[1.0625rem] text-muted';
               <li>Commits on <code class="code">ideation/&lt;run-id&gt;</code>, in its own worktree. Merging stays yours.</li>
               <li>The brief, contract and receipt in <code class="code">docs/ideation/&lt;change&gt;/</code>: commit them, or don’t.</li>
               <li>Uncommitted work never blocks it. Start from your last commit, or include your changes; it never stashes or edits them.</li>
+              <li>Never trapped: <code class="code">/ideation exit</code> stops the run and brings its work into your checkout.</li>
             </ul>
           </div>
           <div class="strip-row grid items-center gap-x-8 gap-y-3 min-[900px]:grid-cols-[minmax(0,1fr)_minmax(0,36rem)]">

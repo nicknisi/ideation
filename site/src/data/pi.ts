@@ -18,6 +18,7 @@ export const SHORT: Record<string, string> = {
   resume: 'continue within the approval',
   stop: 'set a run aside, work intact',
   accept: 'record your decision',
+  exit: 'leave, taking the work with you',
   motion: 'widget animation on or off',
 };
 
@@ -28,10 +29,11 @@ const SUBCOMMANDS: Record<string, string> = {
   status: 'Show where every change stands, and refresh the widget and contract link.',
   review: 'Open the contract for a run (or the prepared draft) in your browser.',
   pause: 'Stop at the next safe boundary, with nothing lost.',
-  resume: 'Continue a paused, interrupted or stuck run within its original approval. It always can.',
+  resume: 'Continue a paused, interrupted or stopped run within its original approval. It always can, and it is told what failed last time.',
   stop: 'Set a run aside. It waits for owned processes to settle; the worktree and its commits stay.',
   accept:
     'Record your acceptance of a ready-for-review run after reading its evidence and judgments. It never merges, pushes or deploys.',
+  exit: 'Leave ideation from any state. Stops a working run, brings its work into your checkout as uncommitted changes (or keeps it on its branch), and clears the widget. Nothing comes back on its own.',
   motion: 'Turn the widget animation on or off (saved). PI_REDUCED_MOTION=1 or IDEATION_MOTION=off also switch it off.',
 };
 
@@ -41,6 +43,7 @@ const TOOL_ACTIONS: Record<string, string> = {
   receipt: 'Read the source-bound record of what was verified.',
   feedback: 'File a note to the run’s inbox. Feedback is never permission.',
   answer: 'Reply to a question left on the contract page.',
+  exit: 'Leave ideation when you ask to, bringing the work into your checkout.',
 };
 
 export function joinPi() {

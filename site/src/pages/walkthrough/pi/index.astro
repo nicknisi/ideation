@@ -151,9 +151,11 @@ const PLATE = [
           </Deck>
           <ContractFrame state="running" anchor="run-status" label={`Contract · ${title} · running`} title={`The live contract for ${title} while work runs`} class="mt-6" />
           <p class="mt-4 max-w-[64ch] text-[0.9375rem] text-muted">
-            Need to step in? <code class="code">/ideation pause</code> stops at a safe boundary,{' '}
-            <code class="code">resume</code> continues within the same approval, and{' '}
-            <code class="code">stop</code> sets the run aside with its work intact.
+            Need to step in? <code class="code">/ideation pause</code> stops at a safe boundary and{' '}
+            <code class="code">resume</code> continues within the same approval. If a check fails, its
+            output goes to the fixer; if the run cannot make progress it stops and says why. And you
+            are never stuck: <code class="code">/ideation exit</code> stops the run, brings its work into
+            your checkout and puts ideation away.
           </p>
         </section>
 
