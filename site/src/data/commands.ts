@@ -91,6 +91,16 @@ export const COMMANDS: CommandDoc[] = [
       'Because no human reviewed the specs, execution runs fail-closed: a scout HOLD or a crashed reviewer stops the phase rather than committing anyway.',
   },
   {
+    slug: 'change',
+    stage: 'plan',
+    headline: 'In Pi: agree on one compact change, approve it once, then walk away.',
+    when: 'The change is clear enough to state as before/after, invariants and checks, and you want it built without babysitting. Open it with /ideation in Pi.',
+    produces:
+      'A live contract page that goes from approval to running to a receipt of source-bound evidence, and reviewed local commits in an isolated worktree.',
+    caveat:
+      'Approval is the only permission. Comments on the contract are feedback, never authorization; it never pushes, merges or deploys, and ready-for-review is not accepted.',
+  },
+  {
     slug: 'autopilot',
     stage: 'execute',
     headline: 'Run every phase of an approved contract on the workflow engine.',

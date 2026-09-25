@@ -1,0 +1,188 @@
+/* Native change documents inherit all colour, type and depth tokens from
+   contract-gen.css. Only editorial composition belongs here. */
+.native-document main { max-width: 1160px; margin: auto; padding: var(--s7) var(--s6) var(--s8); }
+.native-document header { border-top: 2px solid var(--accent); padding: var(--s5) 0 var(--s7); }
+.document-slug { display: flex; justify-content: space-between; align-items: center; gap: var(--s4); font: var(--t-small)/1.5 var(--font-sans); color: var(--accent); }
+.document-slug > span { display: flex; align-items: center; gap: var(--s3); }
+.native-document .theme-toggle { flex-shrink: 0; width: 36px; height: 36px; }
+.native-document h1 { max-width: 24ch; font-size: clamp(2.3rem, 5vw, 4rem); line-height: 1.06; letter-spacing: -.025em; font-weight: 600; margin: var(--s6) 0 var(--s5); text-wrap: balance; }
+.native-document h2 { font-size: var(--t-h2); line-height: 1.2; font-weight: 600; margin: 0 0 var(--s5); }
+.native-document h3 { font-size: var(--t-h3); line-height: 1.4; font-weight: 600; margin: 0 0 var(--s2); }
+.native-document p { max-width: var(--measure); margin: var(--s2) 0 var(--s4); white-space: pre-wrap; overflow-wrap: anywhere; }
+.native-document .lead { max-width: 72ch; font-size: var(--t-lead); line-height: 1.7; }
+.document-meta { font: var(--t-meta)/1.5 var(--font-mono); color: var(--muted); }
+.native-document .review-guidance { margin-top: var(--s5); font: var(--t-small)/1.6 var(--font-sans); color: var(--muted); }
+/* Page-requested approval: a request to Pi, which confirms in the terminal. */
+.native-document .approve-request-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin-top: var(--s4); }
+.native-document .approve-request-row:has(.approve-request[hidden]) { display: none; }
+.native-document .approve-request { font: 600 var(--t-small)/1 var(--font-sans); color: var(--surface-2); background: var(--accent); border: 1px solid var(--accent); border-radius: var(--radius); padding: var(--s2) var(--s4); box-shadow: var(--press); cursor: pointer; transition: transform .15s var(--ease), box-shadow .15s var(--ease); }
+.native-document .approve-request:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 0 var(--line); }
+.native-document .approve-request[aria-busy=true] { cursor: progress; opacity: .75; }
+.native-document .approve-status { font: var(--t-small)/1.5 var(--font-sans); color: var(--muted); }
+@media print { .native-document .approve-request-row { display: none; } }
+.document-nav { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: var(--s3) var(--s5); padding: var(--s3) 0; background: var(--bg); border-block: 1px solid var(--line); font: var(--t-small)/1.5 var(--font-sans); }
+.native-document section { border-top: 1px solid var(--line); padding: var(--s7) 0; }
+.native-document figure { margin: 0; }
+.native-document .muted, .native-document small { color: var(--muted); }
+.native-document small, .native-document figcaption { font: var(--t-meta)/1.6 var(--font-sans); }
+.native-document small { display: block; }
+.native-document a { color: var(--accent); text-underline-offset: 3px; }
+.native-document li { padding-left: var(--s2); margin: var(--s3) 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.native-document ul { max-width: 84ch; padding-left: var(--s5); }
+.native-document .change { display: grid; grid-template-columns: minmax(0,1fr) 80px minmax(0,1.2fr); border: 1px solid var(--line-strong); border-radius: var(--radius); box-shadow: var(--press); background: var(--surface-1); }
+.change > div { padding: var(--s5); min-width: 0; }
+.change > .change-direction { padding: var(--s5) 0; align-self: center; text-align: center; color: var(--muted); font: var(--t-meta)/1.5 var(--font-sans); }
+.change .after { border-top: 2px solid var(--accent); }
+.change figcaption { grid-column: 1/-1; padding: var(--s3) var(--s5); border-top: 1px solid var(--line); color: var(--muted); }
+.relation { width: 100%; height: 24px; color: var(--accent); }
+.relation path, .dependency-map path { fill: none; stroke: currentColor; stroke-width: 1.25; vector-effect: non-scaling-stroke; }
+.native-document .dependency-map { --dependency-row-height: 6em; font-size: var(--t-body); display: grid; grid-template-columns: minmax(65px, 160px) minmax(0,1fr); max-width: 800px; }
+.dependency-map > svg { width: 100%; height: 100%; color: var(--accent); }
+.dependency-map ol { list-style: none; padding: 0; margin: 0; }
+.native-document .dependency-map li { height: var(--dependency-row-height); margin: 0; padding: var(--s3) var(--s4); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; justify-content: center; font-size: var(--t-body); line-height: 1.3; }
+.dependency-map a { overflow: auto; }
+.dependency-map small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.native-document details { margin: var(--s3) 0; border-top: 1px solid var(--line); }
+.native-document summary { cursor: pointer; padding: var(--s3) 0; font: var(--t-small)/1.6 var(--font-sans); color: var(--accent); }
+.detail-body { padding: var(--s3) 0 var(--s4); }
+.native-document article { padding: var(--s5) 0; border-top: 1px solid var(--line); }
+.verification-intro { font-family: var(--font-sans); }
+.verification-intro strong { color: var(--accent); }
+.deliverable { margin-top: var(--s7); }
+.deliverable-heading { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s4); padding: var(--s4) 0; border-top: 2px solid var(--line-strong); }
+.deliverable-heading > span { font: var(--t-meta)/1.5 var(--font-mono); }
+.native-document .verification-row { display: grid; grid-template-columns: minmax(0,1.4fr) 32px minmax(0,1fr) 32px 110px; gap: var(--s3); align-items: start; }
+.verification-row > * { min-width: 0; }
+.native-document .verification-row h3 { font-size: var(--t-body); line-height: 1.65; font-weight: 400; }
+.verification-row > .relation { margin-top: var(--s5); }
+.verification-row .check-method { font: var(--t-small)/1.6 var(--font-sans); }
+.verification-row .evidence-note { grid-column: 1/-1; font: var(--t-small)/1.6 var(--font-sans); margin: 0; }
+.verification-row > details { grid-column: 1/-1; margin: 0; border-top: 0; }
+.verification-row > details summary { padding: 0; }
+.native-document .badge { display: inline-block; border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 2px var(--s2); margin-bottom: var(--s2); font: var(--t-meta)/1.6 var(--font-mono); color: var(--ink); }
+.native-document .warning { color: var(--caution); }
+.native-document .failed { color: var(--danger); }
+.native-document pre { max-width: 100%; max-height: 32rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: var(--s3); background: var(--wash); border: 1px solid var(--line); border-radius: var(--radius); margin: var(--s2) 0; }
+.native-document code { font: var(--t-data)/1.65 var(--font-mono); overflow-wrap: anywhere; }
+.native-document dl { display: grid; grid-template-columns: minmax(100px,1fr) 3fr; gap: var(--s2) var(--s4); font-family: var(--font-sans); font-size: var(--t-small); }
+.native-document dt { color: var(--muted); }
+.native-document dd { margin: 0; overflow-wrap: anywhere; }
+.boundary-columns, .delta { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--s7); }
+.native-document footer { border-top: 1px solid var(--line); padding-top: var(--s5); color: var(--muted); font: var(--t-meta)/1.6 var(--font-sans); }
+.native-document h1, .native-document h2, .native-document h3, .document-meta { overflow-wrap: anywhere; }
+/* ── Ink & press (DESIGN.md › Motion) ─────────────────────────
+   Visible by default. Hidden entrance states apply only under
+   [data-motion=on][data-fresh], set pre-paint when motion is welcome
+   and the stamped state is new to this tab. */
+.native-document header { position: relative; }
+.brief-stamp { position: absolute; top: var(--s8); right: 0; display: grid; justify-items: center; gap: 2px; padding: var(--s2) var(--s4) 6px; border: 3px double currentColor; border-radius: var(--radius-lg); font-family: var(--font-sans); letter-spacing: normal; white-space: normal; text-transform: uppercase; transform: rotate(-4deg); opacity: .9; pointer-events: none; -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.6 2.15'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.6 2.15'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.brief-stamp::before { content: none; }
+.brief-stamp strong { font-size: 1.15rem; line-height: 1.1; font-weight: 800; letter-spacing: .16em; }
+.brief-stamp span { font: 600 var(--t-kicker)/1.3 var(--font-mono); letter-spacing: .12em; }
+.brief-stamp.is-faint { color: var(--faint); }
+@keyframes stamp-thunk {
+  0% { opacity: 0; transform: translate(10px, -14px) rotate(-11deg) scale(1.7); }
+  62% { opacity: .95; transform: translate(0, 1px) rotate(-3deg) scale(.95); }
+  78% { transform: rotate(-4.5deg) scale(1.03); }
+  100% { opacity: .9; transform: rotate(-4deg) scale(1); }
+}
+@keyframes press-impact { 0%, 100% { transform: none; } 40% { transform: translateY(2px); } }
+@keyframes ink-spread { from { box-shadow: 0 0 0 0 currentColor; } to { box-shadow: 0 0 0 18px transparent; } }
+[data-motion=on][data-fresh] .brief-stamp { animation: stamp-thunk .62s var(--ease) .35s both, ink-spread .7s ease-out .72s both; }
+[data-motion=on][data-fresh] .native-document header > h1 { animation: press-impact .2s ease-out .72s; }
+
+/* Ink draws: rules, arrows and dependency edges. */
+.relation path { stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset .9s var(--ease) .2s; }
+/* The dependency map stretches non-uniformly, so it is inked by a wipe, never dashes. */
+.dependency-map > svg { transition: clip-path 1.1s var(--ease) .25s; }
+[data-motion=on][data-fresh] .native-document section:not(.seen) .dependency-map > svg { clip-path: inset(0 0 0 100%); }
+.verification-row > .relation:nth-of-type(2) path { transition-delay: .55s; }
+[data-motion=on][data-fresh] .native-document section:not(.seen) .relation path { stroke-dashoffset: 1; }
+[data-motion=on][data-fresh] .native-document section { transition: opacity .6s var(--ease), transform .6s var(--ease); }
+[data-motion=on][data-fresh] .native-document section:not(.seen) { opacity: 0; transform: translateY(12px); }
+
+/* The After panel takes an ink wash that dries to a faint tint. */
+.change .after { position: relative; isolation: isolate; }
+.change .after::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--accent-tint); opacity: .45; }
+@keyframes ink-wash { 0% { clip-path: inset(0 100% 0 0); opacity: .9; } 70% { clip-path: inset(0 0 0 0); opacity: .75; } 100% { clip-path: inset(0 0 0 0); opacity: .45; } }
+[data-motion=on][data-fresh] section.seen .change .after::before { animation: ink-wash 1.3s var(--ease) .45s both; }
+[data-motion=on][data-fresh] section:not(.seen) .change .after::before { clip-path: inset(0 100% 0 0); }
+
+/* Paper, not screen: a 1px lift, the press offset grows. */
+.native-document .change { transition: transform .16s var(--ease), box-shadow .16s var(--ease); }
+.native-document .change:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 0 var(--line); }
+
+/* Evidence marks: checks ink on; pending judgment breathes. */
+.tick { display: block; width: 26px; height: 26px; margin-bottom: var(--s2); color: var(--faint); }
+.tick .ring { fill: none; stroke: currentColor; stroke-width: 1.25; }
+.tick .mark { fill: none; stroke: currentColor; stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset .7s var(--ease) .75s; }
+.tick-passed, .tick-accepted { color: var(--go); }
+.tick-passed .ring, .tick-accepted .ring { fill: var(--go-tint); }
+.tick-failed { color: var(--danger); }
+.tick-failed .ring { fill: var(--danger-tint); }
+.tick-stale { color: var(--caution); }
+.tick-stale .ring { stroke-dasharray: 3 2.2; }
+.tick-pending .ring { stroke-dasharray: 2 2.6; }
+.tick-judgment { color: var(--accent); }
+.tick-judgment .ring { stroke-dasharray: none; transform-origin: 12px 12px; animation: breathe 2.8s ease-in-out infinite; }
+@keyframes breathe { 0%, 100% { opacity: .45; transform: scale(.9); } 50% { opacity: 1; transform: scale(1); } }
+@keyframes ink-on { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes ink-dry { 0% { fill: currentColor; } 100% { } }
+[data-motion=on][data-fresh] section:not(.seen) .tick .mark { stroke-dashoffset: 1; }
+.tick.just-inked .mark { animation: ink-on .8s var(--ease) .3s both; }
+.tick.just-inked .ring { animation: ink-dry 1.6s ease-out .9s both; }
+
+/* Live only: a token runs the edge into the step actually running. */
+.dependency-map path.flow { vector-effect: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-dasharray: .07 .93; animation: travel 1.8s linear infinite; }
+@keyframes travel { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.native-document .dependency-map li.active { box-shadow: inset 3px 0 0 var(--accent); }
+.native-document .dependency-map li.active small { color: var(--accent); }
+.native-document .dependency-map li.done small { color: var(--go); }
+.ink-roller { position: relative; height: 2px; max-width: 320px; margin: var(--s2) 0 var(--s3); background: var(--line); overflow: hidden; }
+.ink-roller::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 30%; background: var(--accent); animation: roll 1.9s var(--ease) infinite; }
+@keyframes roll { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dependency-map path.flow { display: none; }
+  .ink-roller::after { animation: none; width: 100%; opacity: .5; }
+  .tick-judgment .ring { animation: none; opacity: 1; transform: none; }
+}
+@media(max-width:800px) {
+  .native-document .verification-row { grid-template-columns: minmax(0,1fr) 28px minmax(0,1fr); }
+  .verification-row > .relation:nth-of-type(2) { display: none; }
+  .verification-row .evidence-state { grid-column: 3; }
+}
+@media(max-width:1000px) { .brief-stamp { position: static; display: inline-grid; margin: var(--s6) 0 0 var(--s2); } }
+/* The stamp lands at 1.7x; on narrow screens that must not scroll the page sideways. clip, unlike hidden, keeps sticky and inner scrollers working. */
+body.native-document { overflow-x: clip; }
+@media(max-width:640px) {
+  .native-document main { padding: var(--s5) var(--s4) var(--s7); }
+  .native-document section { padding: var(--s6) 0; }
+  .native-document .change, .boundary-columns, .delta { grid-template-columns: 1fr; }
+  .change > .change-direction { padding: 0 var(--s5) var(--s4); text-align: left; }
+  .change-direction .relation { width: 40px; vertical-align: middle; margin: var(--s2) var(--s3) var(--s2) 0; transform: rotate(90deg); }
+  .native-document .dependency-map { grid-template-columns: 60px minmax(0,1fr); }
+  .native-document .verification-row { display: block; }
+  .verification-row > .relation { width: 40px; margin: var(--s3) 0; transform: rotate(90deg); }
+  .verification-row > .relation:nth-of-type(2) { display: block; }
+  .verification-row .evidence-state { margin: var(--s3) 0; }
+  .verification-row > details { margin-top: var(--s3); }
+  .deliverable-heading { display: block; }
+  .native-document dl { grid-template-columns: 1fr; }
+  .native-document dd { margin-bottom: var(--s3); }
+}
+@media print {
+  .document-nav, .dependency-map path.flow, .ink-roller { display: none; }
+  .native-document *, .native-document *::before, .native-document *::after { animation: none !important; transition: none !important; }
+  .native-document section { opacity: 1 !important; transform: none !important; }
+  .native-document path { stroke-dashoffset: 0 !important; }
+  .brief-stamp { transform: rotate(-4deg); }
+  .native-document main { max-width: none; padding: 0; }
+  .native-document header, .native-document section { padding-block: 18pt; }
+  .native-document details::details-content { display: block; content-visibility: visible; }
+  .native-document details:not([open]) > :not(summary) { display: block !important; }
+  .native-document pre { max-height: none; overflow: visible; }
+  .native-document article, .native-document figure, .native-document details { break-inside: avoid; }
+  .native-document h2, .deliverable-heading { break-after: avoid; }
+  .native-document .verification-row { grid-template-columns: minmax(0,1.4fr) 20px minmax(0,1fr) 20px 90px; }
+}

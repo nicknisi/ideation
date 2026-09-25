@@ -86,13 +86,30 @@ section is grammar nobody chose.
 - Structure is carried by 1px rules and shared borders, not by gaps between
   floating cards. Prefer one bordered strip of cells over N separate cards.
 
-## Motion
+## Motion — ink & press
 
-One authored moment per surface, on entry, then stillness. Exponential ease-out
-(`--ease: cubic-bezier(.16,1,.3,1)`), from an already-visible default — content
-never depends on animation to be readable. State changes stay under ~180ms.
-Everything collapses correctly under `prefers-reduced-motion`, and the
-reduced-motion path must still deliver the *information* the motion carried.
+Motion is allowed anywhere, tastefully, as long as it uses this world's
+vocabulary: ink and the press, never glow, neon, or bounce.
+
+- **Ink draws.** Rules, arrows, and diagram edges draw themselves in on first
+  view, like a pen stroke (stroke-dashoffset, ~600–900ms).
+- **The press lands.** Approval and receipts arrive as a rubber stamp. It
+  thunks in slightly off-register and rotated (−4°), then holds still.
+- **Ink dries.** A passing check is inked on (✓ stroke draws, tint settles).
+  Pending human judgment breathes very slowly (≥2.4s period, low amplitude).
+- **Tokens travel.** A cobalt token may run along dependency edges while work
+  is live. It only marks actual state: the current step, never fake progress.
+- **Paper, not screen.** A small hover lift (press offset grows 1px). Sections
+  settle in with a short rise as they enter view. There is no parallax,
+  scroll-jacking, or continuous looping on idle documents beyond the pending pulse.
+
+Exponential ease-out (`--ease: cubic-bezier(.16,1,.3,1)`), always from an
+already-visible default: content never depends on animation to be readable,
+and nothing hides until JavaScript runs. Interactive state changes stay under
+~180ms. Animation never implies progress that evidence does not support.
+Under `prefers-reduced-motion`, everything is still and final, and the
+reduced-motion path still delivers the *information* the motion carried
+(stamp present, checks marked, current step highlighted). Print is always still.
 
 ## Non-negotiables for any new surface
 

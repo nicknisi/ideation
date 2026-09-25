@@ -1,11 +1,14 @@
 ---
 name: ideation
-description: "You MUST use this before building any new feature, planning a migration, designing a system, or turning a decided-on idea into a plan. Triggers on: feature requests, project ideas, brain dumps, 'help me plan,' 'spec this out,' 'interview me,' 'I want to build,' 'let's design,' or any unstructured idea you're ready to turn into code. Covers small single-spec projects through multi-phase initiatives. Runs a conversational interview, writes an interactive HTML contract, then generates implementation-ready Markdown specs. This is the planning-HOW stage: if the user is still deciding WHETHER to build — weighing options, pressure-testing a rough idea, 'should I…' — that's the lighter-weight /ideation:brainstorm skill, and ideation takes over once they've committed to build — its intake carries a brainstorm conclusion forward as starting evidence. Skip ONLY for well-defined implementation tasks (writing code to a known spec, fixing bugs, refactoring, explaining code)."
+description: "Explicitly requested planning workflow for small projects through multi-phase initiatives. Runs an interview, creates an interactive HTML contract, and generates implementation-ready Markdown specs. Use only when the user explicitly invokes Ideation or requests this interview, contract, and specification workflow. Ordinary feature requests and planning questions do not start it."
+disable-model-invocation: true
 ---
 
 <what-to-do>
 
 # Ideation
+
+Run this workflow only when the user explicitly invokes Ideation or requests its interview, contract, and specification process. Reading or automatically selecting this skill is not permission to start it. An explicitly requested workflow such as Express may call it as a required step.
 
 Transform unstructured brain dumps into implementation artifacts through a conversational interview that builds shared understanding before writing anything. HTML is for interactive decision-making (visualizations, comparisons, the contract); Markdown is for reference documents (specs, PRDs).
 

@@ -23,6 +23,11 @@ import vm from 'node:vm';
 const STRIP_META = /export\s+const\s+meta\s*=/;
 
 /** Compile the engine script body into a callable with injected globals. */
+/** Bumped when the runner/host hook contract changes. The runner checks it so a
+ * Pi process holding an older copy of this module says "restart Pi" instead of
+ * refusing every stage. */
+export const HOST_HOOKS = 1;
+
 export function loadEngine(scriptSrc) {
   const stripped = scriptSrc.replace(STRIP_META, 'const meta =');
   const wrapped = `(async function(args, agent, parallel, phase, log){\n${stripped}\n})`;
@@ -67,6 +72,25 @@ function readAgentBody(pluginRoot, file) {
   return end === -1 ? src : src.slice(end + 4).trim();
 }
 
+/** Validate intercepted data against the stage schemas (the spawn backend
+ * validates actual child output). These schemas use only these JSON keywords. */
+function validStageResult(value, schema) {
+  if (!schema) return value != null;
+  if (schema.enum && !schema.enum.includes(value)) return false;
+  if (schema.type) {
+    const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+    const type = value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value;
+    if (!types.includes(type)) return false;
+  }
+  if (schema.required?.some(key => !Object.hasOwn(value, key))) return false;
+  if (schema.properties && value && typeof value === 'object') {
+    for (const [key, child] of Object.entries(schema.properties)) {
+      if (Object.hasOwn(value, key) && !validStageResult(value[key], child)) return false;
+    }
+  }
+  return !schema.items || value.every(item => validStageResult(item, schema.items));
+}
+
 /**
  * Build the engine's `agent(prompt, opts)` global over a spawn backend.
  * `spawn` is pi-shared's runtime.spawn (or a test fake): it never rejects and
@@ -75,7 +99,27 @@ function readAgentBody(pluginRoot, file) {
  * failure whose message preserves the kind (schema_invalid vs crashed is
  * load-bearing for the review loop's stale-FAIL semantics).
  */
-export function makeAgent({ spawn, agentBodies }) {
+export function makeAgent({
+  spawn, agentBodies = {}, onEvent, signal, cwd, model, timeoutMs,
+  maxTurns, maxToolCalls, extensionPaths, systemPrompt, beforeStage, afterStage,
+}) {
+  // Correctness-hook failures are terminal even where legacy engine semantics
+  // allow an unavailable scout or reviewer to fall back.
+  let controlError;
+  const checkControl = () => {
+    if (controlError) throw controlError;
+    if (signal?.aborted) throw new Error('aborted: stage cancelled');
+  };
+  const emit = async event => {
+    try { await onEvent?.(event); } catch { /* observational only */ }
+  };
+  const hook = async (fn, info) => {
+    try { return await fn?.(info); }
+    catch (err) {
+      controlError = new Error(`control_failed: ${err?.message ?? String(err)}`);
+      throw controlError;
+    }
+  };
   return async function agent(prompt, opts = {}) {
     const type = normalizeAgentType(opts.agentType);
     const def = STAGE_AGENTS[type];
@@ -91,12 +135,58 @@ export function makeAgent({ spawn, agentBodies }) {
     if (opts.schema) spawnOpts.outputSchema = opts.schema;
     if (opts.effort) spawnOpts.thinkingLevel = opts.effort;
 
-    const res = await spawn(spawnOpts);
-    if (!res.ok) throw new Error(`${res.kind}: ${res.error}`);
-    // With outputSchema set, data is the validated object. A missing payload
-    // (shouldn't happen — schema is always set by the engine) reads as null,
-    // which safeAgent treats as a typed failure, never a success.
-    return res.data ?? null;
+    for (const [key, value] of Object.entries({
+      signal, cwd, model, timeoutMs, maxTurns, maxToolCalls, extensionPaths,
+    })) {
+      if (value !== undefined) spawnOpts[key] = value;
+    }
+    if (systemPrompt) {
+      spawnOpts.systemPrompt = [spawnOpts.systemPrompt, systemPrompt]
+        .filter(Boolean).join('\n\n');
+    }
+    const info = {
+      stage: String(opts.label ?? type).split(':')[0],
+      label: opts.label ?? type,
+      phase: opts.phase,
+      prompt: spawnOpts.prompt,
+      options: spawnOpts,
+    };
+    try {
+      checkControl();
+      await emit({ type: 'stage_start', ...info });
+      checkControl();
+      const intercepted = await hook(beforeStage, info);
+      // A boundary hook can wait for pause/resume; check again before spawning.
+      checkControl();
+      let value;
+      if (intercepted && Object.hasOwn(intercepted, 'result')) {
+        value = intercepted.result;
+        if (!validStageResult(value, opts.schema)) {
+          controlError = new Error('schema_invalid: intercepted stage result');
+          throw controlError;
+        }
+      } else {
+        let res;
+        try {
+          res = await spawn(spawnOpts);
+        } catch (err) {
+          // Backends normally resolve failures, but still account for a backend
+          // that rejects. There is no fabricated token usage.
+          res = { ok: false, kind: 'crashed', error: err?.message ?? String(err) };
+        }
+        await hook(afterStage, { ...info, result: res });
+        checkControl();
+        if (!res.ok) throw new Error(`${res.kind}: ${res.error}`);
+        value = res.data ?? null;
+      }
+      if (value == null) throw new Error('agent returned no result');
+      await emit({ type: 'stage_complete', ...info, result: value });
+      checkControl();
+      return value;
+    } catch (err) {
+      await emit({ type: 'stage_failed', ...info, error: err?.message ?? String(err) });
+      throw err;
+    }
   };
 }
 
@@ -105,7 +195,7 @@ export function makeAgent({ spawn, agentBodies }) {
  * (the one containing workflows/ and agents/). Returns the engine's summary:
  * { completed, noops, failed, skipped, results } (+ optional run-level error).
  */
-export async function runContractEngine(args, { spawn, pluginRoot, onLog }) {
+export async function runContractEngine(args, { spawn, pluginRoot, onLog, ...controls }) {
   const engine = loadEngine(
     readFileSync(join(pluginRoot, 'workflows', 'execute-contract.mjs'), 'utf8'),
   );
@@ -113,7 +203,7 @@ export async function runContractEngine(args, { spawn, pluginRoot, onLog }) {
     scout: readAgentBody(pluginRoot, STAGE_AGENTS.scout.file),
     reviewer: readAgentBody(pluginRoot, STAGE_AGENTS.reviewer.file),
   };
-  const agent = makeAgent({ spawn, agentBodies });
+  const agent = makeAgent({ ...controls, spawn, agentBodies });
   const parallel = thunks => Promise.all(thunks.map(t => t()));
   const phase = title => onLog?.(`── ${title}`);
   const log = message => onLog?.(message);

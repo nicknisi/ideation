@@ -1,12 +1,55 @@
 # Ideation Plugin
 
-> 🌱 **[ideation.engineering](https://ideation.engineering/)** — the pitch, install, and an illustrated walkthrough of the whole loop.
+> 🌱 **[ideation.engineering](https://ideation.engineering/)** — the two ways in (Pi and Claude Code), install, and a worked walkthrough of each.
 >
-> 📖 **[ideation.engineering/guide](https://ideation.engineering/guide/)** — which command to run for your situation, what each one writes, and the five gates the interview will not skip.
+> 📖 **[ideation.engineering/guide](https://ideation.engineering/guide/)** — which command to run in Pi or Claude Code, what each one writes, what approval means, and the five gates the planning interview will not skip.
 >
 > 📓 **[CHANGELOG.md](CHANGELOG.md)** — what shipped in each release, newest first.
 
 Transform brain dumps into structured implementation artifacts through a conversational interview. HTML is used for interactive decision-making (the contract with evidence-gate readiness, visual comparisons during the interview). Markdown is used for reference documents (specs, PRDs) consumed directly by `/ideation:execute-spec`. Includes an execution workflow for implementing specs in fresh sessions with per-component feedback loops, adversarial plan critics, a Scout/Reviewer agent pipeline, and a push-based learning loop that captures lessons at completion and applies them visibly at future intakes.
+
+## Pi-native change workflow
+
+In Pi, `/ideation` runs the change workflow. It agrees on a **compact change brief**,
+then creates working plans just in time rather than requiring every implementation
+recipe upfront:
+
+```text
+/ideation
+# Describe the change in conversation; review the contract it opens.
+/ideation approve
+# Or use /ideation again for review, revision, progress and run controls.
+```
+
+One explicit approval binds the change, exact command/path authority and model. There
+are no time or token budgets: work runs until it is verified, you pause or stop it, or
+it stops to ask because it is stuck. Work runs in an isolated Git worktree, using the existing engine and
+independent review. A compact, theme-aware Pi component shows the current stage,
+real progress, and a persistent **contract/receipt link**. Contracts retain
+ideation's paper/graphite-and-cobalt field-guide design, with before/after views,
+SVG dependencies, and deliverable-to-verification maps. No file paths to manage,
+raw JSON dumps, or document-sized approval dialogs. With the optional artifacts service ([`@nicknisi/pi-artifacts`](https://www.npmjs.com/package/@nicknisi/pi-artifacts) 1.5.0+), that same page updates live and
+annotations reach the coordinating session; without it, a local HTML snapshot
+remains available. With 1.6.0+, the live draft page also offers **Approve in Pi**,
+which only brings up the same terminal confirmation. Feedback never grants permission.
+
+Pause/resume/stop operate at explicit boundaries, and `/ideation exit` (or **Leave
+ideation** in the menu) gets you out from any state: it stops the run, brings its work
+into your checkout as uncommitted changes, and puts ideation away. Ready for review is not accepted,
+merged or deployed; `/ideation accept` records final human judgment against current
+evidence. Approved commands execute trusted repository code, not inside an OS
+sandbox. Uncommitted work never blocks approval: Pi asks whether to start from the last
+commit or include it, and never stashes or edits your files. Each change's brief,
+contract and receipt land in `docs/ideation/<change-id>/` for you to commit or not.
+
+See [the native workflow guide](docs/native-workflow.md) and
+[the worked brief](test-fixtures/native-change/brief.json). The old skills and
+Claude Code integration remain supported. This new native front door is Pi-only;
+the brief, renderer, verifier primitives and existing engine are portable. In Claude
+Code, `/ideation:change` only explains that it needs Pi and points to the planning
+interview. In Pi, the
+planning path below runs as `/skill:<name>` — `/skill:ideation`, `/skill:chart`,
+`/skill:express`, `/skill:autopilot` and so on.
 
 ## Skills
 
@@ -46,12 +89,13 @@ Full behavior lives in [skills/brainstorm/SKILL.md](skills/brainstorm/SKILL.md).
 
 Transforms raw, unstructured brain dumps (dictated freestyle) into actionable implementation artifacts through an evidence-gated workflow.
 
-Use this before building any new feature, planning a migration, designing a system, or turning scattered ideas into a plan. Covers small single-spec projects through multi-phase initiatives.
+Use this before building any new feature, planning a migration, designing a system, or turning scattered ideas into a plan. Covers small single-spec projects through multi-phase initiatives. It starts only when you ask for it by command; ordinary feature requests do not start it.
 
 **How to invoke:**
 
 ```
-Use the ideation skill
+/ideation:ideation        # Claude Code (or /ideation when unambiguous)
+/skill:ideation           # Pi
 
 [provide your brain dump - messy dictation, scattered thoughts, half-formed ideas]
 ```
@@ -548,23 +592,34 @@ For manual control, run specs individually:
 ### pi
 
 ```bash
-pi install npm:@nicknisi/pi-subagents
-pi install npm:@juicesharp/rpiv-ask-user-question
 pi install git:github.com/nicknisi/ideation
+pi install npm:@nicknisi/pi-artifacts  # optional: live contract pages
 ```
 
-The two tools the plugin calls — [`@nicknisi/pi-subagents`](https://github.com/nicknisi/pi-extensions) (the `dispatch` and `fleet` tools — first-party, in-process children) and [`@juicesharp/rpiv-ask-user-question`](https://github.com/juicesharp/rpiv-ask-user-question) (the `ask_user_question` tool) — are deliberately **not** bundled. Pi allows one owner per tool name, so a bundled copy fatally conflicts with the same tool installed at the user level; installing them yourself makes your copies the only copies (pi dedupes `npm:` installs by name) and the plugin composes with whatever versions you already run. The engine needs no external tool: the plugin bundles `extensions/engine.ts`, which runs the contract engine on first-party in-process spawns. Details in [`references/harness-compat.md` § 3](references/harness-compat.md).
+That is all the native `/ideation` change workflow needs (Pi 0.87.1 or newer). Without
+[`@nicknisi/pi-artifacts`](https://www.npmjs.com/package/@nicknisi/pi-artifacts) 1.5.0+,
+contracts are saved as local HTML you refresh by hand.
+
+The planning path — interview, critics, contract, autopilot — also calls two tools:
+
+```bash
+pi install npm:@nicknisi/pi-subagents
+pi install npm:@juicesharp/rpiv-ask-user-question
+```
+
+Those two tools — [`@nicknisi/pi-subagents`](https://github.com/nicknisi/pi-extensions) (the `dispatch` and `fleet` tools — first-party, in-process children) and [`@juicesharp/rpiv-ask-user-question`](https://github.com/juicesharp/rpiv-ask-user-question) (the `ask_user_question` tool) — are deliberately **not** bundled. Pi allows one owner per tool name, so a bundled copy fatally conflicts with the same tool installed at the user level; installing them yourself makes your copies the only copies (pi dedupes `npm:` installs by name) and the plugin composes with whatever versions you already run. The engine needs no external tool: the plugin bundles `extensions/engine.ts`, which runs the contract engine on first-party in-process spawns. Details in [`references/harness-compat.md` § 3](references/harness-compat.md).
 
 ## Requirements
 
-Both runtimes are full citizens: **Claude Code** (the tools are built in) and **pi** (via the two user-level tool installs named above). Two caveats for a fresh setup:
+Both runtimes are full citizens: **Claude Code** (the tools are built in) and **pi** (the change workflow needs only the plugin; the planning path uses the two user-level tool installs named above). Two caveats for a fresh setup:
 
 - **`${CLAUDE_PLUGIN_ROOT}` resolution.** Skill bodies reference it; in pi it resolves via a user-level `claude-plugin-root` extension — the one piece of Nick's own setup not bundled. The caveat and its fallback (resolve relative to the skill directory) are owned by [`references/harness-compat.md`](references/harness-compat.md#what-does-not-differ).
 - **A Workflow engine** for `/ideation:autopilot`, `/ideation:express`, and `/ideation:get-goal-prompt`. Without one, the fallback is [Manual Cross-Session Execution](#manual-cross-session-execution): run `/ideation:execute-spec` per phase, in dependency order.
 
 ## Harness support
 
-The plugin targets **Claude Code** and runs in **pi**. Skills, agents, references, and
+The plugin targets **Claude Code** and runs in **pi**, where `/ideation` is the change
+workflow and the planning skills run as `/skill:<name>`. Skills, agents, references, and
 scripts are the same files in both; three things carry a translation, and each skill
 names it inline at the point it dispatches. The full matrix — the Workflow tool API,
 agent names, pi extension dependencies, and what does *not* differ — lives in
