@@ -4,7 +4,7 @@ Implementation and subsequent dogfood fixes verified locally on 2026-09-23–24.
 
 ## Automated checks
 
-- `node --run test` in `~/Developer/ideation`: **469 passed**, including the original 218 tests.
+- `node --run test` in `~/Developer/ideation`: **479 passed**, including the original 218 tests.
 - `pnpm exec vitest run packages/artifacts` in `~/Developer/pi-extensions`: **38 passed** on
   `main` (`@nicknisi/pi-artifacts` 1.5.0) and **42 passed** with page requests
   (nicknisi/pi-extensions#152).
@@ -127,6 +127,23 @@ click on the revealed button reached ideation's handler with the draft's view ID
 after disposal the page offered nothing. A 348-pixel frame caught the stamp's
 entrance briefly scrolling the page sideways; the contract now clips horizontal
 overflow.
+
+## Third round: never trapped, keep working (2026-09-24)
+
+Real runs still stopped at every turn: a scout HOLD on an approved brief, checks that
+failed before review and ended the attempt, a resume that gave up after one repeat,
+and a Pi process holding an out-of-date module ("Engine host correctness hooks
+required"). Nothing let the user out.
+
+- `/ideation exit`, the always-present **Leave ideation** item and the tool's `exit`
+  action. Integration tests prove the work (a run commit, uncommitted edits, new files;
+  never host packets) arrives as uncommitted changes, all or nothing, that its exact
+  state is kept under a ref, and that a left run is never picked again.
+- `/ideation <tab>` completion for subcommands, `motion on|off` and run IDs.
+- Failing checks become findings for the fixer; a real-engine test goes from failing
+  check to fixed to reviewed to ready in one attempt. A scout HOLD no longer stops an
+  approved run. Retries are told what failed. A stale engine module now says to
+  restart Pi.
 
 ## Verification limits
 

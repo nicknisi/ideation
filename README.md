@@ -33,7 +33,9 @@ annotations reach the coordinating session; without it, a local HTML snapshot
 remains available. With 1.6.0+, the live draft page also offers **Approve in Pi**,
 which only brings up the same terminal confirmation. Feedback never grants permission.
 
-Pause/resume/stop operate at explicit boundaries. Ready for review is not accepted,
+Pause/resume/stop operate at explicit boundaries, and `/ideation exit` (or **Leave
+ideation** in the menu) gets you out from any state: it stops the run, brings its work
+into your checkout as uncommitted changes, and puts ideation away. Ready for review is not accepted,
 merged or deployed; `/ideation accept` records final human judgment against current
 evidence. Approved commands execute trusted repository code, not inside an OS
 sandbox. Uncommitted work never blocks approval: Pi asks whether to start from the last

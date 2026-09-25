@@ -726,16 +726,22 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
     log(`WARN ${title}: scout stage failed (${scout.error}) — building with inline exploration`);
   } else if (scout.verdict === 'HOLD') {
     const gaps = (scout.notReadyGates ?? []).join(', ') || 'unspecified';
-    if (a.strict) {
+    if (a.native) {
+      // A native brief was reviewed and approved by a person: the scout's doubts
+      // are findings for the builder, not a reason to stop the run.
+      warnings.push(`SCOUT HOLD for "${title}" (not ready: ${gaps}) — building anyway from the approved brief, with the scout's findings.`);
+      log(`WARN ${title}: scout HOLD (${gaps}) — proceeding with an approved native brief`);
+    } else if (a.strict) {
       log(`FAIL ${title}: scout HOLD under --strict (${gaps}) — not building`);
       return fail(
         `Scout HOLD (${scout.gatesReady ?? '?'}/5 gates ready; not ready: ${gaps}). --strict fails closed on an under-specified spec no human reviewed — nothing was built or committed.`,
       );
+    } else {
+      warnings.push(
+        `SCOUT HOLD for "${title}" (${scout.gatesReady ?? '?'}/5 gates ready; not ready: ${gaps}) — built anyway per the headless default.`,
+      );
+      log(`WARN ${title}: scout HOLD (${gaps}) — proceeding (non-strict)`);
     }
-    warnings.push(
-      `SCOUT HOLD for "${title}" (${scout.gatesReady ?? '?'}/5 gates ready; not ready: ${gaps}) — built anyway per the headless default.`,
-    );
-    log(`WARN ${title}: scout HOLD (${gaps}) — proceeding (non-strict)`);
   }
 
   // --- 2. BUILD ------------------------------------------------------------
@@ -757,7 +763,9 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
   // mechanical errors." A builder that returns BUILT with failing validation is
   // schema-legal, so gate it here; otherwise a reviewer PASS commits code whose
   // type check or tests are red, including under --strict.
-  if (build.validation === 'FAIL') {
+  // Native: the host runs the approved checks before review and sends failures
+  // back to the fixer, so a builder's own red validation is not a dead end.
+  if (build.validation === 'FAIL' && !a.native) {
     return fail(`Validation failed after build: ${build.summary}`);
   }
   if (build.result === 'NO-OP' && !a.native) {

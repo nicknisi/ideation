@@ -3,13 +3,29 @@ import { resolve, join } from 'node:path';
 import { realpathSync, existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { gitText } from './change-workspace.mjs';
-import { runContractEngine } from './engine-host.mjs';
+import * as engineHost from './engine-host.mjs';
 import { computeWaves } from './wave-planner.mjs';
 
 const clone = value => structuredClone(value);
 const json = async path => JSON.parse(await readFile(path, 'utf8'));
 const alive = pid => { if (!Number.isInteger(pid) || pid <= 0) return false; try { process.kill(pid, 0); return true; } catch (e) { return e.code !== 'ESRCH'; } };
 const transient = message => /\b(429|5\d\d)\b/.test(message);
+
+const STALE_PI = 'Pi is running an out-of-date copy of ideation. Quit Pi completely and start it again (/reload is not enough), then choose Resume. Nothing was lost.';
+const tail = (text, lines = 25) => String(text ?? '').trim().split('\n').slice(-lines).join('\n');
+/** Plain words for why a run stopped, and what the person can do about it. */
+export function stopAttention(error, r) {
+  const detail = String(error?.message ?? error);
+  if (/Engine host correctness hooks required/.test(detail)) return { reason: 'restart-pi', message: STALE_PI, detail };
+  const unit = r?.units?.find(u => u.state === 'failed');
+  const next = 'Resume to keep trying, or choose Leave ideation to take the work as it is.';
+  if (unit?.failureChecks) {
+    const ids = unit.failureChecks.split(',');
+    return { reason: 'stuck', message: `Stopped because ${ids.length === 1 ? `the check “${ids[0]}” kept` : `the checks ${ids.map(i => `“${i}”`).join(', ')} kept`} failing the same way. ${next}`, detail: unit.lastFailure ?? detail };
+  }
+  const base = failureAttention(error);
+  return base.reason === 'provider-client-version' ? base : { ...base, message: `${base.message} ${next}` };
+}
 
 export function failureAttention(error) {
   const detail = String(error?.message ?? error);
@@ -31,7 +47,7 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
   const modules = async () => ({
     brief: dependencies.brief ?? await import('./change-brief.mjs'),
     workspace: dependencies.workspace ?? await import('./change-workspace.mjs'),
-    engine: dependencies.engine ?? runContractEngine,
+    engine: dependencies.engine ?? engineHost.runContractEngine,
   });
   const dir = async id => {
     if (!/^[a-zA-Z0-9_-]+$/.test(id)) throw new Error('Invalid run ID');
@@ -212,6 +228,10 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
     try {
       const { brief: b, workspace: w, engine } = await modules();
       await approved(r, b);
+      if (!dependencies.engine && engineHost.HOST_HOOKS !== 1) throw new Error('Engine host correctness hooks required (stale module)');
+      // A resume is a fresh go: the no-progress count starts over, while the note
+      // about what failed last time is kept for the next attempt.
+      if (resume) for (const u of r.units) if (u.state !== 'completed') { u.sameFailures = 0; u.failureRevision = null; }
       if (r.reconciliationRequired) throw new Error('Workspace state could not be recorded safely; inspect it and make a fresh approval rather than blindly resuming.');
       if (ctx.abort.signal.aborted) throw new Error('Run aborted');
       if (!r.workspace) {
@@ -242,24 +262,28 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
           if (receipt.reviewStatus !== 'passed') throw new Error('Completed receipt lacks independent review');
           continue; // final integrated checks below always rerun, including on resume
         }
-        // Not an allowance: a unit keeps going until it is reviewed and verified,
-        // and stops to ask you only when it is stuck (the same check failing twice,
-        // or the provider still failing after a few spaced retries).
+        // Not an allowance: a unit keeps going until it is reviewed and verified.
+        // Failing checks go back to the fixer as findings; each new attempt is told
+        // what went wrong. It stops to ask only when it cannot make progress: an
+        // attempt that changed nothing and failed exactly as before, three attempts
+        // in a row ending on the same failure, or a provider that keeps failing.
+        const criteria = r.brief.acceptance.filter(c => unit.acceptanceIds.includes(c.id));
+        const failedChecks = () => (r.evidence ?? []).filter(x => criteria.some(c => c.id === x.criterionId) && x.status === 'failed');
         let done = false, providerRetries = 0;
         while (!done) {
           await boundary(ctx); receipt.attempts++; receipt.state = 'running'; r.activeStage = 'plan'; await save(r);
           let reviewedRevision = null, reviewInputRevision = null, committed = false, stagePermit = false;
           try {
             const planned = await invoke(ctx, { ...options(), agent: `plan:${id}`, tools: ['read', 'grep', 'find', 'ls'],
-              prompt: `Plan only this unit against the current workspace. No edits or shell. Approved brief:\n${JSON.stringify(r.brief)}\nUnit: ${id}\nReturn only a JSON object with one field: {"plan":"your concise implementation plan"}. Put it in your final message as plain JSON, not a tool call. No StructuredOutput tool exists.`,
+              prompt: `Plan only this unit against the current workspace. No edits or shell. Approved brief:\n${JSON.stringify(r.brief)}\nUnit: ${id}\n${receipt.lastFailure ? `The previous attempt at this unit did not pass. The workspace already holds its changes. Plan how to fix this first:\n${receipt.lastFailure}\n` : ''}Return only a JSON object with one field: {"plan":"your concise implementation plan"}. Put it in your final message as plain JSON, not a tool call. No StructuredOutput tool exists.`,
               outputSchema: { type: 'object', additionalProperties: false, required: ['plan'], properties: { plan: { type: 'string', minLength: 1 } } } });
             await account(ctx, planned);
             if (!planned.ok || typeof planned.data?.plan !== 'string' || !planned.data.plan.trim()) throw new Error(`${planned.kind}: ${planned.error ?? 'Invalid plan'}`);
             const packetDir = join(r.workspace, 'docs', 'ideation', '.native', r.id);
             await mkdir(packetDir, { recursive: true });
             const specPath = join(packetDir, `spec-phase-${order.indexOf(id) + 1}.md`);
-            await writeFile(specPath, b.workPacket(r.brief, unit, { plan: planned.data.plan, sourceRevision: await w.sourceRevision(r.workspace) }));
-            const criteria = r.brief.acceptance.filter(c => unit.acceptanceIds.includes(c.id));
+            const plan = receipt.lastFailure ? `${planned.data.plan}\n\n## What went wrong last time\n\n${receipt.lastFailure}` : planned.data.plan;
+            await writeFile(specPath, b.workPacket(r.brief, unit, { plan, sourceRevision: await w.sourceRevision(r.workspace) }));
             const summary = await engine({ projectName: r.brief.title, slug: r.id, projectDir: packetDir, strict: true, native: true,
               executionMode: r.brief.executionMode,
               phases: [{ title: unit.title, specPath, prereqs: [], risk: unit.risk, files: [] }] }, {
@@ -276,7 +300,19 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
                 if (!['scout', 'build', 'review', 'fix', 'commit'].includes(info.stage)) throw new Error('Unknown engine stage');
                 r.activeStage = info.stage; r.state = info.stage === 'review' ? 'verifying' : 'running'; await save(r);
                 stagePermit = info.stage !== 'commit';
-                if (info.stage === 'review') { await w.prepareReview(r.workspace, a.paths, { signal: ctx.abort.signal, timeoutMs: Infinity }); reviewInputRevision = await checks(ctx, criteria, w); }
+                if (info.stage === 'review') {
+                  await w.prepareReview(r.workspace, a.paths, { signal: ctx.abort.signal, timeoutMs: Infinity });
+                  try { reviewInputRevision = await checks(ctx, criteria, w); }
+                  catch (e) {
+                    if (!String(e.message).startsWith('CHECK_FAILED')) throw e;
+                    // Failing checks go back to the builder as findings, exactly like
+                    // a reviewer's, instead of ending the attempt.
+                    stagePermit = false; reviewInputRevision = null; receipt.reviewStatus = 'failed';
+                    const failed = failedChecks();
+                    const findings = failed.length ? failed.map(x => `Check "${x.criterionId}" failed: ${x.command}\n${tail(x.output)}`) : [String(e.message)];
+                    return { result: { verdict: 'FAIL', blocking: findings.length, findings, summary: `Checks failed before review: ${failed.map(x => x.criterionId).join(', ') || 'missing evidence'}` } };
+                  }
+                }
                 if (info.stage === 'build' || info.stage === 'fix') reviewedRevision = null;
                 if (info.stage === 'commit') {
                   if (!reviewedRevision || reviewedRevision !== await w.sourceRevision(r.workspace)) throw new Error('Independent current-source review required');
@@ -308,12 +344,18 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
           } catch (e) {
             if (ctx.pause || ctx.abort.signal.aborted) throw e;
             const signature = String(e.message);
-            const repeated = receipt.failureSignature === signature;
-            receipt.failureSignature = signature; receipt.state = 'failed';
-            receipt.summary = failureAttention(e).message; receipt.failureStage = r.activeStage;
+            if (/Engine host correctness hooks required/.test(signature)) throw e;
+            const checksNow = failedChecks().map(x => x.criterionId).sort().join(',');
+            const revision = await w.sourceRevision(r.workspace).catch(() => null);
+            const same = receipt.failureSignature === signature && (receipt.failureChecks ?? '') === checksNow;
+            const unchanged = same && receipt.failureRevision === revision;
+            receipt.sameFailures = same ? (receipt.sameFailures ?? 0) + 1 : 1;
+            receipt.failureSignature = signature; receipt.failureChecks = checksNow; receipt.failureRevision = revision;
+            receipt.state = 'failed'; receipt.summary = failureAttention(e).message; receipt.failureStage = r.activeStage;
+            receipt.lastFailure = [receipt.summary, ...failedChecks().map(x => `Check "${x.criterionId}" failed: ${x.command}\n${tail(x.output)}`)].join('\n\n').slice(0, 6000);
             await save(r);
             const retryableTransport = transient(signature);
-            if ((!retryableTransport && repeated) || (!retryableTransport && !signature.includes('CHECK_FAILED'))) throw e;
+            if (!retryableTransport && (unchanged || receipt.sameFailures >= 3)) throw e;
             if (retryableTransport) {
               if (++providerRetries > 3) throw e;
               // The spawn result does not expose response headers: spaced backoff,
@@ -334,7 +376,7 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
       r.state = 'ready-for-review'; r.attention = { reason: 'acceptance', message: `Objective verification complete. Explicit acceptance required${judgments ? `; ${judgments} human judgment(s) pending` : ''}.` };
     } catch (e) {
       r.state = ctx.shutdown ? 'interrupted' : ctx.abort.signal.aborted ? 'cancelled' : ctx.pause ? 'paused' : 'needs-decision';
-      r.attention = failureAttention(e);
+      r.attention = stopAttention(e, r);
     } finally {
       if (r.workspace) {
         const { workspace: w } = await modules();
