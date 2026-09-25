@@ -1,37 +1,22 @@
 ---
-import Guide from '../layouts/Guide.astro';
+import Site from '../layouts/Site.astro';
+import Stamp from '../components/Stamp.astro';
 ---
 
-<Guide
-  title="Not here — ideation"
-  description="That page does not exist on ideation.engineering."
->
-  <main class="mx-auto grid min-h-[70vh] max-w-[52rem] place-items-center px-5">
-    <div class="max-w-[46ch]">
-      <p class="label-mono text-accent">
-        <span class="mr-2 inline-block h-px w-6 translate-y-[-4px] bg-accent"></span>404
+<Site title="Not here — ideation" description="That page does not exist on ideation.engineering.">
+  <main class="mx-auto grid min-h-[60vh] max-w-[52rem] place-items-center px-5 py-16">
+    <div class="grid max-w-[46ch] gap-5">
+      <Stamp label="Not found" sub="404" tone="faint" press class="justify-self-start" />
+      <h1 class="text-[clamp(1.9rem,5vw,2.6rem)]">No contract for this page</h1>
+      <p class="text-muted">
+        Nothing was agreed at this address, so nothing was built here. These pages exist:
       </p>
-      <h1 class="mt-3 text-[clamp(1.9rem,5vw,2.6rem)]">Nothing planted here</h1>
-      <p class="mt-4 text-muted">
-        That page does not exist. There are only three, which makes this a
-        fairly impressive miss.
-      </p>
-      <p class="mt-6">
-        <a
-          class="text-accent underline decoration-line-strong underline-offset-2 hover:decoration-accent"
-          href="/">the overview</a
-        >
-        <span class="mx-2 text-faint">·</span>
-        <a
-          class="text-accent underline decoration-line-strong underline-offset-2 hover:decoration-accent"
-          href="/walkthrough/">the illustrated walkthrough</a
-        >
-        <span class="mx-2 text-faint">·</span>
-        <a
-          class="text-accent underline decoration-line-strong underline-offset-2 hover:decoration-accent"
-          href="/guide/">the command reference</a
-        >
+      <p class="flex flex-wrap gap-x-5 gap-y-2 font-sans">
+        <a class="link" href="/">Overview</a>
+        <a class="link" href="/walkthrough/pi/">Pi walkthrough</a>
+        <a class="link" href="/walkthrough/">Claude Code walkthrough</a>
+        <a class="link" href="/guide/">Guide</a>
       </p>
     </div>
   </main>
-</Guide>
+</Site>

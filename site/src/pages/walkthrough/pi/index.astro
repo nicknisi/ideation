@@ -1,0 +1,321 @@
+---
+import Site from '../../../layouts/Site.astro';
+import Deck from '../../../components/Deck.astro';
+import ContractFrame from '../../../components/ContractFrame.astro';
+import Stamp from '../../../components/Stamp.astro';
+import InstallBlock from '../../../components/InstallBlock.astro';
+import Transcript from '../../../components/Transcript.astro';
+import { walkthrough } from '../../../lib/native';
+import { readInstall } from '../../../lib/install';
+import { joinPi } from '../../../data/pi';
+
+const wt = await walkthrough();
+const install = readInstall();
+const pi = joinPi();
+const fp = wt.fingerprint.slice(0, 8).toUpperCase();
+const fp1 = wt.previousFingerprint.slice(0, 8).toUpperCase();
+const title = wt.brief.title;
+const judgment = wt.brief.acceptance.find((a: any) => a.check.judgment);
+
+// Frames travel as JSON beside their <pre>; `<` is escaped so no frame can
+// close the script element early.
+const json = (v: unknown) => JSON.stringify(v).replace(/</g, '\\u003c');
+
+const stepTitle = 'flex items-baseline gap-4 text-[clamp(1.6rem,4.4vw,2.1rem)]';
+const stepNum = 'font-mono text-[0.8125rem] text-accent';
+const stepIntro = 'mt-3 mb-6 max-w-[64ch] text-muted';
+
+// Plate B follows the reader: the stamp the contract carries at each step.
+const PLATE = [
+  { label: 'Draft', sub: `Not approved · ${fp1}`, tone: 'faint' as const, steps: [0, 1] },
+  { label: 'Draft', sub: `Not approved · ${fp}`, tone: 'faint' as const, steps: [2] },
+  { label: 'Approved', sub: `Rev 2 · ${fp}`, tone: 'accent' as const, steps: [3, 4] },
+  { label: 'Ready for review', sub: `Rev 2 · ${fp}`, tone: 'accent' as const, steps: [5] },
+  { label: 'Accepted', sub: `Rev 2 · ${fp}`, tone: 'go' as const, steps: [6] },
+];
+---
+
+<Site
+  title="One change, from /ideation to accept — the ideation Pi walkthrough"
+  description="An invented change to an invented app, taken from one sentence to reviewed commits with ideation in Pi. Every contract page and widget frame is rendered by ideation's own code."
+  ogType="article"
+>
+  <div class="mx-auto max-w-[76rem] px-[clamp(1.25rem,4vw,2.5rem)] pt-14" data-walk>
+    <section class="max-w-[66ch]">
+      <p class="font-sans text-[0.9375rem] font-semibold text-accent">The change workflow · in Pi</p>
+      <h1 class="mt-3 text-[clamp(2.3rem,6.5vw,3.9rem)] leading-[1.04] tracking-[-0.025em]">
+        One change, from <code class="font-mono text-[0.8em] tracking-normal">/ideation</code> to accept.
+      </h1>
+      <p class="mt-6 text-[1.1875rem] leading-[1.6] text-muted">
+        Field Notes, an invented app, loses the note you were writing when you lose signal on a
+        trail. Here is that fix, taken from one sentence to reviewed commits. Every contract page
+        and widget frame below was rendered by ideation’s own code when this site was built; only
+        the conversation is written for the page.
+      </p>
+    </section>
+
+    <div class="grid grid-cols-[minmax(0,1fr)_14rem] items-start gap-16 pt-14 max-[1040px]:grid-cols-[minmax(0,1fr)]">
+      <main class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-20">
+        <!-- ── 01 ───────────────────────────────────────────────────────── -->
+        <section data-step class="min-w-0">
+          <h2 class={stepTitle}><span class={stepNum}>01</span>Say what should change</h2>
+          <p class={stepIntro}>
+            Open <code class="code">/ideation</code> and describe it the way you would to a colleague.
+            The agent reads the code first, then asks only what the code cannot answer, each question
+            with a recommendation.
+          </p>
+          <Deck>
+            <pre><span class="user"><span class="prompt">› </span>/ideation</span>
+<span class="quiet">What should change?</span>
+
+<span class="user"><span class="prompt">› </span>Notes vanish when I lose signal on a trail. Save them on the device and sync later.</span>
+<span class="quiet">Read src/notes/, src/api/client.ts and the sync tests. One thing the code can’t tell me: should “the offline indicator feels right” be a test, or your call? Recommended: a test for the state, plus one airplane-mode walkthrough by you.</span>
+
+<span class="user"><span class="prompt">› </span>Both.</span>
+<span class="tool"><Fragment set:html={wt.term.toolCall} /></span><span class="tool"><Fragment set:html={wt.term.toolResult} /></span>
+<Fragment set:html={wt.term.draft} /></pre>
+          </Deck>
+          <p class="mt-4 max-w-[64ch] text-[0.9375rem] text-muted">
+            The last three blocks are real: the tool call, its result, and the widget that stays
+            above the editor. Pi also shows: <em>{pi.notices.prepared}</em>
+          </p>
+        </section>
+
+        <!-- ── 02 ───────────────────────────────────────────────────────── -->
+        <section data-step class="min-w-0">
+          <h2 class={stepTitle}><span class={stepNum}>02</span>Read the contract</h2>
+          <p class={stepIntro}>
+            It opens in your browser by itself: before and after, what must hold, how the work
+            connects, and a verification plan that claims no results yet. The exact paths and commands
+            wait in the boundaries at the bottom. It is stamped <em>Draft</em>, because nothing is
+            approved.
+          </p>
+          <ContractFrame state="proposed" label={`Contract · ${title} · revision 1`} title={`The proposed contract for ${title}, revision 1`} />
+        </section>
+
+        <!-- ── 03 ───────────────────────────────────────────────────────── -->
+        <section data-step class="min-w-0">
+          <h2 class={stepTitle}><span class={stepNum}>03</span>Revise it on the same page</h2>
+          <p class={stepIntro}>
+            Something bothers you about conflicts, so you say so, on the page or in chat. A comment is
+            feedback, never permission. The agent prepares revision 2 of the same change, and the page
+            updates in place: same link, comments kept, and a delta of exactly what moved.
+          </p>
+          <Transcript source="comment on “A conflicting edit shows a banner”" status="feedback · not approval">
+            <p>If it doesn’t overwrite, where does the other edit go?</p>
+            <p class="border-t border-line pt-3 text-muted">
+              Revision 2 keeps both versions and says so, records the decision (last write wins was
+              rejected), and puts syncing attachments out of scope. Nothing starts until you approve.
+            </p>
+          </Transcript>
+          <ContractFrame state="revised" anchor="revision-delta" label={`Contract · ${title} · revision 2`} title={`The revised contract for ${title}, revision 2, with its revision delta`} class="mt-6" />
+        </section>
+
+        <!-- ── 04 ───────────────────────────────────────────────────────── -->
+        <section data-step class="min-w-0">
+          <h2 class={stepTitle}><span class={stepNum}>04</span>Approve once</h2>
+          <p class={stepIntro}>
+            <code class="code">/ideation approve</code> remembers the prepared brief, so there is no path
+            to copy; the live page’s <em>Approve in Pi</em> button brings up the same dialog. The
+            confirmation is short on purpose: it binds the paths and commands, and the complete
+            agreement stays in the browser. Yes starts work immediately, in an isolated worktree on its
+            own branch.
+          </p>
+          <Deck>
+            <pre><span class="user"><span class="prompt">› </span>/ideation approve</span>
+<span class="dialog"><span class="t-b">{wt.approval.title}</span>
+{wt.approval.lines.join('\n')}
+
+<span class="choice is-on">› Yes</span><span class="choice">No</span></span>
+<span class="quiet">{pi.notices.approved.replace('{title}', title)}</span></pre>
+          </Deck>
+          <p class="mt-4 max-w-[64ch] text-[0.9375rem] text-muted">
+            Uncommitted files in your checkout? Approval asks first: start from your last commit and
+            leave them alone, or include them as the starting point. Either way nothing is stashed or
+            edited, and the confirmation says which you chose.
+          </p>
+        </section>
+
+        <!-- ── 05 ───────────────────────────────────────────────────────── -->
+        <section data-step class="min-w-0">
+          <h2 class={stepTitle}><span class={stepNum}>05</span>Walk away</h2>
+          <p class={stepIntro}>
+            Each piece gets a working plan just before it runs, a build, and an independent review.
+            While work is live the widget moves: a spinner, the active step’s shimmer, a shine along
+            cells that evidence already filled. Motion only decorates recorded state; it never moves a
+            count. The same contract page is now the live page, stamped <em>Approved</em>.
+          </p>
+          <Deck title="pi · field-notes · live">
+            <pre data-flip="running" data-loop><Fragment set:html={wt.term.running.still} /></pre>
+            <script is:inline type="application/json" data-frames="running" set:html={json(wt.term.running.frames)} />
+          </Deck>
+          <ContractFrame state="running" anchor="run-status" label={`Contract · ${title} · running`} title={`The live contract for ${title} while work runs`} class="mt-6" />
+          <p class="mt-4 max-w-[64ch] text-[0.9375rem] text-muted">
+            Need to step in? <code class="code">/ideation pause</code> stops at a safe boundary and{' '}
+            <code class="code">resume</code> continues within the same approval. If a check fails, its
+            output goes to the fixer; if the run cannot make progress it stops and says why. And you
+            are never stuck: <code class="code">/ideation exit</code> stops the run, brings its work into
+            your checkout and puts ideation away.
+          </p>
+        </section>
+
+        <!-- ── 06 ───────────────────────────────────────────────────────── -->
+        <section data-step class="min-w-0">
+          <h2 class={stepTitle}><span class={stepNum}>06</span>Ready for review</h2>
+          <p class={stepIntro}>
+            All {wt.evidence.total} checks pass against the recorded source, and {wt.evidence.judgments === 1 ? 'one human judgment is' : `${wt.evidence.judgments} human judgments are`} left
+            for you. The widget celebrates once, because it saw the change happen, then settles. Ready
+            for review is not accepted, merged or deployed.
+          </p>
+          <Deck title="pi · field-notes">
+            <pre data-flip="ready"><Fragment set:html={wt.term.ready.still} /></pre>
+            <script is:inline type="application/json" data-frames="ready" set:html={json(wt.term.ready.frames)} />
+          </Deck>
+          <p class="mt-4 max-w-[64ch] text-[0.9375rem] text-muted">Pi also says: <em>{pi.notices.ready}</em></p>
+          <ContractFrame state="ready" anchor="acceptance-criteria" label={`Contract · ${title} · ready for review`} title={`The contract for ${title}, ready for review, with its evidence`} class="mt-6" />
+        </section>
+
+        <!-- ── 07 ───────────────────────────────────────────────────────── -->
+        <section data-step class="min-w-0">
+          <h2 class={stepTitle}><span class={stepNum}>07</span>Accept, then merge it yourself</h2>
+          <p class={stepIntro}>
+            You read the evidence, and you do the part only a person can:{' '}
+            <em>{judgment?.check.judgment}</em> Then <code class="code">/ideation accept</code> records
+            your decision against this exact candidate. It changes nothing in your repository.
+          </p>
+          <Deck>
+            <pre><span class="user"><span class="prompt">› </span>/ideation accept</span>
+<span class="dialog"><span class="t-b">{wt.acceptance.title}</span>
+{wt.acceptance.lines.join('\n')}
+
+<span class="choice is-on">› Yes</span><span class="choice">No</span></span>
+<Fragment set:html={wt.term.accepted} /></pre>
+          </Deck>
+          <p class="mt-4 max-w-[64ch] text-[0.9375rem] text-muted">
+            The commits are on <code class="code">{wt.branch}</code>. Review the diff and merge it the way
+            you merge anything else; ideation never does that part. The brief, contract and receipt are
+            in <code class="code">docs/ideation/{wt.brief.id}/</code> if you want the record in history.
+          </p>
+          <ContractFrame state="accepted" label={`Contract · ${title} · accepted`} title={`The contract for ${title} after acceptance`} class="mt-6" />
+        </section>
+
+        <!-- ── CTA ──────────────────────────────────────────────────────── -->
+        <section class="max-w-[64ch]" data-settle>
+          <h2 class="text-[clamp(1.6rem,4.4vw,2.1rem)]">Your change is next.</h2>
+          <p class="mt-4 mb-6 text-muted">
+            Install it and run <code class="code">/ideation</code>. Still working out
+            what to build? The <a class="link" href="/walkthrough/">planning walkthrough</a> starts from a
+            brain dump instead.
+          </p>
+          <InstallBlock label="pi" lines={install.pi} class="max-w-[620px]" />
+        </section>
+      </main>
+
+      <aside class="sticky top-[5.5rem] self-start max-[1040px]:hidden" aria-hidden="true">
+        <figure class="sheet m-0 px-5 pt-6 pb-4">
+          <div class="plate grid min-h-[9.5rem] place-items-center" data-plate>
+            {
+              PLATE.map((s, i) => (
+                <div class="plate-stamp" data-plate-steps={s.steps.join(',')} data-current={i === PLATE.length - 1 ? '' : undefined}>
+                  <Stamp label={s.label} sub={s.sub} tone={s.tone} class="is-sm" />
+                </div>
+              ))
+            }
+          </div>
+          <div class="mt-4 flex items-baseline justify-between gap-3 border-t border-line pt-3 font-mono text-[0.75rem] text-muted">
+            <span data-plate-label>accepted</span>
+            <span data-plate-count>07/07</span>
+          </div>
+        </figure>
+        <p class="mt-3 font-sans text-[0.8125rem] text-muted">Plate B — the contract’s stamp, as the run proceeds.</p>
+      </aside>
+    </div>
+  </div>
+
+  <style>
+    /* Without JavaScript the plate shows its final stamp; the script walks it. */
+    .plate {
+      grid-template-areas: 'stamp';
+    }
+    .plate-stamp {
+      grid-area: stamp;
+      visibility: hidden;
+    }
+    .plate-stamp[data-current] {
+      visibility: visible;
+    }
+    :global([data-motion='on']) .plate-stamp[data-current] :global(.stamp) {
+      animation: stamp-thunk 0.62s var(--ease) both;
+    }
+  </style>
+
+  <script is:inline>
+    (function () {
+      var root = document.querySelector('[data-walk]');
+      if (!root) return;
+      var motion = document.documentElement.dataset.motion === 'on';
+
+      // Plate B: the stamp for the step being read.
+      var steps = [].slice.call(root.querySelectorAll('[data-step]'));
+      var stamps = [].slice.call(root.querySelectorAll('[data-plate-steps]'));
+      var label = root.querySelector('[data-plate-label]');
+      var count = root.querySelector('[data-plate-count]');
+      var NAMES = ['draft', 'draft', 'revised draft', 'approved', 'approved', 'ready for review', 'accepted'];
+      var tops = [];
+      function measure() {
+        var y = window.scrollY;
+        tops = steps.map(function (s) { return s.getBoundingClientRect().top + y; });
+        update();
+      }
+      var last = -1;
+      function update() {
+        var line = window.scrollY + window.innerHeight * 0.55;
+        var active = 0;
+        tops.forEach(function (t, i) { if (t <= line) active = i; });
+        if (active === last) return;
+        last = active;
+        stamps.forEach(function (s) {
+          var on = s.dataset.plateSteps.split(',').indexOf(String(active)) >= 0;
+          var was = s.hasAttribute('data-current');
+          if (on && !was) s.setAttribute('data-current', '');
+          if (!on && was) s.removeAttribute('data-current');
+        });
+        if (label) label.textContent = NAMES[active];
+        if (count) count.textContent = '0' + (active + 1) + '/07';
+      }
+      var queued = false;
+      addEventListener('scroll', function () {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(function () { queued = false; update(); });
+      }, { passive: true });
+      addEventListener('resize', measure);
+      measure();
+
+      // The widget, animated from its real frames at Pi's 100ms frame rate,
+      // only while it is on screen. Live work loops at constant state; the
+      // ready celebration plays once and settles. Reduced motion: still frame.
+      if (!motion || typeof IntersectionObserver === 'undefined') return;
+      [].forEach.call(root.querySelectorAll('pre[data-flip]'), function (pre) {
+        var src = root.querySelector('script[data-frames="' + pre.dataset.flip + '"]');
+        if (!src) return;
+        var frames = JSON.parse(src.textContent);
+        var loop = pre.hasAttribute('data-loop');
+        var i = 0, timer = null, done = false;
+        function tick() {
+          pre.innerHTML = frames[i];
+          i += 1;
+          if (i >= frames.length) {
+            if (loop) i = 0;
+            else { done = true; stop(); }
+          }
+        }
+        function start() { if (!timer && !done) timer = setInterval(tick, 100); }
+        function stop() { clearInterval(timer); timer = null; }
+        new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) { e.isIntersecting ? start() : stop(); });
+        }, { threshold: 0.6 }).observe(pre);
+      });
+    })();
+  </script>
+</Site>

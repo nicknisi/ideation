@@ -1,0 +1,56 @@
+---
+import { contractHref, type ContractState } from '../lib/native';
+
+/**
+ * A real contract page, framed. The document inside is exactly what the Pi
+ * extension renders for this state; it scrolls inside its own sheet and keeps
+ * its own theme toggle, which the site's toggle drives.
+ */
+interface Props {
+  state: ContractState;
+  label: string;
+  title: string;
+  /** Section of the contract to open at, e.g. "revision-delta". */
+  anchor?: string;
+  height?: number;
+  class?: string;
+}
+const { state, label, title, anchor, height = 620, class: className = '' } = Astro.props;
+const href = contractHref(state);
+---
+
+<figure class:list={['sheet m-0', className]} data-settle>
+  <div class="sheet-bar">
+    <span>{label}</span>
+    <a class="link flex-none font-sans" href={href} target="_blank" rel="noopener">Open full page ↗</a>
+  </div>
+  <iframe
+    data-contract
+    src={href}
+    data-anchor={anchor}
+    title={title}
+    loading="lazy"
+    class="block w-full border-0 bg-paper"
+    style={`height:min(${height}px, 78vh)`}></iframe>
+</figure>
+
+<script is:inline>
+  // Open a framed contract at a section by scrolling inside the frame. A
+  // #fragment in the src would also scroll this page to the frame, jumping
+  // the reader down whenever a lazy frame loads.
+  if (!window.__ideationFrames) {
+    window.__ideationFrames = true;
+    document.addEventListener(
+      'load',
+      function (e) {
+        var f = e.target;
+        if (!f || f.tagName !== 'IFRAME' || !f.dataset.anchor) return;
+        try {
+          var el = f.contentDocument.getElementById(f.dataset.anchor);
+          if (el) f.contentWindow.scrollTo(0, el.getBoundingClientRect().top + f.contentWindow.scrollY - 12);
+        } catch (err) {}
+      },
+      true,
+    );
+  }
+</script>

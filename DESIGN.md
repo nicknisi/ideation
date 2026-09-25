@@ -8,7 +8,7 @@ dark "command deck" world, and that mismatch was the single biggest reason a
 generated contract did not read as part of this product.
 
 The canonical token declarations are `scripts/contract-gen.css` (inlined into
-every generated contract) and `site/src/styles/global.css` (worn by `/guide`).
+every generated contract) and `site/src/styles/global.css` (worn by the whole site).
 This document owns the values; those files declare them; every other surface
 inherits.
 
@@ -18,22 +18,28 @@ An **editorial field guide**: paper ground, ink, hairline rules, one cobalt
 accent, letterpress depth. Print sensibility on screen. It is deliberately not
 an instrument panel, a dashboard, or a terminal.
 
-## Two worlds
+## One world
 
-The product ships two visual worlds, deliberately, and they never meet in one
-document.
+Every surface wears this world: generated contracts and receipts, the live contract
+page, ephemeral comparison artifacts, implementation notes, and all of
+ideation.engineering — the overview, both walkthroughs and the guide.
 
-- **Field guide** (this document): generated contracts, `/guide`, ephemeral
-  comparison artifacts, implementation notes. The world of product artifacts —
-  documents a machine produces and a person reads, signs, or decides from.
-- **Industry** (`site/src/styles/industry.css`): `/` and `/walkthrough`. A
-  drafting table — slate-blue `#5980a6`, Barlow, square corners, registration
-  marks. The marketing surface, explaining the product from the outside.
+The site used to wear a second, "Industry" world (slate blue, Barlow, square
+corners). It was retired because a visitor met one look on the site and another on
+their first contract, and because the product's own artifacts — the stamped
+contract, the live page, the widget — are its best explanation. The site now shows
+real contract pages the renderer produced, framed, beside prose in the same tokens.
 
-Two worlds coexist because a marketing surface and a product artifact answer
-different questions. What is not allowed is a third world, or an artifact that
-invents its own tokens: a new surface joins one of these two, or argues for a
-change here first.
+A new surface joins this world or argues for a change here first. An artifact that
+invents its own tokens, or a second world, is not allowed.
+
+**One sanctioned exception: the graphite deck.** Where the site depicts a Pi
+terminal, it uses a fixed graphite plate (`#1a1c20`, the dark deck's surface) in
+both themes, and colours text with Pi's own dark-theme roles (accent `#8abeb7`,
+border accent `#00d7ff`, success `#b5bd68`, error lifted to `#e07a7a`), with muted
+and dim lifted to `#9a9a9a` and `#878787` so every role meets WCAG AA. It depicts
+another program's UI; it is not a surface of this world, and nothing else may borrow
+those colours.
 
 ## Tokens
 
