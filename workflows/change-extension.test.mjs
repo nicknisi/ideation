@@ -553,3 +553,74 @@ test('page approval requests are refused without an interactive terminal', async
   await until(() => subscription);
   assert.equal(await subscription.onRequest({ slug: 's', action: 'approve' }), false);
 });
+
+test('there is always a way out: /ideation exit stops, brings the work over, and ideation stays gone', async t => {
+  let run = makeRun('needs-decision', { branch: 'ideation/r', attention: { reason: 'execution', message: 'Check failed' } });
+  const calls = [];
+  const runner = {
+    status: async id => id ? run : [run],
+    work: async () => ({ files: ['src/a.ts', 'src/b.ts'], branch: 'ideation/r' }),
+    leave: async (id, options) => { calls.push(['leave', id, options]); run = { ...run, state: 'cancelled', exit: { applied: true } }; return { run, files: ['src/a.ts', 'src/b.ts'], applied: true, branch: 'ideation/r' }; },
+    dispose: async () => {},
+  };
+  const h = await harness(t, { runner });
+  run = { ...run, repoRoot: h.root };
+  const widgets = [], statuses = [];
+  h.ctx.ui.setWidget = (_k, v) => widgets.push(v);
+  h.ctx.ui.setStatus = (_k, v) => statuses.push(v);
+  let menu;
+  h.ctx.ui.select = async (title, options) => {
+    if (title === 'Ideation') { menu = options; return 'Leave ideation'; }
+    assert.match(title, /Leave ideation/);
+    assert.deepEqual(options, ['Bring the 2 changed files into my checkout', 'Keep them on branch ideation/r', 'Stay in ideation']);
+    return options[0];
+  };
+  await h.commands.ideation.handler('', h.ctx);
+  assert.ok(menu.includes('Leave ideation'), 'offered wherever ideation shows up');
+  assert.deepEqual(calls, [['leave', 'r', { apply: true }]]);
+  assert.equal(widgets.at(-1), undefined); assert.equal(statuses.at(-1), undefined);
+  assert.ok(h.notifications.some(m => /2 changed files from .* are now uncommitted changes in your checkout/.test(m)));
+  assert.ok(h.entries.some(([type, data]) => type === 'ideation:exit' && data.runId === 'r'));
+  // A new session start does not pull the user back in.
+  widgets.length = 0;
+  await h.handlers.session_start({}, h.ctx);
+  assert.equal(widgets.filter(Boolean).length, 0);
+});
+
+test('choosing to stay makes no change; a draft can be left without approving anything', async t => {
+  const calls = [];
+  const runner = { status: async () => [], leave: async () => { calls.push('leave'); }, dispose: async () => {} };
+  const h = await harness(t, { runner });
+  await h.tools.ideation_change.execute('', { action: 'prepare', brief: rawBrief }, null, null, h.ctx);
+  await h.commands.ideation.handler('exit', h.ctx);
+  assert.equal(calls.length, 0);
+  assert.ok(h.notifications.some(m => /Nothing was approved or started/.test(m)));
+  // The draft is no longer "prepared": bare approve has nothing to approve.
+  h.ctx.ui.confirm = async () => { throw new Error('must not ask'); };
+  await assert.rejects(h.commands.ideation.handler('approve', h.ctx), /No prepared brief/);
+});
+
+test('/ideation arguments tab-complete: subcommands, motion on|off, and run IDs', async t => {
+  let root = ''; const rootOf = () => root;
+  const runner = { status: async () => [makeRun('needs-decision', { id: 'riker-terminal-1', repoRoot: rootOf() }), makeRun('cancelled', { id: 'gone-1', exit: { at: 1 } })], dispose: async () => {} };
+  const h = await harness(t, { runner }); root = h.root;
+  const complete = h.commands.ideation.getArgumentCompletions;
+  assert.deepEqual((await complete('')).map(i => i.label), ['plan', 'approve', 'status', 'review', 'pause', 'resume', 'stop', 'accept', 'exit', 'motion']);
+  assert.deepEqual((await complete('ex')).map(i => i.value), ['exit']);
+  assert.deepEqual((await complete('pl')).map(i => i.value), ['plan ']);
+  assert.deepEqual((await complete('motion o')).map(i => i.value), ['motion on', 'motion off']);
+  assert.equal(await complete('nope'), null);
+  await h.handlers.session_start({}, h.ctx); // binds the session so run IDs can be listed
+  const ids = await complete('resume ');
+  assert.deepEqual(ids?.map(i => i.value), ['resume riker-terminal-1'], 'left runs are not offered');
+});
+
+test('the agent can take the user out of ideation when asked', async t => {
+  let run = makeRun('needs-decision', { branch: 'ideation/r' });
+  const runner = { status: async id => id ? run : [run], work: async () => ({ files: ['x'] }),
+    leave: async (_id, options) => { run = { ...run, exit: {} }; return { files: ['x'], applied: options.apply, branch: 'ideation/r' }; }, dispose: async () => {} };
+  const h = await harness(t, { runner, hasUI: false });
+  run = { ...run, repoRoot: h.root };
+  const res = await h.tools.ideation_change.execute('', { action: 'exit' }, null, null, h.ctx);
+  assert.match(res.details.left, /1 changed file from .* is now uncommitted changes in your checkout/);
+});

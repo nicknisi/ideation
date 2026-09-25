@@ -56,7 +56,8 @@ export function acceptanceText(run) {
   ].join('\n');
 }
 export function chooseRun(runs, repoRoot, ownerId) {
-  const scoped = runs.filter(r => r.repoRoot === repoRoot && (!r.ownerId || r.ownerId === ownerId));
+  // A run the user left is over for this front door: never pick it again.
+  const scoped = runs.filter(r => r.repoRoot === repoRoot && (!r.ownerId || r.ownerId === ownerId) && !r.exit);
   const active = scoped.filter(r => !['accepted', 'cancelled', 'failed'].includes(r.state));
   return (active.length ? active : scoped).sort((a,b) => b.updatedAt - a.updatedAt)[0];
 }

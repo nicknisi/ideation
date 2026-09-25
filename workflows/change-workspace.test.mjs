@@ -279,3 +279,33 @@ test('uncommitted paths count a rename once and leave host-written paths out', a
   assert.deepEqual(await api.uncommittedPaths(root, { exclude: ['docs/ideation/demo/'] }), ['loose.txt', 'src/renamed.txt']);
   assert.deepEqual(await api.uncommittedPaths(root), ['docs/ideation/demo/brief.json', 'loose.txt', 'src/renamed.txt']);
 });
+
+test('a run\'s work exports as one patch (commits, edits, new files; no host packets) and applies all-or-nothing', async t => {
+  const root = await fixture(t);
+  const base = await git(root, 'rev-parse', 'HEAD');
+  const { workspace } = await api.createWorkspace(root, 'leave-run');
+  t.after(() => git(root, 'worktree', 'remove', '--force', workspace).catch(() => {}));
+  await writeFile(join(workspace, 'src/a.txt'), 'committed by the run\n');
+  await git(workspace, 'add', 'src/a.txt'); await git(workspace, 'commit', '-m', 'run commit');
+  await writeFile(join(workspace, 'src/b.txt'), 'uncommitted new file\n');
+  await mkdir(join(workspace, 'docs/ideation/.native/leave-run'), { recursive: true });
+  await writeFile(join(workspace, 'docs/ideation/.native/leave-run/spec-phase-1.md'), 'host packet');
+  const out = await api.workPatch(workspace, base);
+  assert.deepEqual(out.files, ['src/a.txt', 'src/b.txt'], 'host packets never travel');
+  const status = await git(workspace, 'status', '--porcelain');
+  assert.match(status, /src\/b\.txt/, 'the worktree itself is untouched');
+
+  assert.deepEqual(await api.applyWork(root, out.patch), { applied: true });
+  assert.equal(await readFile(join(root, 'src/a.txt'), 'utf8'), 'committed by the run\n');
+  assert.equal(await readFile(join(root, 'src/b.txt'), 'utf8'), 'uncommitted new file\n');
+  assert.equal(await git(root, 'rev-parse', 'HEAD'), base, 'arrives as uncommitted changes, not commits');
+
+  // A conflicting checkout gets nothing half-applied.
+  await git(root, 'checkout', '--', 'src/a.txt'); await rm(join(root, 'src/b.txt'));
+  await writeFile(join(root, 'src/a.txt'), 'your own edit\n');
+  const refused = await api.applyWork(root, out.patch);
+  assert.equal(refused.applied, false);
+  assert.ok(refused.reason);
+  assert.equal(await readFile(join(root, 'src/a.txt'), 'utf8'), 'your own edit\n');
+  await assert.rejects(readFile(join(root, 'src/b.txt')), /ENOENT/);
+});

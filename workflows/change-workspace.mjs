@@ -98,6 +98,46 @@ export async function snapshotWorkingTree(repoRoot, { ref, exclude = [], message
   }
 }
 
+/** A run's whole piece of work as one patch against its starting point: its
+ * commits, uncommitted edits and new files, minus host packets and policy files.
+ * Built in a private index, so the worktree is not touched. `tree`/`head` let
+ * the caller keep the exact final state under a ref. */
+export async function workPatch(workspace, baseRevision) {
+  const common = resolve(workspace, (await git(workspace, 'rev-parse', '--git-common-dir')).trim());
+  const index = join(common, 'ideation', `export-${randomUUID()}.index`);
+  await mkdir(dirname(index), { recursive: true });
+  const env = { GIT_INDEX_FILE: index };
+  try {
+    await gitText(workspace, ['read-tree', 'HEAD'], { env });
+    await gitText(workspace, ['add', '-A', '--', '.'], { env });
+    const tree = (await gitText(workspace, ['write-tree'], { env })).trim();
+    const head = (await git(workspace, 'rev-parse', 'HEAD')).trim();
+    const files = split(await git(workspace, 'diff', '--name-only', '--no-renames', '-z', baseRevision, tree)).filter(p => !generated(p)).sort();
+    const patch = files.length ? await git(workspace, 'diff', '--binary', '--full-index', '--no-renames', baseRevision, tree, '--', ...files) : '';
+    return { files, patch, tree, head };
+  } finally {
+    await rm(index, { force: true });
+  }
+}
+
+/** Apply a run's patch to the user's checkout as ordinary uncommitted changes.
+ * All or nothing: when it does not apply cleanly nothing is written. */
+export async function applyWork(repoRoot, patch) {
+  if (!patch) return { applied: true };
+  const common = resolve(repoRoot, (await git(repoRoot, 'rev-parse', '--git-common-dir')).trim());
+  const file = join(common, 'ideation', `leave-${randomUUID()}.patch`);
+  await mkdir(dirname(file), { recursive: true });
+  await writeFile(file, patch);
+  try {
+    try { await git(repoRoot, 'apply', '--check', '--whitespace=nowarn', file); }
+    catch (e) { return { applied: false, reason: String(e.message).split('\n').slice(1).find(l => l.trim())?.trim() ?? 'conflicts with your checkout' }; }
+    await git(repoRoot, 'apply', '--whitespace=nowarn', file);
+    return { applied: true };
+  } finally {
+    await rm(file, { force: true });
+  }
+}
+
 export async function createWorkspace(repoRoot, runId, base = 'HEAD') {
   if (typeof runId !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,150}$/.test(runId)) throw new Error('Invalid run ID');
   const common = resolve(repoRoot, (await git(repoRoot, 'rev-parse', '--git-common-dir')).trim());
