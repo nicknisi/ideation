@@ -45,7 +45,9 @@ contract and receipt land in `docs/ideation/<change-id>/` for you to commit or n
 See [the native workflow guide](docs/native-workflow.md) and
 [the worked brief](test-fixtures/native-change/brief.json). The old skills and
 Claude Code integration remain supported. This new native front door is Pi-only;
-the brief, renderer, verifier primitives and existing engine are portable. In Pi, the
+the brief, renderer, verifier primitives and existing engine are portable. In Claude
+Code, `/ideation:change` only explains that it needs Pi and points to the planning
+interview. In Pi, the
 planning path below runs as `/skill:<name>` — `/skill:ideation`, `/skill:chart`,
 `/skill:express`, `/skill:autopilot` and so on.
 
@@ -87,12 +89,13 @@ Full behavior lives in [skills/brainstorm/SKILL.md](skills/brainstorm/SKILL.md).
 
 Transforms raw, unstructured brain dumps (dictated freestyle) into actionable implementation artifacts through an evidence-gated workflow.
 
-Use this before building any new feature, planning a migration, designing a system, or turning scattered ideas into a plan. Covers small single-spec projects through multi-phase initiatives.
+Use this before building any new feature, planning a migration, designing a system, or turning scattered ideas into a plan. Covers small single-spec projects through multi-phase initiatives. It starts only when you ask for it by command; ordinary feature requests do not start it.
 
 **How to invoke:**
 
 ```
-Use the ideation skill
+/ideation:ideation        # Claude Code (or /ideation when unambiguous)
+/skill:ideation           # Pi
 
 [provide your brain dump - messy dictation, scattered thoughts, half-formed ideas]
 ```
