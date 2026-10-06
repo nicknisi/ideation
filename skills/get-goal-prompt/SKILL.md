@@ -18,8 +18,8 @@ Emit the `/goal` that drives `/ideation:autopilot` to completion unattended. The
 string has exactly one owner — `buildGoal()` in `${CLAUDE_PLUGIN_ROOT}/scripts/contract-gen.ts`,
 printed by `--print-goal` — so this skill only resolves the project, prints, and copies.
 **Never hand-author or template the /goal**; a second copy of that string is drift.
-(The layered model — goal wrapper → autopilot → engine → execute-spec — is owned by
-ideation SKILL.md § 5.4.)
+(The layered model: the `/goal` is a durability wrapper that drives autopilot, which
+drives the engine, which runs execute-spec per phase.)
 
 1. **Resolve `contract-data.json` first** — it is the source of truth; `contract.md` is
    only a legacy fallback. Argument given: a `contract-data.json` path is used directly;

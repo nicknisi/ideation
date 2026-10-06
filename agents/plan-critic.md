@@ -12,7 +12,7 @@ Try to break the plan before the user sees it. Read the plan data, verify its cl
 
 You receive:
 
-- **Plan data path** — path to a `plan.json` (the plan: why, claims, decisions, checks, units, scope tiers, gates); its shape is `schemas/plan.ts`, and `criticView` in `scripts/plan-data.ts` is the same data without exhibits, which you may be handed instead
+- **Plan data** — usually the plan's critic view inline (`node scripts/plan-data.ts critic-view <folder>` prints it: `criticView` in `scripts/plan-data.ts`, the plan without exhibits), or a path to a `plan.json` (why, claims, decisions, checks, units, scope tiers, gates; its shape is `schemas/plan.ts`)
 - **Project directory** — where ideation artifacts live (e.g., `docs/ideation/{slug}/`)
 - **Lens** — exactly one of `scope-creep`, `over-engineering`, `hidden-dependency`, `success-criteria`. Critique only through this lens; ignore concerns that belong to the other three.
 
@@ -20,7 +20,7 @@ You receive:
 
 ### 1. Read the Plan Data
 
-Read the `plan.json`. Extract the parts your lens cares about:
+Read the plan data (the critic view you were handed, or the `plan.json`). Extract the parts your lens cares about:
 
 - `why`, `goals` — the problem in its owner's words, and the level-1 claims (what someone can now do or see)
 - `claims`, `decisions` — the claim tree by id, and each decision (on the claim it changes) with its id, `state`, and options
@@ -118,7 +118,7 @@ Reserve `blocker` narrowly: a genuine defect that would mislead the user or brea
 ```markdown
 ## Plan Critic: {lens}
 
-**Plan**: {plan.json path}
+**Plan**: {plan id and version, or plan.json path}
 **Verdict**: SOUND / REVISE
 **Findings**: {total} ({blocker} blocker, {notable} notable, {nit} nit)
 

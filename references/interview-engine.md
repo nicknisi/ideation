@@ -1,6 +1,6 @@
 # Interview Engine
 
-Shared interview process for ideation skills. Read and execute all phases below before returning to the calling skill for artifact generation.
+The interview behind ideation's `interview` depth. Read and execute all phases below before returning to the skill to write the plan.
 
 ## Phase 1: Intake
 
@@ -12,12 +12,12 @@ Acknowledge receipt. State what looks strong and what looks weak. Take a positio
 
 Resume runs before the sweep, because it decides which gates get interviewed at all, and a resumed sweep is scoped to the open questions rather than to the whole brain dump.
 
-**Trigger:** the user points ideation at an existing project (a path, a slug, or "resume {name}"). Absent that, run one **bounded** glob over `docs/ideation/*/contract-data.json`, match on directory name, and read only the file that matches. Same bounded style as the unmined-notes scan below. No match: fresh interview. More than one: `AskUserQuestion` to pick.
+**Trigger:** the user points ideation at an existing project (a path, a slug, or "resume {name}"). Absent that, run one **bounded** glob over `docs/ideation/*/plan.json` (and, for folders not yet converted, `docs/ideation/*/contract-data.json` and `docs/ideation/*/brief.json`), match on directory name, and read only the folder that matches. Same bounded style as the unmined-notes scan below. No match: fresh interview. More than one: `AskUserQuestion` to pick. A folder with only a 0.x `contract-data.json` (or a `brief.json`) is converted first, per the skill's "Old folders convert on read" rule.
 
-Read `gates.dimensions` and `openQuestions` from that file. Gates persisted as `ready` are not re-interviewed; their evidence stands. Announce in one line, no banner (same convention as the brainstorm and learning lines):
+Read `gates` and `openQuestions` from that plan. Gates persisted as `ready` are not re-interviewed; their evidence stands. Announce in one line, no banner (same convention as the carried-conclusion and learning lines):
 
 ```
-Resuming {projectName}: {n}/5 gates ready — {m} open questions
+Resuming {title}: {n}/5 gates ready — {m} open questions
 ```
 
 **Take only what is takeable.** An entry whose `blockedBy` ids have already closed is takeable now. A still-blocked entry stays unasked this session.
@@ -29,11 +29,11 @@ Resuming {projectName}: {n}/5 gates ready — {m} open questions
 - **`decision`**: `AskUserQuestion`, with your recommendation.
 - **`task`**: print the precise checklist in the terminal, then `AskUserQuestion` offering "done, here is what happened" or "not yet, leave it open".
 
-When a question closes, its answer becomes that gate's evidence and the entry is dropped. A closed `decision` question that turned an alternative down also produces a `decisions` entry, so the two arrays hand off to each other. A question that does not close stays, sharpened if this session sharpened it.
+When a question closes, its answer becomes that gate's evidence and the entry is dropped. A closed `decision` question that turned an alternative down also produces a decision on the claim it changes (`answered`, with `rejected`), so the open question hands off to the plan's decisions. A question that does not close stays, sharpened if this session sharpened it.
 
-**The engine writes nothing here.** Closed and remaining questions are tracked internally alongside gate state, and the calling skill's Phase 3 persists them. Same division as the gate scoreboard.
+**The engine writes nothing here.** Closed and remaining questions are tracked internally alongside gate state, and the skill writes them into the plan's next version. Same division as the gate scoreboard.
 
-A project already at 5/5 gates with no open questions has nothing to resume. Say so and send the user to the handoff instead of re-interviewing a finished contract.
+A project already at 5/5 gates with no open questions has nothing to resume. Say so and send the user to its page or its approval instead of re-interviewing a finished plan.
 
 ### Intake sweep
 
@@ -49,22 +49,22 @@ While the sweep runs, acknowledge the brain dump and state what looks strong and
 
 **Cap at 3 sweep agents.** Scope each agent's prompt to the brain dump's stated area; beyond 3 agents, latency and token cost outrun the value for an interview opener. Sweep findings stay in conversation context — the "do not write exploration findings to files" rule below applies to the sweep too.
 
-### Carry a brainstorm conclusion
+### Carry a settled conclusion
 
-When the current conversation already contains a brainstorm conclusion — a settled decision with its assumptions, rejected alternatives, and explicit exclusions, typically from `/ideation:brainstorm` — carry it as starting evidence instead of re-asking what it settled. Say so visibly at intake, one line, no banner (same convention as the learning line below):
+When the current conversation already contains a settled conclusion — a decision with its assumptions, rejected alternatives, and explicit exclusions, typically from the skill's "should we?" opening or a finished map — carry it as starting evidence instead of re-asking what it settled. Say so visibly at intake, one line, no banner (same convention as the learning line below):
 
 ```
-Carrying brainstorm conclusion: {decision, one clause} — {n} rejected alternatives, {m} exclusions
+Carrying conclusion: {decision, one clause} — {n} rejected alternatives, {m} exclusions
 ```
 
-The pieces map onto structures the contract already has:
+The pieces map onto structures the plan already has:
 
-- **Rejected alternatives** are `decisions` entries — `{decision, rejected, reason}` — captured now, at the moment they exist, not reconstructed later.
-- **The settled problem** is Problem Clarity evidence when it's concrete (who, what, when, impact); cite the brainstorm as the artifact.
-- **"Explicitly out"** items become `scope.outOfScope` with their reasons, covering Scope Boundaries' exclusion half; the in-scope tiers still need the interview.
+- **Rejected alternatives** are decisions on the claims they change — `answered`, with `rejected` and the reason — captured now, at the moment they exist, not reconstructed later.
+- **The settled problem** is Problem Clarity evidence when it's concrete (who, what, when, impact); cite the conclusion as the artifact, and quote it in `why`.
+- **"Explicitly out"** items become `scope.notChanging`, covering Scope Boundaries' exclusion half; the in-scope tiers still need the interview.
 - **Assumptions** are Consistency input — check later answers against them and surface contradictions.
 
-**A brainstorm conclusion is the user's stated intent, not verified evidence.** It can seed a gate but cannot mark one `ready` on its own where the rubric demands an artifact. In practice: Problem Clarity is the only gate a strong conclusion plausibly closes by itself; Scope Boundaries arrives half-done (exclusions yes, tiers no); Goal Definition rarely survives the rubric's metric requirement; Success Criteria never does — a conversation about *whether* produces no runnable checks, so always interview for it. The rubric's "when unsure, not-ready" rule still governs. The payoff is a shorter interview aimed only at the open gates — never a skipped one.
+**A carried conclusion is the user's stated intent, not verified evidence.** It can seed a gate but cannot mark one `ready` on its own where the rubric demands an artifact. In practice: Problem Clarity is the only gate a strong conclusion plausibly closes by itself; Scope Boundaries arrives half-done (exclusions yes, tiers no); Goal Definition rarely survives the rubric's metric requirement; Success Criteria never does — a conversation about *whether* produces no runnable checks, so always interview for it. The rubric's "when unsure, not-ready" rule still governs. The payoff is a shorter interview aimed only at the open gates — never a skipped one.
 
 ### Read accumulated learnings
 
@@ -94,7 +94,7 @@ A brain dump always admits more than one reading, and the failure mode is to sil
 
 In the same turn as the forks above, give your read of what done looks like and which artifact gets handed off (a merged PR, a running service, a spec someone else implements from). State it rather than asking it, so the opener stays one turn. Left unsaid, the destination surfaces inside Success Criteria, gate 3 of 5, after two gates' worth of questions may have aimed at the wrong artifact. Whatever the user confirms or corrects lands as Success Criteria and Scope Boundaries evidence. It adds no gate.
 
-This is a separate subsection from the forks on purpose, even though both land in one turn. `/ideation:brainstorm` borrows the forks section verbatim and has no gates to track and no artifact to hand back, so gate vocabulary inside that section would follow it into a conversation about whether to build at all.
+This is a separate subsection from the forks on purpose, even though both land in one turn. The skill's "should we?" opening borrows the forks section verbatim and has no gates to track and no artifact to hand back, so gate vocabulary inside that section would follow it into a conversation about whether to build at all.
 
 ### Core rules
 
@@ -113,7 +113,7 @@ When exploring the codebase during the interview, look for:
 - Testing patterns and infrastructure
 - Feedback infrastructure — test runners, dev servers, storybook, API scripts. See `${CLAUDE_PLUGIN_ROOT}/references/feedback-loop-guide.md` for the infrastructure-to-playground mapping.
 
-**Do not write exploration findings to files.** They're context for the interview, not artifacts. **This is not an exception:** an open question that blocks a gate is persisted state, and the engine still writes nothing — Phase 3 in the calling skill is what persists it (see "When a gate is blocked on work outside the interview" below). The line sits where it does because a finding is an answer nobody is waiting on, while an open question is the reason a gate is open, and the next session needs that to avoid re-interviewing from zero.
+**Do not write exploration findings to files.** They're context for the interview, not artifacts. **This is not an exception:** an open question that blocks a gate is persisted state, and the engine still writes nothing — the skill writes it into `plan.json` (see "When a gate is blocked on work outside the interview" below). The line sits where it does because a finding is an answer nobody is waiting on, while an open question is the reason a gate is open, and the next session needs that to avoid re-interviewing from zero.
 
 ### Gate tracking
 
@@ -127,15 +127,15 @@ Track readiness internally across 5 evidence gates (each `ready` / `not-ready`, 
 | Scope Boundaries | Do I know what's in and out of scope?                                   |
 | Consistency      | Are there contradictions I need resolved?                               |
 
-**When unsure whether the evidence is sufficient, the gate is `not-ready`.** One extra question costs seconds; a bad contract costs hours.
+**When unsure whether the evidence is sufficient, the gate is `not-ready`.** One extra question costs seconds; a bad plan costs hours.
 
-**Scoreboard:** after each answered question, print one line from the gate state tracked above — `Gates: {n}/5 ready — open: {labels}` (e.g. `Gates: 3/5 ready — open: Success Criteria, Consistency`; when everything is ready, `Gates: 5/5 ready`). The scoreboard instruction lives only here in the engine — calling skills must not duplicate it.
+**Scoreboard:** after each answered question, print one line from the gate state tracked above — `Gates: {n}/5 ready — open: {labels}` (e.g. `Gates: 3/5 ready — open: Success Criteria, Consistency`; when everything is ready, `Gates: 5/5 ready`). The scoreboard instruction lives only here in the engine — the skill must not duplicate it.
 
-When all 5 gates are `ready`, stop interviewing and generate the contract. There is no fixed question limit: keep asking until every gate is either `ready` or blocked on a written open question.
+When all 5 gates are `ready`, stop interviewing and write the plan. There is no fixed question limit: keep asking until every gate is either `ready` or blocked on a written open question.
 
 **A gate blocked on a written open question is a stopping point, not a gate to keep pushing on.** This is the terminal state that makes the first session possible. The session that writes an open question is by definition the one that cannot close that gate, so treating "all 5 ready" as the only exit would loop it on a gate nothing this session can resolve, and leave the resume path with no input. Stop when no gate can move: every remaining one is `ready` or blocked, and the blocked ones carry their question.
 
-The user can also say "stop", "wrap up", or "that's enough" to end the interview early. Any gates still `not-ready` are recorded as such in the contract, each carrying the open question that would close it where one was written, per the subsection below.
+The user can also say "stop", "wrap up", or "that's enough" to end the interview early. Any gates still `not-ready` are recorded as such in the plan (with `stoppedEarly` saying why), each carrying the open question that would close it where one was written, per the subsection below.
 
 ### When a gate is blocked on work outside the interview
 
@@ -150,9 +150,9 @@ Each question you write carries the gate it blocks, its type, and any open quest
 - **`decision`**: closes via an `AskUserQuestion`, once the missing input exists.
 - **`task`**: closes via out-of-band work a human does.
 
-**The gate stays `not-ready`.** An open question is the reason a gate is open, never a substitute for its evidence, the same rule that governs a carried brainstorm conclusion. (Stalled on articulation is the strawman below; "we'd have to build it to know" is the prototype spike; blocked on work the interview cannot do is this.)
+**The gate stays `not-ready`.** An open question is the reason a gate is open, never a substitute for its evidence, the same rule that governs a carried conclusion. (Stalled on articulation is the strawman below; "we'd have to build it to know" is the prototype spike; blocked on work the interview cannot do is this.)
 
-The engine tracks these internally alongside gate state and writes no files. Phase 3 in the calling skill persists them.
+The engine tracks these internally alongside gate state and writes no files. The skill writes them as the plan's `openQuestions`, each with `type`, `gate` and `blockedBy`.
 
 ### When to suggest a prototype
 
@@ -212,4 +212,4 @@ So name the blocker before you offer this. When it is wording rather than unknow
 
 ### When to stop
 
-The interview is complete when no gate can move this session: every gate is `ready` or blocked on a written open question, per "Gate tracking" above. It is also complete when the user says "stop", "wrap up", or "that's enough". A resumed interview is complete once every takeable open question has closed or been re-recorded, gates still open included: a question waiting on a blocked entry cannot close this session. **Return to the calling skill's next phase** (Phase 3) to begin artifact generation. Do not generate any artifacts within this interview engine — artifact generation is the calling skill's responsibility.
+The interview is complete when no gate can move this session: every gate is `ready` or blocked on a written open question, per "Gate tracking" above. It is also complete when the user says "stop", "wrap up", or "that's enough". A resumed interview is complete once every takeable open question has closed or been re-recorded, gates still open included: a question waiting on a blocked entry cannot close this session. **Return to the skill** to write the plan. Do not write any files within this interview engine — writing the plan is the skill's responsibility.
