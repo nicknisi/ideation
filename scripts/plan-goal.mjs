@@ -20,7 +20,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { load, toRunContract } from './plan-data.ts';
+import { approvedRunContract, load } from './plan-data.ts';
 import {
   committablePhases, isEntryPoint, malformedCriterionError, normalizeCriterion, readContract, validateCheck,
 } from './verify.mjs';
@@ -131,16 +131,8 @@ export function goalFromContract(data, { dataPath, cwd = process.cwd() } = {}) {
  * before anything runs unattended.
  */
 export function goalFromPlan(folder, { cwd = process.cwd() } = {}) {
+  approvedRunContract(folder);
   const plan = load(join(folder, 'plan.json'));
-  const runPath = join(folder, 'run-contract.json');
-  if (!existsSync(runPath)) {
-    throw new Error(`${folder} has no run-contract.json: the plan is not approved. Approve it in a terminal confirmation (skills/ideation's Approval), which writes run-contract.json, then ask for the goal again.`);
-  }
-  const frozen = JSON.parse(readFileSync(runPath, 'utf8'));
-  const now = toRunContract(plan);
-  if (frozen.fingerprint !== now.fingerprint) {
-    throw new Error(`${runPath} no longer matches plan.json (v${plan.version}): the plan changed after approval. Approve the current version, which rewrites run-contract.json, then ask for the goal again.`);
-  }
   const shownFolder = shown(folder, `docs/ideation/${plan.id}`, cwd);
   return buildGoal({
     kind: 'plan',

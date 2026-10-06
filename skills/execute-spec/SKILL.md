@@ -39,21 +39,28 @@ Example: `/ideation:execute-spec --parallel` or `/ideation:execute-spec --headle
 
 Resolve the spec in this order:
 
-1. **Argument given** — read it directly. A unit packet (`unit-<id>.md`, written beside `plan.json` by `${CLAUDE_PLUGIN_ROOT}/scripts/plan-data.ts` `run-contract` once the user approved the plan) is a spec: its sections carry the names Step 3 parses, and its File Changes and Validation Commands are the approved authority, never to be widened. (`TODO(4.2)`: the rest of this skill still reads 0.x contract data — `approvalMode`, `spec-phase-*.md` discovery.)
+1. **Argument given** — read it directly.
 2. **No argument** — auto-detect from `TaskList`: a task with `status: pending`, empty `blockedBy`, and a subject starting with "Phase" or metadata containing `specFile`. Read its `specFile` (via `TaskGet`).
-3. **No tasks** — glob `./docs/ideation/*/spec-phase-*.md` **and** `./docs/ideation/*/spec.md` (single-spec projects emit a bare `spec.md`). Multiple matches → `AskUserQuestion` to pick (headless: first unblocked).
+3. **No tasks** — glob `./docs/ideation/*/unit-*.md` (an approved plan's packets), `./docs/ideation/*/spec-phase-*.md` **and** `./docs/ideation/*/spec.md` (0.x specs; single-spec projects emit a bare `spec.md`). Multiple matches → `AskUserQuestion` to pick (headless: first unblocked).
+
+**A unit packet is an approved spec.** `unit-<id>.md` is written beside `plan.json` by `${CLAUDE_PLUGIN_ROOT}/scripts/plan-data.ts` `run-contract` once the user approved the plan. Its sections carry the names Step 3 parses, so the rest of this skill reads it like a spec, with four differences — the same ones the engine's `packet` argument makes, so a packet is built by the same rules in both harnesses:
+
+- **Its authority is the limit.** Build only within its File Changes paths, run only the commands it names (its Validation Commands and the exact allowed commands at its end), and keep its Shared Invariants. Never widen any of them: a change to the plan needs a new plan version and a new approval.
+- **No artifacts.** Its Execution Boundary forbids scout maps, implementation notes and other files outside the allowed paths, so Step 2 keeps the scout's map in the conversation instead of writing `context-map.md`, Step 6 records gap decisions in the Completion Report instead of an implementation-notes file, and the Completion Report links no notes.
+- **A scout HOLD is a finding.** The plan was approved, so report the HOLD's gaps and build with them in view; headless runs proceed. Interactively, you may still offer **Abort**.
+- **Its commit carries the unit's trailer**, not a spec path (see Commit).
 
 ### 2. Scout Codebase
 
 **Under the autopilot Workflow engine, this step is superseded:** the engine runs the scout as a sibling workflow stage and hands its map to the build stage under an explicit ENGINE OVERRIDES block (skip scout, stop after Verify, never commit, `git add -N` every new file) — see `${CLAUDE_PLUGIN_ROOT}/workflows/README.md`. This section governs direct runs.
 
-Invoke the read-only Scout to map the codebase and assess readiness across 5 evidence gates — it replaces manual exploration and persists its findings.
+Invoke the read-only Scout to map the codebase and assess readiness across 5 evidence gates — it replaces manual exploration and persists its findings (a unit packet: kept in the conversation, never written).
 
 The **project directory** is the spec's parent (spec `docs/ideation/my-project/spec-phase-1.md` → `docs/ideation/my-project/`).
 
 Invoke `Agent` with `subagent_type: ideation:scout`. The prompt carries **per-invocation inputs only**: spec path, project directory, phase number, whether a prior `context-map.md` exists. Workflow, output format, and read-only `tools` come from the registered definition (the platform enforces `tools`; the scout cannot edit). It runs up to 2 internal rounds before a verdict — wait for the final output, do not re-invoke. **Agent names differ by harness** — see `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md` § 2: in pi, dispatch one task with the body of `${CLAUDE_PLUGIN_ROOT}/agents/scout.md` as `systemPrompt` and the default read-only tools. The same translation applies to `ideation:reviewer` (below) and `general-purpose` (wave dispatch).
 
-The scout returns the context map as text; **Write** it to `{project-directory}/context-map.md` (it cannot write files itself).
+The scout returns the context map as text; **Write** it to `{project-directory}/context-map.md` (it cannot write files itself). For a unit packet, do not write it: use it from the conversation.
 
 - **GO** (Scope clarity ready AND ≥ 4/5 gates ready): the map is ready — use its Key Patterns (avoid redundant reads), Dependencies, Conventions, and Risks during build. Proceed.
 - **HOLD** (Scope clarity not-ready, or < 4/5 gates ready): present the gap analysis via `AskUserQuestion` (headless/strict: per the gate-behavior table in `workflows/README.md`):
@@ -88,7 +95,7 @@ One-time setup before building. Read the spec's Feedback Strategy for the playgr
 
 ### 6. Initialize Implementation Notes
 
-Maintain `{project-directory}/implementation-notes-phase-{n}.html` — a running log of decisions not covered by the spec, for the human to review. **Create the file lazily, on the first logged entry** (not upfront): copy `${CLAUDE_PLUGIN_ROOT}/skills/execute-spec/references/implementation-notes.template.html` verbatim, substitute `{N}`, `{PROJECT}`, `{DATE}`, and `{PHASE DESCRIPTION}`, and delete the marked example entry. The template is the single owner of the file shell and the note-entry format (a `note-entry` section with Context / Decision / Alternative — its example entry shows exactly the shape). Append subsequent entries inside `<main class="doc-content">`. A clean phase with zero entries means no file ever exists, which avoids create-then-delete churn.
+Maintain `{project-directory}/implementation-notes-phase-{n}.html` — a running log of decisions not covered by the spec, for the human to review. (A unit packet forbids this file: keep the same entries for the Completion Report's Implementation Notes section instead.) **Create the file lazily, on the first logged entry** (not upfront): copy `${CLAUDE_PLUGIN_ROOT}/skills/execute-spec/references/implementation-notes.template.html` verbatim, substitute `{N}`, `{PROJECT}`, `{DATE}`, and `{PHASE DESCRIPTION}`, and delete the marked example entry. The template is the single owner of the file shell and the note-entry format (a `note-entry` section with Context / Decision / Alternative — its example entry shows exactly the shape). Append subsequent entries inside `<main class="doc-content">`. A clean phase with zero entries means no file ever exists, which avoids create-then-delete churn.
 
 Before deciding anywhere the spec is silent, consult the decision log (the spec's Decisions Considered and Rejected section): if the approach you're about to take matches a rejected entry, treat it as a spec conflict — escalate rather than proceed, citing the log entry.
 
@@ -183,7 +190,10 @@ Options:
 
 ### Commit
 
-Only after PASS or user acceptance: stage the phase's changed files by name (never `git add -A`), commit following the project's conventions, and include the cycle count in the body if review took multiple cycles. **The commit body MUST contain the phase's slug-qualified `specPath` verbatim** (e.g. `docs/ideation/my-project/spec-phase-1.md`) — autopilot's resume pre-pass and `scripts/verify.mjs` both grep commit bodies for exactly that string, so a commit that omits it makes the phase silently re-execute on resume and read as never-committed at verification. Process artifacts (`context-map.md`, `implementation-notes-*.html`) are working files, not phase deliverables — leave them out of the phase commit unless the project's conventions track `docs/ideation/`.
+Only after PASS or user acceptance: stage the phase's changed files by name (never `git add -A`), commit following the project's conventions, and include the cycle count in the body if review took multiple cycles. **The commit must carry the phase's commit reference** — autopilot's resume pre-pass and `scripts/verify.mjs` both look for exactly it, so a commit that omits it makes the phase silently re-execute on resume and read as never-committed at verification:
+
+- **A unit packet:** end the commit message with the trailer line `Ideation-Unit: <brief id>/<unit id>`, on a line of its own. Both ids are in the packet's header (`Brief: <brief id> · revision …` and `Unit: <unit id> · risk …`). Pi's change runner writes the same trailer on its unit commits, so `commits=` means the same in both harnesses.
+- **A 0.x spec:** the commit body MUST contain the phase's slug-qualified `specPath` verbatim (e.g. `docs/ideation/my-project/spec-phase-1.md`). Process artifacts (`context-map.md`, `implementation-notes-*.html`) are working files, not phase deliverables — leave them out of the phase commit unless the project's conventions track `docs/ideation/`.
 
 ### Completion Report
 

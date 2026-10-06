@@ -113,6 +113,7 @@ stringified one):
       "prereqs": ["Other phase title", "..."], // titles that must finish first
       "risk": "low", // optional, display only
       "files": ["path/a.ts", "path/b.ts"], // optional; paths this phase touches
+      "trailer": "Ideation-Unit: <plan id>/<unit id>", // optional; the commit must carry it
     },
   ],
   "completedPhases": ["Phase title", "..."], // already committed; excluded from dispatch
@@ -141,9 +142,12 @@ stringified one):
     blocking findings is a FAIL. The commit stage is a host boundary whose result
     may also be `VERIFIED` or `NO-OP`. Phases run one per wave.
 
-  Who passes what: a 0.x contract passes neither, a Claude Code run contract
-  passes `packet` (with `strict`), and Pi's change runner
-  (`workflows/change-run.mjs`) passes both.
+  Who passes what: a 0.x contract passes neither. A Claude Code run contract
+  (`node scripts/plan-data.ts manifest`) passes `packet` with `strict`, and
+  each phase's `trailer` (the unit's `Ideation-Unit` commit reference, which
+  its agent commit stage must write). Pi's change runner
+  (`workflows/change-run.mjs`) passes both, and its host writes the same
+  trailer. `references/harness-compat.md` § 5 has the rest.
 - **`files`** is optional. The `/ideation:autopilot` skill populates it by parsing
   each spec's **File Changes** tables. It declares the paths a phase touches so the
   engine can serialize file-conflicting phases (see below). Omitting it (or `[]`)
