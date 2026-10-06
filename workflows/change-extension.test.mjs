@@ -493,6 +493,8 @@ test('the brief, contract and receipt land in docs/ideation for you to keep; not
   await h.commands.ideation.handler('status', h.ctx);
   await h.handlers.session_shutdown();
   const receipt = JSON.parse(await readFile(join(dir, 'receipt.json'), 'utf8'));
+  // Riker catches up on missed runs from these two fields; change them only together with its reader.
+  assert.equal(receipt.run, run.id);
   assert.equal(receipt.state, 'ready-for-review');
   assert.equal(receipt.branch, 'ideation/r');
   assert.equal(receipt.evidence[0].status, 'passed');
