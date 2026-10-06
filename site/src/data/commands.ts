@@ -72,7 +72,7 @@ export const COMMANDS: CommandDoc[] = [
     headline: 'Run every unit of an approved plan on the workflow engine.',
     when: 'A plan was approved (its run-contract.json still matches plan.json), or a 0.x contract has specs. Independent units run in parallel waves; dependent ones wait.',
     produces:
-      'One reviewed commit per unit on ideation/<slug>, each ending in its Ideation-Unit trailer, a run report beside the plan, and a VERIFY line stating whether the plan’s own checks pass.',
+      'One reviewed commit per unit on ideation/<plan id>, each ending in its Ideation-Unit trailer, a run report beside the plan, and a VERIFY line stating whether the plan’s own checks pass.',
     caveat:
       'It resumes rather than repeating: a unit whose trailer is already on the branch is skipped (for a 0.x contract, a phase whose spec path appears in a commit body). A plan edited after approval is refused until it is approved again.',
   },

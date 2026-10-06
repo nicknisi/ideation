@@ -109,7 +109,7 @@ const EITHER_WAY = [
   },
   {
     title: 'It stops at review',
-    body: 'Work lands as local commits on its own branch. Neither path pushes, merges or deploys.',
+    body: 'Work lands as local commits, on an isolation branch for any plan of more than one unit. Neither path pushes, merges or deploys.',
   },
   {
     title: 'Files you own',
@@ -370,7 +370,7 @@ const lede = 'max-w-[62ch] text-[1.0625rem] text-muted';
     ├── run-contract.json  <span class="text-faint"># frozen when you approve</span>
     ├── unit-&lt;id&gt;.md …     <span class="text-faint"># one work packet per unit</span>
     └── run-&lt;date&gt;.html    <span class="text-faint"># the run report (+ .json)</span></pre>
-            <p class="mt-2 font-sans text-[0.875rem] text-muted">Reviewable files, yours to commit with the code. In Pi, a change also keeps <code class="code">brief.json</code>, <code class="code">contract.html</code> and its <code class="code">receipt.json</code> here.</p>
+            <p class="mt-2 font-sans text-[0.875rem] text-muted">Reviewable files, yours to commit with the code. In Pi, the folder gets <code class="code">brief.json</code> (the run contract), <code class="code">contract.html</code> and <code class="code">receipt.json</code> instead of the packets and the report.</p>
           </div>
           <div class="strip-row grid items-start gap-x-8 gap-y-3 min-[900px]:grid-cols-[minmax(0,1fr)_minmax(0,36rem)]">
             <div>

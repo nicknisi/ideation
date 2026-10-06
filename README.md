@@ -16,8 +16,8 @@ Every depth writes the same plan data, `docs/ideation/<slug>/plan.json`. You ans
 decisions on a rendered page or in the terminal, and each answer becomes the next plan
 version. A page never approves: **approval is always a terminal confirmation**, and it
 freezes the plan into a run contract that a deterministic workflow engine builds unit
-by unit, with independent review and a commit per unit, on its own branch. Watched
-runs feed a learning loop that the next interview applies.
+by unit, with independent review and a local commit per unit. Nothing is pushed,
+merged or deployed. Watched runs feed a learning loop that the next interview applies.
 
 It runs in **Pi** and in **Claude Code**. Coming from 0.x? See [From 0.x](#from-0x).
 
