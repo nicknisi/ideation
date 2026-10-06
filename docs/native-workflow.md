@@ -82,6 +82,10 @@ evidence; acceptance always rechecks the actual source.
 
 ## Optional live artifacts
 
+The service ships in [`@nicknisi/pi-artifacts`](https://www.npmjs.com/package/@nicknisi/pi-artifacts)
+1.5.0 and later; install it alongside ideation to get live pages. Earlier versions
+and setups without it fall back to local HTML snapshots.
+
 A compatible `nicknisi.artifacts` service (API major 1) is discovered synchronously on
 `plugin-services:v1:discover:nicknisi.artifacts`. Exactly one offer with own callable
 `publish`, `subscribe`, and `answer` methods is accepted. This compatibility handshake
