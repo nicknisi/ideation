@@ -22,6 +22,7 @@ import {
   summarizeCriteria,
   validateCheck,
 } from './verify.mjs';
+import { goalFromContract } from './plan-goal.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CSS = readFileSync(join(__dirname, 'contract-gen.css'), 'utf8');
@@ -245,56 +246,11 @@ function contractPaths(d: ContractData, inputPath?: string): ContractPaths {
   };
 }
 
-/** The one owner of the `/goal` string. Rendered into contract.html's copy
-    field, into contract.md, and printed by `--print-goal`.
-
-    `/goal` is "set a goal Claude checks before stopping" — the argument is a
-    CONDITION evaluated against the transcript, not a procedure. So this reads
-    as a state of the world, and every imperative in it exists only because the
-    condition can't be true unless it happened.
-
-    Three things it must carry:
-      1. Autopilot dispatches a BACKGROUND workflow — wait for the completion
-         notification, and never start a second run while one is in flight.
-         (Without this the Stop hook fires mid-run and re-injects the goal as a
-         directive, launching a concurrent engine run.)
-      2. verify.mjs after every run, VERIFY line left in the transcript — the
-         evaluator reads the transcript and nothing else, so evidence that
-         isn't in the conversation does not exist.
-      3. A DISJUNCTIVE done-when. A rotted contract can never reach fail=0, and
-         a purely conjunctive goal would loop on it forever; two consecutive
-         identical failing VERIFY lines is the escape hatch. */
+/** The `/goal` string, rendered into contract.html's copy field, into
+    contract.md, and printed by `--print-goal`. Its one owner is
+    scripts/plan-goal.mjs, shared with plan folders and both harnesses. */
 function buildGoal(d: ContractData, paths: ContractPaths): string {
-  // Single owner: verify.mjs decides which phases are expected to leave a commit,
-  // and it is what produces the VERIFY line this goal is judged on. Re-deriving
-  // the filter here once made the two disagree, which produced a goal whose
-  // commits=N/N could never be reached — a trap the escape hatch does not cover.
-  const phases = committablePhases(d).length;
-  const branch = d.branch
-    ? ` All commits belong on branch ${d.branch} — switch to it before any run.`
-    : '';
-  // Numbered lines, not a paragraph. /goal takes free text, so structure is free —
-  // and the person pasting this has to be able to skim it and confirm it says what
-  // they meant before they walk away. The done-when goes last, on its own line,
-  // because it is the only part that decides when the run is allowed to stop.
-  // ${CLAUDE_PLUGIN_ROOT} is a plugin-markdown substitution, not a shell variable —
-  // bash expands it to nothing. The artifact must stay portable (an absolute path
-  // bakes in this machine and the plugin version), so the goal names it as a
-  // placeholder to resolve rather than handing over a command that fails verbatim.
-  const verifyStep = paths.verifyBin.startsWith('${')
-    ? `Then run the ideation plugin's \`scripts/verify.mjs\` against \`${paths.dataPath}\` and leave its VERIFY line in the conversation. Resolve the plugin's install directory first — \`${paths.verifyBin}\` is a placeholder, not a shell variable, and bash will not expand it.`
-    : `Then run \`node ${paths.verifyBin} ${paths.dataPath}\` and leave its VERIFY line in the conversation.`;
-
-  return [
-    `/goal Drive the ${d.projectName} contract (${d.slug}) to completion with /ideation:autopilot.`,
-    ``,
-    `1. Run \`/ideation:autopilot ${paths.contractPath}\`.${branch}`,
-    `2. It dispatches a BACKGROUND workflow. Wait for the completion notification — never start a second autopilot run while one is in flight.`,
-    `3. ${verifyStep} That line is the only evidence this goal is judged on.`,
-    `4. If anything failed, fix the spec or the implementation and go back to step 1. Autopilot skips phases that already have commits.`,
-    ``,
-    `Done when the most recent VERIFY line reads fail=0 and commits=${phases}/${phases} — or when two consecutive VERIFY lines are identical and still failing, in which case name the failing checks and stop, because a contract whose checks have rotted must not trap the run.`,
-  ].join('\n');
+  return goalFromContract(d, { dataPath: paths.dataPath });
 }
 
 /** Section head: a serif heading, an optional deck of one sentence, and an

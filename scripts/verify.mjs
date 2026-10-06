@@ -325,6 +325,22 @@ function planAsContract(plan, planPath) {
   };
 }
 
+/**
+ * What verify checks, read from a folder, a plan.json or a contract-data.json:
+ * { path, data, notes, plan }. `data` is the contract shape (a plan through
+ * planAsContract); `plan` is the plan itself, or null for a 0.x contract.
+ * Throws when the file cannot be read or parsed.
+ */
+export function readContract(path) {
+  const input = resolveInput(path);
+  const raw = JSON.parse(readFileSync(input.path, 'utf8'));
+  const notes = input.note ? [input.note] : [];
+  // contract-data.json has successCriteria and brief.json acceptance; only a plan has checks.
+  if (!Array.isArray(raw?.checks)) return { path: input.path, data: raw, notes, plan: null };
+  const read = planAsContract(raw, input.path);
+  return { path: input.path, data: read.data, notes: [...notes, ...read.notes], plan: raw };
+}
+
 function commitBodies(root) {
   const r = spawnSync('git', ['log', '--format=%H%x1f%B%x1e'], {
     cwd: root,
@@ -379,23 +395,16 @@ function main(argv) {
   }
 
   const root = repoRoot();
-  const input = resolveInput(args[0]);
-  const dataPath = input.path;
+  const dataPath = resolveInput(args[0]).path;
   let data;
   try {
-    data = JSON.parse(readFileSync(dataPath, 'utf8'));
+    const read = readContract(args[0]);
+    data = read.data;
+    for (const note of read.notes) console.log(`verify: ${note}`);
   } catch (err) {
     console.error(`verify: cannot read ${dataPath} — ${err.message}`);
     return 1;
   }
-  const notes = input.note ? [input.note] : [];
-  // contract-data.json has successCriteria and brief.json acceptance; only a plan has checks.
-  if (Array.isArray(data.checks)) {
-    const read = planAsContract(data, dataPath);
-    data = read.data;
-    notes.push(...read.notes);
-  }
-  for (const note of notes) console.log(`verify: ${note}`);
 
   // Crash cleanly on malformed criteria: a malformed entry silently normalized
   // to a judgment criterion (printed, never counted) can hand /goal a false
