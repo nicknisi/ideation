@@ -402,7 +402,9 @@ can't be converted.
   plan's `supersedes` and runs `contract-data.json`'s phases against the existing
   specs, as 0.x did: `/ideation:autopilot docs/ideation/<slug>/`. Commits still name
   their spec paths, `verify.mjs` counts them as before, and
-  `/ideation:get-goal-prompt` prints the goal the contract always had.
+  `/ideation:get-goal-prompt` prints the goal the contract always had. Once you revise
+  the converted plan, its `supersedes` names `plan.v1.json` and it runs as a 1.0 plan,
+  from its run contract rather than the specs.
 
 ### Updating
 
