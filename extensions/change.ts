@@ -237,7 +237,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
   } catch { /* Git is optional until invoked. */ } });
   pi.on('session_shutdown', shutdown);
   pi.registerCommand('ideation', {
-    description: 'Open ideation: review or approve your prepared change, follow progress, or control a run. Also: plan <idea>, approve [path], status, review, pause, resume, stop, motion [on|off].',
+    description: 'Open ideation: review or approve your prepared change, follow progress, or control a run. Also: plan <idea>, approve [path], status, review, pause, resume, stop, accept, motion [on|off].',
     handler: async (args, ctx) => {
       const s = await ensure(ctx);
       try {
