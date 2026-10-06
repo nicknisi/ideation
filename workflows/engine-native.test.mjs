@@ -349,3 +349,14 @@ test('a caller still sending `native` is refused before any spawn', async () => 
   assert.match(summary.error, /`native` was replaced by `packet` and `hostCommits`/);
   assert.equal(calls.length, 0);
 });
+
+test("a run-contract unit's agent commit must carry its trailer; a 0.x phase's must name its spec path", async () => {
+  const withTrailer = args({ packet: true });
+  withTrailer.phases[0].trailer = 'Ideation-Unit: native/a';
+  const unit = promptsOf((await run(withTrailer)).calls).commit;
+  assert.match(unit, /MUST end with the trailer line `Ideation-Unit: native\/a` verbatim/);
+  assert.doesNotMatch(unit, /MUST contain the spec path/);
+  const phase = promptsOf((await run(args())).calls).commit;
+  assert.match(phase, /MUST contain the spec path `spec-phase-1\.md` verbatim/);
+  assert.doesNotMatch(phase, /Ideation-Unit/);
+});

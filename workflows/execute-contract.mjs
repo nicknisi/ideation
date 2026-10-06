@@ -61,7 +61,9 @@ export const meta = {
  *   packet?: boolean,            // specPath is an approved work packet; see the
  *                                // prompt section below for what changes
  *   hostCommits?: boolean,       // the host registers files, checks and commits
- *   phases: [{ title, specPath, prereqs: [titles], risk, files }],
+ *   phases: [{ title, specPath, prereqs: [titles], risk, files, trailer? }],
+ *                                // trailer: a run-contract unit's commit reference
+ *                                // (verify.mjs unitTrailer), required in its commit
  *   executionMode?: 'strict' | 'adaptive', // adaptive omits scout only for risk:'low'
  *   maxReviewCycles?: number,   // integer 1..3; default 3
  *   completedPhases?: [titles]   // already committed; excluded from dispatch
@@ -659,7 +661,14 @@ unless this project's conventions already track ${dir}. `;
   const cycles = reviewCycles > 1
     ? `, and note "${reviewCycles} review cycles" in the body`
     : '';
-  const reference = `The commit body MUST contain the spec path \`${phase.specPath}\` verbatim. This is
+  // A run-contract unit is referenced by its trailer; a 0.x phase by its spec path.
+  const reference = phase.trailer
+    ? `The commit message MUST end with the trailer line \`${phase.trailer}\` verbatim,
+on a line of its own. This is not a style preference: autopilot's resume pre-pass
+and \`scripts/verify.mjs\` both look for exactly that line, so a unit committed
+without it reads as never-committed — it gets re-dispatched on resume and can
+never satisfy a \`/goal\`'s \`commits=N/N\` condition.`
+    : `The commit body MUST contain the spec path \`${phase.specPath}\` verbatim. This is
 not a style preference: autopilot's resume pre-pass and \`scripts/verify.mjs\` both
 grep commit bodies for exactly that string, so a phase committed without it reads
 as never-committed — it gets re-dispatched on resume and can never satisfy a

@@ -5,6 +5,8 @@ import { randomUUID } from 'node:crypto';
 import { gitText } from './change-workspace.mjs';
 import * as engineHost from './engine-host.mjs';
 import { computeWaves } from './wave-planner.mjs';
+// The unit's commit reference, which scripts/verify.mjs counts for commits=.
+import { unitTrailer } from '../scripts/verify.mjs';
 
 const clone = value => structuredClone(value);
 const json = async path => JSON.parse(await readFile(path, 'utf8'));
@@ -317,7 +319,7 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
                 if (info.stage === 'commit') {
                   if (!reviewedRevision || reviewedRevision !== await w.sourceRevision(r.workspace)) throw new Error('Independent current-source review required');
                   const revision = await checks(ctx, criteria, w);
-                  const hash = a.allowLocalCommit ? await w.commitWorkspace(r.workspace, a.paths, { message: `${r.brief.title}: ${unit.title}`, specPath, sourceRevision: revision, signal: ctx.abort.signal }) : null;
+                  const hash = a.allowLocalCommit ? await w.commitWorkspace(r.workspace, a.paths, { message: `${r.brief.title}: ${unit.title}\n\n${unitTrailer(r.brief.id, unit.id)}`, specPath, sourceRevision: revision, signal: ctx.abort.signal }) : null;
                   receipt.commitHash = hash; committed = true;
                   r.sourceRevision = await w.sourceRevision(r.workspace); await save(r);
                   const empty = (await w.changedFiles(r.workspace)).length === 0;
