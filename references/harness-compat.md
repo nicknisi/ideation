@@ -39,7 +39,7 @@ The skills dispatch agents by name. Claude Code plugin-scopes agents as `<plugin
 
 ## 3. Pi tool prerequisites
 
-The planning path calls two third-party tools the plugin deliberately does **not** bundle (the Pi change workflow, `/ideation`, needs neither; it is Pi-only, and in Claude Code `/ideation:change` just says so) — install each once at the user level (`pi install npm:@nicknisi/pi-subagents`, `pi install npm:@juicesharp/rpiv-ask-user-question`):
+The planning path calls two tools (one first-party, one third-party) the plugin deliberately does **not** bundle (the Pi change workflow, `/ideation`, needs neither; it is Pi-only, and in Claude Code `/ideation:change` just says so) — install each once at the user level (`pi install npm:@nicknisi/pi-subagents`, `pi install npm:@juicesharp/rpiv-ask-user-question`):
 
 | Extension | Provides | Used by | Without it |
 |-----------|----------|---------|------------|
@@ -50,7 +50,7 @@ The engine needs no external tool in pi: `extensions/engine.ts` is bundled with 
 
 **Why they are not bundled** (verified pi 0.83.0): pi allows one extension *file path* per tool name. A second path registering the same name is a fatal load error at startup (`Failed to load extension …: Tool "subagent" conflicts with …` — the process exits), and a copy bundled under this plugin's `node_modules/` is by definition a different path from a user-level install of the same tool. Bundling therefore crashes pi for every user who already installs these tools themselves. Unbundled, pi's package-identity dedup (one `npm:` name → one path under `~/.pi/agent/npm/`) guarantees a single copy, and your installed versions are the ones the plugin's skills call. Duplicate *skills* are milder — a `[Extension issues]` warning, first wins — but the same single-owner setup avoids those too.
 
-Versions ≤ 0.23.0 bundled these three extensions. If pi fails to start with tool-conflict errors after an upgrade, update the plugin (`pi update git:github.com/nicknisi/ideation`) so the old bundled manifest is gone, then install the three tools as above.
+Versions ≤ 0.23.0 bundled these three extensions. If pi fails to start with tool-conflict errors after an upgrade, update the plugin (`pi update git:github.com/nicknisi/ideation`) so the old bundled manifest is gone, then install the two tools as above.
 
 **Claude Code** needs none of these — it has `Agent`, `Workflow`, and `AskUserQuestion` as built-in tools. The `pi` manifest is ignored.
 
