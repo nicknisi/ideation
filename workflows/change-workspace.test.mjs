@@ -220,7 +220,11 @@ test('commit preparation cannot hang on a clean filter after cancellation', asyn
   assert.ok(Date.now() - startedAt < 4000, 'abort applies to Git preparation, not only git commit');
 });
 
-test('stop and timeout bound commit hooks without bypassing signing or losing local changes', async t => {
+// Outcomes, not a race between bounds. commitWorkspace's timeoutMs is one deadline for
+// the whole operation, preparation included, so a loaded machine can spend a short
+// one before the hook starts. Each mode gets the margin that makes its own bound fire:
+// a generous deadline for the timeout, and one that can never fire for the abort.
+test('stop and timeout bound commit hooks without bypassing signing or losing local changes', { timeout: 120_000 }, async t => {
   const root = await fixture(t);
   const hooks = join(root, '.git/hooks');
   await git(root, 'config', 'core.hooksPath', hooks);
@@ -229,23 +233,47 @@ test('stop and timeout bound commit hooks without bypassing signing or losing lo
   await chmod(join(hooks, 'pre-commit'), 0o755);
   const head = await git(root, 'rev-parse', 'HEAD');
   await writeFile(join(root, 'src/a.txt'), 'pending\n');
+  const notBypassed = /Signing and hooks were not bypassed/;
+  const hookPid = async () => Number(await readFile(marker, 'utf8').catch(() => '')) || 0;
   for (const mode of ['timeout', 'abort']) {
     await rm(marker, { force: true });
     const controller = new AbortController();
-    const outcome = api.commitWorkspace(root, ['src/'], { message: 'scoped change', sourceRevision: await api.sourceRevision(root), signal: controller.signal, timeoutMs: mode === 'timeout' ? 1500 : 5000 });
-    const rejected = assert.rejects(outcome, /commit did not finish|aborted/i);
+    const start = Date.now();
+    const outcome = api.commitWorkspace(root, ['src/'], { message: 'scoped change', sourceRevision: await api.sourceRevision(root), signal: controller.signal, timeoutMs: mode === 'timeout' ? 5000 : 60_000 });
+    const settled = outcome.then(() => assert.fail(`${mode}: the commit must not finish`), e => e);
     if (mode === 'abort') {
       let started = false;
-      for (let i = 0; i < 100 && !started; i++) { started = Boolean(await readFile(marker).catch(() => null)); if (!started) await new Promise(r => setTimeout(r, 10)); }
+      for (const end = Date.now() + 30_000; !started && Date.now() < end;) { started = Boolean(await hookPid()); if (!started) await new Promise(r => setTimeout(r, 10)); }
       controller.abort();
       assert.ok(started, 'hook must actually be running before cancellation');
     }
-    await rejected;
-    assert.equal(await git(root, 'rev-parse', 'HEAD'), head);
+    const error = await settled;
+    if (mode === 'abort') {
+      // The hook was running and the deadline is a minute away: only the stop can end it.
+      assert.match(error.message, /^Local commit did not finish: Git commit did not finish: Cancelled/);
+      assert.match(error.message, notBypassed);
+    } else if (await hookPid()) {
+      // The hook ran, so preparation fit in the deadline: the deadline stopped the hook.
+      assert.match(error.message, /^Local commit did not finish: Git commit did not finish: Timed out/);
+      assert.match(error.message, notBypassed);
+    } else {
+      // Preparation alone outlasted the deadline (a very loaded machine): the same
+      // deadline bounded the operation before git commit ever ran. Still no commit.
+      assert.match(error.message, /^Local commit did not finish: Git commit did not finish: Timed out|^Git operation budget exhausted$/);
+    }
+    assert.ok(Date.now() - start < 25_000, `${mode}: settled well inside the hook's 30s sleep`);
+    // The hook is killed with its process group, nothing was committed, and the change is intact.
+    const pid = await hookPid();
+    let alive = Boolean(pid);
+    for (const end = Date.now() + 15_000; alive && Date.now() < end;) {
+      try { process.kill(pid, 0); await new Promise(r => setTimeout(r, 25)); } catch (e) { if (e.code === 'ESRCH') alive = false; else throw e; }
+    }
+    if (alive) try { process.kill(pid, 'SIGKILL'); } catch {}
+    assert.equal(alive, false, `lingering ${mode} hook ${pid}`);
+    assert.equal(await git(root, 'rev-parse', 'HEAD'), head, `${mode}: no commit, so signing and hooks were not skipped to make one`);
     assert.equal(await readFile(join(root, 'src/a.txt'), 'utf8'), 'pending\n');
   }
 });
-
 test('review shows new files without staging contents; commit is scoped and source bound', async t => {
   const root = await fixture(t);
   await writeFile(join(root, 'src/new file'), 'new content\n');
