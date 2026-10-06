@@ -3,15 +3,18 @@
 This document is the token authority for the field-guide visual identity. The
 identity shipped first in the surfaces below — it was not invented here — but
 it is written down here, once, because the next surface should inherit rather
-than reinvent: the contract renderer previously shipped a completely separate
-dark "command deck" world, and that mismatch was the single biggest reason a
-generated contract did not read as part of this product.
+than reinvent. Two other worlds have already been turned away: the 0.x contract
+renderer once shipped a completely separate dark "command deck" world, and that
+mismatch was the single biggest reason a generated contract did not read as part
+of this product; and plan pages are drawn by html-plan, which brings a palette of
+its own that ideation maps away rather than shows.
 
-The canonical token declarations are `scripts/field-guide.css` (inlined into
-Pi's change page, and the values `scripts/plan-render.css` maps the plan page
-onto) and `site/src/styles/global.css` (worn by the whole site).
-This document owns the values; those files declare them; every other surface
-inherits.
+The canonical token declarations are `scripts/field-guide.css` (inlined verbatim
+into Pi's change page by `scripts/change-render.mjs`) and
+`site/src/styles/global.css` (worn by the whole site). This document owns the
+values; those files declare them; every other surface inherits.
+`scripts/design-tokens.test.mjs` holds `field-guide.css`, `change-render.css` and
+`plan-render.css` to the table below.
 
 ## The world
 
@@ -21,15 +24,22 @@ an instrument panel, a dashboard, or a terminal.
 
 ## One world
 
-Every surface wears this world: generated contracts and receipts, the live contract
-page, ephemeral comparison artifacts, implementation notes, and all of
-ideation.engineering — the overview, both walkthroughs and the guide.
+Every surface wears this world:
+
+| Surface | Rendered by | Its tokens |
+|---|---|---|
+| Plan pages (`plan.html`, and the live page in Pi) | `scripts/plan-render.ts`, over the vendored html-plan runtime | `scripts/plan-render.css` maps every html-plan colour token onto a field-guide value, light and dark, naming the field-guide token it copies; `htmlplan.css` itself is unmodified |
+| Pi's change page: the contract you approve, the live run, the receipt (saved as `contract.html`) | `scripts/change-render.mjs` | `field-guide.css` verbatim, then `scripts/change-render.css`, which composes the page from field-guide tokens and declares no colour |
+| Run reports (`run-<date>.html`) | `scripts/run-report-gen.ts` | `scripts/run-report-gen.css`, which declares the same values with `light-dark()` |
+| Implementation notes | `skills/execute-spec/references/implementation-notes.template.html` | a small subset of the same values, inline |
+| ideation.engineering: the overview, both walkthroughs and the guide | the Astro site in `site/` | `site/src/styles/global.css` |
 
 The site used to wear a second, "Industry" world (slate blue, Barlow, square
 corners). It was retired because a visitor met one look on the site and another on
 their first contract, and because the product's own artifacts — the stamped
-contract, the live page, the widget — are its best explanation. The site now shows
-real contract pages the renderer produced, framed, beside prose in the same tokens.
+contract page, the plan page, the widget — are its best explanation. The site now
+shows real contract pages the renderer produced, framed, beside prose in the same
+tokens.
 
 A new surface joins this world or argues for a change here first. An artifact that
 invents its own tokens, or a second world, is not allowed.
@@ -44,9 +54,12 @@ those colours.
 
 ## Tokens
 
-Both declarations carry the same values. `global.css` declares them with a
-`prefers-color-scheme` media query; `field-guide.css` uses `light-dark()`.
-Either is fine — the values are the contract.
+Every declaration carries the same values. `global.css` declares them with a
+`prefers-color-scheme` media query; `field-guide.css` and `run-report-gen.css` use
+`light-dark()`; `plan-render.css` writes plain hex in one light and two dark blocks,
+because html-plan renders mocks in a shadow root that resets `color-scheme`, where
+`light-dark()` would always pick the light value. Any form is fine — the values are
+the contract.
 
 | role | light | dark |
 |---|---|---|
