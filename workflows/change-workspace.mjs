@@ -11,14 +11,14 @@ export function withGitControl({ signal, timeoutMs = 30000 }, action) {
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error('Git operation budget exhausted');
   return gitControls.run({ signal, deadline: Date.now() + timeoutMs }, action);
 }
-export async function gitText(cwd, args, { literal = true } = {}) {
+export async function gitText(cwd, args, { literal = true, env = {} } = {}) {
   const control = gitControls.getStore();
   control?.signal?.throwIfAborted();
   const timeoutMs = control ? control.deadline - Date.now() : 30000;
   if (timeoutMs <= 0) throw new Error('Git operation budget exhausted');
   const result = await runProcess(cwd, 'git', [...(literal ? ['--literal-pathspecs'] : []), ...args], {
     signal: control?.signal, timeoutMs, maxOutput: 64 * 1024 * 1024,
-    env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' },
+    env: { ...process.env, GIT_OPTIONAL_LOCKS: '0', ...env },
   });
   if (!result.ok) throw new Error(`Git ${args[0]} did not finish: ${result.reason || ''}\n${result.output.slice(-8192)}`);
   return result.stdout;
@@ -54,10 +54,53 @@ async function safePath(workspace, p, paths) {
   }
 }
 
-export async function createWorkspace(repoRoot, runId) {
+// Paths the host itself writes into a checkout. They are never "your" work.
+const hostWritten = (p, exclude) => p.startsWith('.pi/artifacts/') ||
+  exclude.some(e => { const dir = e.replace(/\/+$/, ''); return p === dir || p.startsWith(`${dir}/`); });
+
+/** Uncommitted work in a checkout — tracked edits, staged changes and untracked
+ * files — minus paths the host writes itself. Reading it never changes it. */
+export async function uncommittedPaths(repoRoot, { exclude = [] } = {}) {
+  const tokens = split(await git(repoRoot, 'status', '--porcelain', '-z', '--untracked-files=all'));
+  const paths = [];
+  for (let i = 0; i < tokens.length; i++) {
+    paths.push(tokens[i].slice(3));
+    if (/^[RC]/.test(tokens[i])) i++; // a rename/copy is followed by its original path
+  }
+  return [...new Set(paths)].filter(p => !hostWritten(p, exclude)).sort();
+}
+
+/** A commit of the checkout exactly as it is now, built in a private index, so
+ * the user's files, index and HEAD are never touched. Returns null when there
+ * is nothing beyond HEAD to include. `ref` keeps it alive until a branch does. */
+export async function snapshotWorkingTree(repoRoot, { ref, exclude = [], message }) {
+  const common = resolve(repoRoot, (await git(repoRoot, 'rev-parse', '--git-common-dir')).trim());
+  const index = join(common, 'ideation', `snapshot-${randomUUID()}.index`);
+  await mkdir(dirname(index), { recursive: true });
+  const env = { GIT_INDEX_FILE: index };
+  try {
+    await gitText(repoRoot, ['read-tree', 'HEAD'], { env });
+    await gitText(repoRoot, ['add', '-A', '--', '.'], { env });
+    // Host-written paths keep HEAD's version (committed copies are not deleted).
+    // Naming them to `add` instead would fail wherever they are gitignored.
+    await gitText(repoRoot, ['reset', '-q', 'HEAD', '--', '.pi/artifacts', ...exclude.map(e => e.replace(/\/+$/, ''))], { env });
+    const tree = (await gitText(repoRoot, ['write-tree'], { env })).trim();
+    const head = (await git(repoRoot, 'rev-parse', 'HEAD')).trim();
+    if (tree === (await git(repoRoot, 'rev-parse', 'HEAD^{tree}')).trim()) return null;
+    // Honour a signing policy: this commit ends up in the run branch's history.
+    const signed = (await git(repoRoot, 'config', '--bool', 'commit.gpgsign').catch(() => '')).trim() === 'true';
+    const commit = (await git(repoRoot, 'commit-tree', ...(signed ? ['-S'] : []), tree, '-p', head, '-m', message)).trim();
+    await git(repoRoot, 'update-ref', ref, commit);
+    return commit;
+  } finally {
+    await rm(index, { force: true });
+  }
+}
+
+export async function createWorkspace(repoRoot, runId, base = 'HEAD') {
   if (typeof runId !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,150}$/.test(runId)) throw new Error('Invalid run ID');
   const common = resolve(repoRoot, (await git(repoRoot, 'rev-parse', '--git-common-dir')).trim());
-  const baseRevision = (await git(repoRoot, 'rev-parse', 'HEAD')).trim();
+  const baseRevision = (await git(repoRoot, 'rev-parse', '--verify', `${base}^{commit}`)).trim();
   const workspace = join(await realpath(common), 'ideation', 'workspaces', runId);
   const branch = `ideation/${runId}`;
   await mkdir(dirname(workspace), { recursive: true });

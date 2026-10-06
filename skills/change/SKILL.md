@@ -33,7 +33,7 @@ Do not invent additional schema fields. The contract is the review surface: poin
 
 Use the existing `DESIGN.md` field-guide identity; never invent a new palette. The renderer provides before/after, dependency and verification diagrams from the real brief. Write clear deliverable titles and outcome-oriented criteria so those views explain the agreement. Avoid prose that mixes a whole technical recipe into a title.
 
-Do not emit a `/goal`, generate every unit's spec, or ask for a second approval in chat. A short native confirmation binds the complete browser agreement and starts background work immediately. On revision, keep the same change ID and increment its revision; prepare again so the existing draft and its annotations stay in place. The source checkout must be clean; do not stash, commit, delete or hide the user's work to satisfy this requirement.
+Do not emit a `/goal`, generate every unit's spec, or ask for a second approval in chat. A short native confirmation binds the complete browser agreement and starts background work immediately. On revision, keep the same change ID and increment its revision; prepare again so the existing draft and its annotations stay in place. Uncommitted work never blocks approval: the host asks the user whether the run starts from the last commit or includes their uncommitted files. Never stash, commit, delete or hide the user's work, and do not ask them to clean up first. The host writes `brief.json`, `contract.html` and, at the end, `receipt.json` to `docs/ideation/<change-id>/`; do not edit those by hand, and do not commit them unless the user asks.
 
 ## During execution
 

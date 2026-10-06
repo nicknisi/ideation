@@ -33,7 +33,9 @@ remains available. Feedback never grants permission.
 Pause/resume/stop operate at explicit boundaries. Ready for review is not accepted,
 merged or deployed; `/ideation accept` records final human judgment against current
 evidence. Approved commands execute trusted repository code, not inside an OS
-sandbox. Source must be clean; the workflow never stashes the user's changes.
+sandbox. Uncommitted work never blocks approval: Pi asks whether to start from the last
+commit or include it, and never stashes or edits your files. Each change's brief,
+contract and receipt land in `docs/ideation/<change-id>/` for you to commit or not.
 
 See [the native workflow guide](docs/native-workflow.md) and
 [the worked brief](test-fixtures/native-change/brief.json). The old skills and

@@ -163,12 +163,74 @@ test('status detects stale live source and acceptance rechecks confirmation iden
   await assert.rejects(f.runner.accept(r.id), /stale/);
 });
 
-test('optional artifact previews do not dirty their own approval; source dirtiness still blocks', async t => {
+test('uncommitted work never blocks approval; by default the run starts from the last commit and leaves it alone', async t => {
   const f = await fixture(t);
   await mkdir(join(f.root, '.pi/artifacts'), { recursive: true });
   await writeFile(join(f.root, '.pi/artifacts/preview.html'), '<h1>Local preview</h1>');
+  await writeFile(join(f.root, 'src', 'value'), 'work in progress');
+  await writeFile(join(f.root, 'untracked-source.js'), 'export const x = 1;');
+  const before = await f.git(f.root, 'status', '--porcelain', '--untracked-files=all');
+  const source = await f.runner.uncommitted();
+  assert.deepEqual(source.paths, ['src/value', 'untracked-source.js'], 'artifact previews are host-written, not your work');
+  assert.equal(source.head, await f.git(f.root, 'rev-parse', 'HEAD'));
   const a = await f.runner.approve('brief.json');
   assert.equal(a.state, 'ready');
-  await writeFile(join(f.root, 'untracked-source.js'), 'export const x = 1;');
-  await assert.rejects(f.runner.approve('brief.json'), /dirty/);
+  assert.equal(a.baseRevision, source.head);
+  assert.deepEqual(a.includedChanges, []);
+  const r = await f.runner.start(a.id);
+  assert.equal(r.state, 'ready-for-review', r.attention?.message);
+  assert.equal(await f.git(r.workspace, 'show', `${r.baseRevision}:src/value`), 'before');
+  assert.equal(await readFile(join(f.root, 'src', 'value'), 'utf8'), 'work in progress');
+  assert.equal(await f.git(f.root, 'status', '--porcelain', '--untracked-files=all'), before);
+});
+
+test('including uncommitted work snapshots it privately: files, index and HEAD untouched', async t => {
+  const f = await fixture(t);
+  await mkdir(join(f.root, 'extra'), { recursive: true });
+  await writeFile(join(f.root, 'extra', 'new.txt'), 'untracked idea');
+  await writeFile(join(f.root, 'staged.txt'), 'staged idea');
+  await f.git(f.root, 'add', 'staged.txt');
+  await mkdir(join(f.root, 'docs/ideation/native'), { recursive: true });
+  await writeFile(join(f.root, 'docs/ideation/native/brief.json'), '{}');
+  await mkdir(join(f.root, '.pi/artifacts'), { recursive: true });
+  await writeFile(join(f.root, '.pi/artifacts/preview.html'), '<h1>Local preview</h1>');
+  const head = await f.git(f.root, 'rev-parse', 'HEAD');
+  const status = await f.git(f.root, 'status', '--porcelain', '--untracked-files=all');
+  const staged = await f.git(f.root, 'diff', '--cached', '--name-only');
+  const exclude = ['docs/ideation/native/'];
+  assert.deepEqual((await f.runner.uncommitted({ exclude })).paths, ['extra/new.txt', 'staged.txt']);
+  const a = await f.runner.approve('brief.json', { includeUncommitted: true, exclude });
+  assert.deepEqual(a.includedChanges, ['extra/new.txt', 'staged.txt']);
+  assert.equal(a.approvedHead, head);
+  assert.notEqual(a.baseRevision, head);
+  assert.equal(await f.git(f.root, 'rev-parse', `${a.baseRevision}^`), head);
+  assert.equal(await f.git(f.root, 'rev-parse', `refs/ideation/${a.id}/base`), a.baseRevision);
+  assert.equal(await f.git(f.root, 'show', `${a.baseRevision}:extra/new.txt`), 'untracked idea');
+  assert.equal(await f.git(f.root, 'show', `${a.baseRevision}:staged.txt`), 'staged idea');
+  for (const skipped of ['docs/ideation/native/brief.json', '.pi/artifacts/preview.html'])
+    await assert.rejects(f.git(f.root, 'cat-file', '-e', `${a.baseRevision}:${skipped}`));
+  assert.equal(await f.git(f.root, 'rev-parse', 'HEAD'), head);
+  assert.equal(await f.git(f.root, 'status', '--porcelain', '--untracked-files=all'), status);
+  assert.equal(await f.git(f.root, 'diff', '--cached', '--name-only'), staged);
+  // The included work is the starting point, so it is not counted against the approved paths.
+  const r = await f.runner.start(a.id);
+  assert.equal(r.state, 'ready-for-review', r.attention?.message);
+  assert.equal(await readFile(join(r.workspace, 'extra', 'new.txt'), 'utf8'), 'untracked idea');
+});
+
+test('including uncommitted work when there is none starts from the last commit', async t => {
+  const f = await fixture(t);
+  const a = await f.runner.approve('brief.json', { includeUncommitted: true });
+  assert.equal(a.baseRevision, await f.git(f.root, 'rev-parse', 'HEAD'));
+  assert.deepEqual(a.includedChanges, []);
+});
+
+test('the run is built from its approved starting point even after HEAD moves', async t => {
+  const f = await fixture(t);
+  const a = await f.runner.approve('brief.json');
+  await writeFile(join(f.root, 'later.txt'), 'committed after approval');
+  await f.git(f.root, 'add', 'later.txt'); await f.git(f.root, 'commit', '-m', 'later');
+  const r = await f.runner.start(a.id);
+  assert.equal(r.state, 'ready-for-review', r.attention?.message);
+  await assert.rejects(f.git(r.workspace, 'cat-file', '-e', 'HEAD:later.txt'));
 });

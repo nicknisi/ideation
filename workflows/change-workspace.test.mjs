@@ -267,3 +267,15 @@ test('commit honors rejecting and source-mutating hooks without undoing user dat
   assert.equal(await git(root, 'show', 'HEAD:src/a.txt'), 'hook');
   assert.equal(await readFile(join(root, 'src/a.txt'), 'utf8'), 'hook\n');
 });
+
+test('uncommitted paths count a rename once and leave host-written paths out', async t => {
+  const root = await fixture(t);
+  await git(root, 'mv', 'src/a.txt', 'src/renamed.txt');
+  await writeFile(join(root, 'loose.txt'), 'untracked');
+  await mkdir(join(root, '.pi/artifacts'), { recursive: true });
+  await writeFile(join(root, '.pi/artifacts/preview.html'), '<p>preview</p>');
+  await mkdir(join(root, 'docs/ideation/demo'), { recursive: true });
+  await writeFile(join(root, 'docs/ideation/demo/brief.json'), '{}');
+  assert.deepEqual(await api.uncommittedPaths(root, { exclude: ['docs/ideation/demo/'] }), ['loose.txt', 'src/renamed.txt']);
+  assert.deepEqual(await api.uncommittedPaths(root), ['docs/ideation/demo/brief.json', 'loose.txt', 'src/renamed.txt']);
+});
