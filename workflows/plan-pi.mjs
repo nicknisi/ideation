@@ -215,7 +215,7 @@ export async function runForm(plan, ui) {
  * whether that session still owns this responder. notify and sendMessage are
  * the extension's.
  */
-export function createPlanResponder({ events, stateDir, root, getCtx, isLive = () => true, notify, sendMessage, render = packedPage }) {
+export function createPlanResponder({ events, stateDir, root, getCtx, isLive = () => true, notify, sendMessage }) {
   const pages = new Map();   // slug → { folder, api, url, unsubscribe, token }
   const received = new Set();
   let disposed = false, tail = Promise.resolve(), seenTail = Promise.resolve();
@@ -272,7 +272,7 @@ export function createPlanResponder({ events, stateDir, root, getCtx, isLive = (
   }
 
   async function publish(folder, plan, api, open) {
-    const html = withHead(render(plan, root), pageHook(plan));
+    const html = withHead(packedPage(plan, root), pageHook(plan));
     const result = await api.publish({ title: `ideation-plan-${plan.id}`, html, open });
     if (typeof result?.slug !== 'string' || !result.slug || typeof result.absPath !== 'string') throw new Error('Invalid publish response');
     const url = loopbackUrl(result.url);
