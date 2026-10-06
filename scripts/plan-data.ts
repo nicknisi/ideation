@@ -43,6 +43,14 @@ function check(c: any, at: string) {
   if (cmd) { str(c.cmd, `${at}.cmd`); if (c.expect !== undefined) str(c.expect, `${at}.expect`); }
   else str(c.judgment, `${at}.judgment`);
 }
+/** Reader feedback: verbatim text, tagged with the version it was given on. */
+function feedback(value: any, at: string) {
+  list(value, at, (f, fat) => {
+    object(f, ['version', 'text'], ['version', 'text'], fat);
+    if (!Number.isSafeInteger(f.version) || f.version < 1) fail(`${fat}.version`, 'expected integer >= 1');
+    str(f.text, `${fat}.text`);
+  });
+}
 
 function decision(d: any, at: string) {
   object(d, ['id', 'question', 'options', 'recommended', 'reason', 'required', 'state', 'answer', 'rejected'],
@@ -84,7 +92,7 @@ function* walk(claims: Claim[]): Generator<Claim> {
 export function validate(plan: any): Plan {
   const p = plan;
   object(p, ['schemaVersion', 'id', 'title', 'version', 'supersedes', 'why', 'change', 'mustHold', 'gates', 'stoppedEarly',
-    'claims', 'checks', 'openQuestions', 'units', 'authority', 'scope'],
+    'claims', 'checks', 'openQuestions', 'units', 'authority', 'scope', 'feedback'],
   ['schemaVersion', 'id', 'title', 'version', 'supersedes', 'why', 'change', 'mustHold', 'gates',
     'claims', 'checks', 'openQuestions', 'units', 'authority', 'scope'], 'plan');
   if (p.schemaVersion !== 1) fail('schemaVersion', 'expected 1');
@@ -111,7 +119,7 @@ export function validate(plan: any): Plan {
     if (level > MAX_DEPTH && cs.length) fail(`${at}[0]`, `at most ${MAX_DEPTH} levels`);
     if (cs.length > MAX_CLAIMS) fail(`${at}[${MAX_CLAIMS}]`, level === 1 ? `at most ${MAX_CLAIMS} level-1 claims` : `at most ${MAX_CLAIMS} children`);
     list(cs, at, (c, cat) => {
-      object(c, ['id', 'text', 'exhibit', 'decision', 'children'], ['id', 'text', 'exhibit'], cat);
+      object(c, ['id', 'text', 'exhibit', 'decision', 'children', 'feedback'], ['id', 'text', 'exhibit'], cat);
       str(c.id, `${cat}.id`); claimId(c.id, `${cat}.id`); str(c.text, `${cat}.text`);
       const e = c.exhibit, eat = `${cat}.exhibit`;
       object(e, ['kind', 'src', 'lines', 'ref', 'body', 'sketch'], ['kind', 'sketch'], eat);
@@ -121,6 +129,7 @@ export function validate(plan: any): Plan {
       if (typeof e.sketch !== 'boolean') fail(`${eat}.sketch`, 'expected boolean');
       if (c.decision !== undefined) { decision(c.decision, `${cat}.decision`); decisionId(c.decision.id, `${cat}.decision.id`); }
       if (c.children !== undefined) claims(c.children, `${cat}.children`, level + 1);
+      if (c.feedback !== undefined) feedback(c.feedback, `${cat}.feedback`);
     });
   };
   claims(p.claims, 'claims', 1);
@@ -164,6 +173,7 @@ export function validate(plan: any): Plan {
   const tiers = [...SCOPE_TIERS, 'notChanging', 'dropped'];
   object(p.scope, tiers, tiers, 'scope');
   for (const t of tiers) strings(p.scope[t], `scope.${t}`);
+  if (p.feedback !== undefined) feedback(p.feedback, 'feedback');
   return p;
 }
 
@@ -206,7 +216,7 @@ export function load(path: string): Plan {
 const versionFile = (version: number) => `plan.v${version}.json`;
 
 /** The versioning primitive: a copy one version on, superseding this one. The input is untouched.
- * Applying a response to that copy is the caller's job (Phase 3.1). */
+ * Applying a response to that copy is scripts/plan-respond.mjs's job. */
 export function nextVersion(plan: Plan): Plan {
   validate(plan);
   return { ...structuredClone(plan), version: plan.version + 1, supersedes: versionFile(plan.version) };

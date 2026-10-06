@@ -50,6 +50,18 @@ export interface Plan {
   /** The brief's authority block. May be empty while planning; the run contract needs a path. */
   authority: { paths: string[]; commands: string[]; allowLocalCommit: boolean };
   scope: Record<ScopeTier, string[]> & { notChanging: string[]; dropped: string[] };
+  /** Reader feedback on the plan as a whole (a comment not on any claim). */
+  feedback?: Feedback[];
+}
+
+/**
+ * One piece of reader feedback from a page response (scripts/plan-respond.mjs),
+ * kept verbatim as data: never executed, evaluated or interpreted, and never used
+ * to change any other field. version is the plan version the reader responded to.
+ */
+export interface Feedback {
+  version: number;
+  text: string;
 }
 
 /**
@@ -70,6 +82,8 @@ export interface Claim {
   /** A decision sits on the claim it changes. */
   decision?: Decision;
   children?: Claim[];
+  /** Reader feedback on this claim: comments, and calls struck from its exhibit. */
+  feedback?: Feedback[];
 }
 
 export interface Exhibit {
