@@ -18,11 +18,12 @@ Pi application is current.
    confirmation summarizes the boundaries—the complete agreement and exact
    commands stay in the browser. Confirmation starts background work immediately.
    That already-reviewed page becomes the run's live page, retaining its annotations.
-   With `@nicknisi/pi-artifacts` 1.6.0 or newer, the live draft page also shows
-   **Approve in Pi**. It asks the owning Pi session to open that same confirmation;
+   With `@nicknisi/pi-artifacts` 1.6.0 or newer (not yet published), the live draft
+   page also shows **Approve in Pi**. It asks the owning Pi session to open that same confirmation;
    the terminal answer is still the approval. The button appears only while that
    session is listening, never on a saved file, and a request while a confirmation
-   is already open, or for a change that is already running, is refused.
+   is already open, or for a change that is already running, is refused. With 1.5.x
+   the button stays hidden; approve with `/ideation approve` or the `/ideation` menu.
 4. During execution, `/ideation` offers the relevant controls. Pi's theme-aware widget
    shows the current stage, reviewed deliverables during implementation, and current
    objective evidence during final verification. Elapsed time is not a completion
@@ -161,7 +162,8 @@ URL can change ports after a server restart; the artifact slug and local file
 identity stay stable, and the Pi link is refreshed. The consumer never writes annotation/evidence sidecars. Questions use
 `answer`, not page rewriting. Comments go only to the owning parent session.
 
-From 1.6.0, a subscriber may also accept page requests. Ideation accepts only
+From 1.6.0 (not yet published), a subscriber may also accept page requests. 1.5.x
+ignores the request handler ideation passes, so the draft page shows no button. Ideation accepts only
 `approve`, on the live draft page, and answers it by opening its normal terminal
 confirmation; anything that can reach the local server could send a request, so a
 request is never treated as approval.

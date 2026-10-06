@@ -30,8 +30,9 @@ ideation's paper/graphite-and-cobalt field-guide design, with before/after views
 SVG dependencies, and deliverable-to-verification maps. No file paths to manage,
 raw JSON dumps, or document-sized approval dialogs. With the optional artifacts service ([`@nicknisi/pi-artifacts`](https://www.npmjs.com/package/@nicknisi/pi-artifacts) 1.5.2+), that same page updates live and
 annotations reach the coordinating session; without it, a local HTML snapshot
-remains available. With 1.6.0+, the live draft page also offers **Approve in Pi**,
-which only brings up the same terminal confirmation. Feedback never grants permission.
+remains available. With 1.6.0+ (not yet published), the live draft page also offers
+**Approve in Pi**, which only brings up the same terminal confirmation; with 1.5.x the
+button stays hidden and you approve with `/ideation approve` or the `/ideation` menu. Feedback never grants permission.
 
 Pause/resume/stop operate at explicit boundaries, and `/ideation exit` (or **Leave
 ideation** in the menu) gets you out from any state: it stops the run, brings its work
