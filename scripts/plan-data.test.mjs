@@ -213,3 +213,13 @@ test('criticView: every id a critic cites, without exhibits, deterministically',
   assert.deepEqual(view.openQuestions, fixture().openQuestions);
   assert.throws(() => criticView(plan(p => { p.units[0].needs = ['nope']; })), /units\[0\]\.needs\[0\]: unknown unit "nope"/);
 });
+
+test('the plan critic reads plan.json, extracts every field criticView names, and cites ids', () => {
+  const prompt = readFileSync(new URL('../agents/plan-critic.md', import.meta.url), 'utf8');
+  assert.match(prompt, /^description: .*plan data/m);
+  assert.match(prompt, /`plan\.json`/);
+  const { id, title, version, ...reviewed } = criticView(fixture());
+  for (const key of Object.keys(reviewed)) assert.match(prompt, new RegExp(`\`${key}[\`.]`), `plan-critic.md names \`${key}\``);
+  for (const kind of ['claim', 'decision', 'check', 'unit']) assert.match(prompt, new RegExp(`${kind} ids?`), `findings cite ${kind} ids`);
+  assert.doesNotMatch(prompt, /successCriteria|execution\.phases/);
+});
