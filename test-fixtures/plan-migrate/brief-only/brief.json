@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "outbox-retry",
+  "title": "Failed sends retry on their own",
+  "revision": 2,
+  "why": "When a send fails nobody finds out for hours.",
+  "change": {
+    "before": "A failed send stays failed until someone presses send again.",
+    "after": "A failed send retries on its own, and the outbox shows when it gave up."
+  },
+  "mustHold": ["A message is never sent twice.", "Retries stop after the configured limit."],
+  "outOfScope": ["Backoff tuning"],
+  "delegated": ["Wording of the log lines"],
+  "decisions": [
+    { "decision": "Retry three times, five minutes apart", "reason": "Covers a brief outage without hiding a real failure.", "rejected": "Exponential backoff" },
+    { "decision": "Keep the attempt count on the outbox row", "reason": "The worker and the outbox then read the same number." }
+  ],
+  "acceptance": [
+    { "id": "retry-tests", "criterion": "The retry worker's tests pass", "check": { "cmd": "node --test src/retry.test.mjs", "expect": "exits 0" } },
+    { "id": "gave-up-visible", "criterion": "A given-up send is easy to spot", "check": { "judgment": "Look at the outbox with one given-up send" } }
+  ],
+  "units": [
+    { "id": "worker", "title": "Retry worker", "goal": "Retry failed sends up to the limit.", "risk": "medium", "needs": [], "acceptanceIds": ["retry-tests"] },
+    { "id": "outbox-label", "title": "Gave-up label", "goal": "Show when a send gave up.", "risk": "high", "design": "Adds one label; removing it restores the old row.", "needs": ["worker"], "acceptanceIds": ["gave-up-visible"] }
+  ],
+  "executionMode": "adaptive",
+  "authority": { "paths": ["src/"], "commands": ["node --test src/retry.test.mjs"], "allowLocalCommit": false }
+}

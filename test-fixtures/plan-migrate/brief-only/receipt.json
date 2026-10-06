@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "change": "outbox-retry",
+  "revision": 2,
+  "briefHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "run": "outbox-retry-00000000-0000-4000-8000-000000000000",
+  "state": "accepted",
+  "branch": "ideation/outbox-retry-00000000-0000-4000-8000-000000000000",
+  "baseRevision": "abc123",
+  "approvedHead": null,
+  "includedChanges": [],
+  "sourceRevision": "def456",
+  "units": [
+    { "id": "worker", "title": "Retry worker", "state": "done", "attempts": 1, "reviewStatus": "passed", "commitHash": "1111111", "summary": "Added the retry worker." }
+  ],
+  "evidence": [
+    { "criterionId": "retry-tests", "status": "passed", "command": "node --test src/retry.test.mjs", "sourceRevision": "def456", "durationMs": 120, "output": "ok" }
+  ],
+  "decisions": [],
+  "usage": { "tokens": 0 },
+  "updatedAt": "2026-08-01T00:00:00.000Z"
+}
