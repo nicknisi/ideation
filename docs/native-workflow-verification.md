@@ -4,8 +4,10 @@ Implementation and subsequent dogfood fixes verified locally on 2026-09-23–24.
 
 ## Automated checks
 
-- `node --run test` in `~/Developer/ideation`: **462 passed**, including the original 218 tests.
-- `pnpm exec vitest run packages/artifacts` in `~/Developer/pi-extensions`: **36 passed**.
+- `node --run test` in `~/Developer/ideation`: **469 passed**, including the original 218 tests.
+- `pnpm exec vitest run packages/artifacts` in `~/Developer/pi-extensions`: **38 passed** on
+  `main` (`@nicknisi/pi-artifacts` 1.5.0) and **42 passed** with page requests
+  (nicknisi/pi-extensions#152).
 - `pnpm exec tsgo --noEmit` in `~/Developer/pi-extensions`: passed.
 - `pnpm exec oxlint packages/artifacts`: passed.
 - `pnpm build` in `~/Developer/pi-extensions`: **34 packages built**.
@@ -95,17 +97,42 @@ print disclosure behavior are also covered by script-level tests.
 
 New regression tests cover contextual planning/revision, one stable draft page,
 fresh approvals, resume that always continues, cancellation of blocked runs while
-retaining work, cancellation/timeouts of Git staging filters and commit hooks
-without bypassing signing, contradictory reviewer verdicts, and preservation of
+retaining work, cancellation of Git staging filters and commit hooks without
+bypassing signing, contradictory reviewer verdicts, and preservation of
 the active run's approved model. Final focused review also added regressions for
 changed original briefs during live paused resume, opening the correct agreement
 when another draft exists, and pnpm package-local dependency snapshots.
 
+## Second dogfood round (2026-09-24)
+
+A real run in another repository exposed two more problems:
+
+- **Approval refused a dirty checkout.** It now asks whether the run starts from the
+  last commit or includes the uncommitted files. The included files are snapshotted
+  through a private Git index; integration tests assert that the user's files, index
+  and HEAD are byte-for-byte unchanged, that `.pi/artifacts/` and the change's own
+  `docs/ideation/` folder are left out, and that a rename counts once.
+- **A budget stopped the run after 2.6 minutes, before anything was built.** The
+  agent had written `maxTokens: 90000`. The count included cached context re-read on
+  every turn (212,670 counted; about 82,000 new input and output tokens; $1.11). All
+  budgets are gone. Tests pin that elapsed time and missing usage never stop a run,
+  that resume always continues, and that briefs carrying the old fields still
+  validate with the same fingerprint.
+
+The same round added `docs/ideation/<change-id>/` publishing (brief, contract,
+receipt; never committed, never written into a planning-path project folder) and
+**Approve in Pi**. For the latter, the built pi-artifacts service served a real
+rendered contract, headless Chrome was driven over the DevTools protocol, and a real
+click on the revealed button reached ideation's handler with the draft's view ID;
+after disposal the page offered nothing. A 348-pixel frame caught the stamp's
+entrance briefly scrolling the page sideways; the contract now clips horizontal
+overflow.
+
 ## Verification limits
 
-- A native browser window was not exposed by the checked computer-use tool, so
-  interactive browser clicks and TUI input were **not independently driven
-  end-to-end**. Rendered documents were visually inspected, and actual Pi widget
+- TUI input was **not independently driven end-to-end**, and the Approve in Pi
+  confirmation dialog itself is covered by command-handler tests rather than a
+  live Pi terminal. Rendered documents were visually inspected, and actual Pi widget
   factories, HTTP/SSE behavior, and command handlers were tested separately.
   Final visual/usability acceptance remains a human judgment, not a unit-test claim.
 - This is a trusted local tool policy, not an OS/network sandbox. Approved test

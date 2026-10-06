@@ -1,7 +1,8 @@
 # Native Pi change workflow
 
-The legacy Claude Code contract/autopilot and Pi engine behavior remain supported.
-The new front door is `/ideation`. Native workers require Pi SDK 0.87.1 or newer;
+The legacy Claude Code contract/autopilot and Pi engine behavior remain supported; in
+Pi, that planning path runs as `/skill:ideation`, `/skill:autopilot` and so on. The
+change workflow's front door is `/ideation`. Native workers require Pi SDK 0.87.1 or newer;
 older local peer dependencies can reject newer Anthropic models even when the main
 Pi application is current.
 
@@ -38,15 +39,17 @@ Pi application is current.
    confirmation; human judgments are never automatically accepted. No merge, push,
    deployment or external publication happens automatically.
 
-The explicit `status`, `pause`, `resume`, `stop`, and `review` commands remain
-available, with an optional run ID. An explicit brief path remains supported for
+The explicit `plan`, `approve`, `status`, `review`, `pause`, `resume`, `stop`,
+`accept` and `motion` subcommands remain available; run controls take an optional
+run ID. An explicit brief path remains supported for
 power users. Pause waits for a safe boundary; stop waits for owned processes to
 settle. Blocked runs can be set aside without deleting their work.
 
 There are no time, token or attempt budgets. A run keeps going until it is ready for
 review, until you pause or stop it, or until it is stuck and stops to ask: the same
 check failing twice, a review that still fails after the engine's review/fix rounds,
-or the model provider still failing after a few spaced retries. **Resume** always
+another error it cannot recover from (a commit hook rejecting the commit, say), or
+the model provider still failing after a few spaced retries. **Resume** always
 continues the same run in the same worktree. **Start fresh (new approval)** reuses the
 agreement as a new revision in a new worktree; only after that approval is the prior
 run set aside, and its worktree and work are retained. Token and cost usage are
@@ -85,7 +88,8 @@ Exact approved shell commands may execute project scripts with host permissions.
 This is a trusted-command/tool policy, **not an OS sandbox**. Review commands and
 repository code before approval. Dependency manifests and protected internals remain
 outside native authority. The host owns checks and local commits; hooks and signing
-are not bypassed, and their processes are subject to cancellation and timeouts.
+are not bypassed, and their processes stop when you pause or stop the run. Checks,
+hooks and workers have no time limit of their own.
 For Node/Bun projects, installed `node_modules` trees (including tracked workspace
 packages' local dependency links) can be privately copied or reflinked into the
 worktree after manifests and lockfiles match. No install command
@@ -131,6 +135,11 @@ with live progress, evidence, work outcomes and the feedback inbox. The localhos
 URL can change ports after a server restart; the artifact slug and local file
 identity stay stable, and the Pi link is refreshed. The consumer never writes annotation/evidence sidecars. Questions use
 `answer`, not page rewriting. Comments go only to the owning parent session.
+
+From 1.6.0, a subscriber may also accept page requests. Ideation accepts only
+`approve`, on the live draft page, and answers it by opening its normal terminal
+confirmation; anything that can reach the local server could send a request, so a
+request is never treated as approval.
 
 Without a service, a durable `file://` view is used. It updates on disk; refresh the
 browser manually. No live transport or annotations are claimed in fallback mode.
