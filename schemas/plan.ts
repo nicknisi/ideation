@@ -86,7 +86,10 @@ export interface Exhibit {
 
 export interface Decision {
   id: string;
-  question: string;
+  /** Required while not-opened. A recorded decision (answered or kept, e.g. converted from 0.x)
+   * may omit it; the brief then names only the chosen option's label. */
+  question?: string;
+  /** At least 2 while not-opened; a recorded decision may have only the option it chose. */
   options: { value: string; label: string }[];
   /** The option the plan suggests. */
   recommended: string;
@@ -98,8 +101,8 @@ export interface Decision {
   state: DecisionState;
   /** Present only when state is answered. */
   answer?: string;
-  /** Options turned down, each with why. */
-  rejected: { value: string; reason: string }[];
+  /** Options turned down, each with why when known (a converted 0.x decision has one reason, for the choice). */
+  rejected: { value: string; reason?: string }[];
 }
 
 /** A unit of execution; maps 1:1 onto a brief unit. */

@@ -54,6 +54,25 @@ test('duplicate IDs and other cross-references fail by path', () => {
   rejects(p => { p.extra = true; }, 'plan.extra: unknown field');
 });
 
+test('a recorded decision may omit its question, have one option, and reject without a reason; an open one may not', () => {
+  // Recorded (kept, answered): what a converted 0.x decision looks like.
+  assert.doesNotThrow(() => validate(plan(p => {
+    const d = p.claims[0].decision;
+    delete d.question; d.options = [d.options[0]]; d.rejected = [];
+    delete p.claims[1].decision.rejected[0].reason;
+  })));
+  // Open (not-opened): still a real question with real alternatives.
+  rejects(p => { delete p.claims[2].decision.question; }, 'claims[2].decision.question: expected nonempty string');
+  rejects(p => { p.claims[2].decision.options.pop(); }, 'claims[2].decision.options: expected at least 2 options');
+  rejects(p => { const d = p.claims[0].decision; d.options = []; d.rejected = []; }, 'claims[0].decision.options: expected at least 1 option');
+  rejects(p => { p.claims[0].decision.rejected[0].reason = ' '; }, 'claims[0].decision.rejected[0].reason: expected nonempty string');
+});
+
+test('without a question or a rejected reason, the brief names only the labels', () => {
+  const { brief } = toRunContract(plan(p => { delete p.claims[0].decision.question; delete p.claims[0].decision.rejected[0].reason; }));
+  assert.deepEqual(brief.decisions[0], { decision: '3, five minutes apart', reason: 'Three covers a brief outage without hiding a real failure.', rejected: 'None. The user presses Try again' });
+});
+
 test('nextVersion bumps the version, supersedes the previous file, and leaves the input alone', () => {
   const before = fixture(), input = fixture();
   const next = nextVersion(input);
