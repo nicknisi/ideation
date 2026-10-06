@@ -284,7 +284,7 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
             const specPath = join(packetDir, `spec-phase-${order.indexOf(id) + 1}.md`);
             const plan = receipt.lastFailure ? `${planned.data.plan}\n\n## What went wrong last time\n\n${receipt.lastFailure}` : planned.data.plan;
             await writeFile(specPath, b.workPacket(r.brief, unit, { plan, sourceRevision: await w.sourceRevision(r.workspace) }));
-            const summary = await engine({ projectName: r.brief.title, slug: r.id, projectDir: packetDir, strict: true, native: true,
+            const summary = await engine({ projectName: r.brief.title, slug: r.id, projectDir: packetDir, strict: true, packet: true, hostCommits: true,
               executionMode: r.brief.executionMode,
               phases: [{ title: unit.title, specPath, prereqs: [], risk: unit.risk, files: [] }] }, {
               ...options(),

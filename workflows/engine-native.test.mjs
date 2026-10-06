@@ -244,3 +244,108 @@ for (const cap of [0, 4, 1.5, '2', null]) {
     assert.equal(calls.length, 0);
   });
 }
+
+// The arguments that replaced `native`. Each names a difference between callers:
+// packet (an approved work packet, not a 0.x spec) and hostCommits (the host
+// registers files, checks and commits). Pi's change runner passes both; a Claude
+// Code run contract passes packet alone.
+const hold = { scout: () => ({ ok: true, data: { verdict: 'HOLD', notReadyGates: ['scope-clarity'], contextMap: 'gaps' } }) };
+const promptsOf = calls => Object.fromEntries(calls.map(c => [c.agent.split(':')[0], c.prompt]));
+
+test('packet: a scout HOLD is a finding, even under strict, and no artifact is asked for', async () => {
+  const { summary, calls, stages } = await run(args({ packet: true }), {}, hold);
+  assert.deepEqual(stages, ['scout', 'build', 'review', 'commit']);
+  assert.equal(summary.completed.length, 1);
+  assert.match(summary.results[0].warnings[0], /SCOUT HOLD .*building anyway from the approved brief/);
+  const p = promptsOf(calls);
+  assert.match(p.scout, /Approved packet: +spec-phase-1\.md/);
+  assert.doesNotMatch(p.scout, /context-map\.md|Project directory/);
+  assert.match(p.build, /Implement this unit directly from the approved packet/);
+  assert.doesNotMatch(p.build, /\/ideation:execute-spec|write verbatim|context-map\.md|implementation-notes/);
+  assert.match(p.build, /git add -N/, 'an agent-committed packet still registers new files itself');
+  assert.match(p.commit, /never `git add -A`/);
+  assert.doesNotMatch(p.commit, /process artifacts/);
+});
+
+test('without packet, strict still fails closed on a scout HOLD', async () => {
+  const { summary, stages } = await run(args(), {}, hold);
+  assert.deepEqual(stages, ['scout']);
+  assert.equal(summary.failed.length, 1);
+});
+
+test('packet prompts are one set: hostCommits changes only what the host takes over', async () => {
+  const cc = promptsOf((await run(args({ packet: true }))).calls);
+  const pi = promptsOf((await run(args({ packet: true, hostCommits: true }), {
+    beforeStage: info => info.stage === 'commit' ? { result: { result: 'COMMITTED', commitHash: 'h', summary: 'host' } } : undefined,
+  })).calls);
+  assert.equal(pi.scout, cc.scout);
+  const upTo = (s, marker) => s.slice(0, s.indexOf(marker));
+  assert.equal(upTo(pi.build, '\n1. '), upTo(cc.build, '\n1. '));
+  assert.equal(upTo(pi.review, 'Run `git diff HEAD`'), upTo(cc.review, 'Run `git diff HEAD`'));
+  assert.doesNotMatch(pi.build, /git add -N/);
+  assert.match(pi.build, /Do not stage anything/);
+  assert.match(pi.review, /If the diff is empty, verify that the existing source already/);
+  assert.equal(pi.commit, undefined, 'a host commit never spawns');
+});
+
+test('hostCommits: a NO-OP and red builder validation still go to review', async () => {
+  const { summary, stages } = await run(args({ hostCommits: true }), {
+    beforeStage: info => info.stage === 'commit' ? { result: { result: 'NO-OP', commitHash: null, summary: 'verified unchanged' } } : undefined,
+  }, { build: () => ({ ok: true, data: { result: 'NO-OP', summary: 'nothing', filesChanged: [], validation: 'FAIL' } }) });
+  assert.deepEqual(stages, ['scout', 'build', 'review']);
+  assert.deepEqual(summary.noops, ['A:review#1']);
+  assert.equal(summary.results[0].reviewStatus, 'passed');
+  assert.match(summary.results[0].summary, /verified unchanged/);
+});
+
+test('without hostCommits, a NO-OP skips review and red validation fails', async () => {
+  const noop = await run(args(), {}, { build: () => ({ ok: true, data: { result: 'NO-OP', summary: 'n', validation: 'PASS' } }) });
+  assert.deepEqual(noop.stages, ['scout', 'build']);
+  assert.equal(noop.summary.results[0].reviewStatus, 'skipped-empty-diff');
+  const red = await run(args(), {}, { build: () => ({ ok: true, data: { result: 'BUILT', summary: 'b', filesChanged: ['src/a.js'], validation: 'FAIL' } }) });
+  assert.deepEqual(red.stages, ['scout', 'build']);
+  assert.equal(red.summary.failed.length, 1);
+});
+
+test('hostCommits: a PASS that still counts blocking findings is a FAIL', async () => {
+  const { stages } = await run(args({ hostCommits: true, maxReviewCycles: 1 }), {}, {
+    review: () => ({ ok: true, data: { verdict: 'PASS', blocking: 1, findings: ['high/x a:1 — b → c'] } }),
+  });
+  assert.deepEqual(stages, ['scout', 'build', 'review']);
+  const plain = await run(args({ maxReviewCycles: 1 }), {}, {
+    review: () => ({ ok: true, data: { verdict: 'PASS', blocking: 1, findings: [] } }),
+  });
+  assert.deepEqual(plain.stages, ['scout', 'build', 'review', 'commit']);
+});
+
+test('hostCommits: a missing reviewer fails closed without strict, and the host accepts VERIFIED', async () => {
+  const missing = await run(args({ hostCommits: true, strict: false }), {}, {
+    review: () => ({ ok: false, kind: 'schema_invalid', error: 'no verdict' }),
+  });
+  assert.equal(missing.summary.failed.length, 1);
+  const verified = await run(args({ hostCommits: true }), {
+    beforeStage: info => info.stage === 'commit' ? { result: { result: 'VERIFIED', commitHash: null, summary: 'not authorized to commit' } } : undefined,
+  }, { build: () => ({ ok: true, data: { result: 'BUILT', summary: 'b', filesChanged: [], validation: 'PASS' } }) });
+  assert.deepEqual(verified.summary.completed, ['A:review#1']);
+  const agentVerified = await run(args(), {}, { commit: () => ({ ok: true, data: { result: 'VERIFIED', commitHash: null } }) });
+  assert.equal(agentVerified.summary.failed.length, 1, 'an agent commit stage only reports COMMITTED or FAILED');
+});
+
+test('hostCommits: one phase per wave, so the host gates one phase at a time', async () => {
+  const logs = [];
+  const two = extra => ({ ...args(extra), phases: [
+    { title: 'A', specPath: 'a.md', prereqs: [], files: ['a'] },
+    { title: 'B', specPath: 'b.md', prereqs: [], files: ['b'] },
+  ] });
+  await run(two({ hostCommits: true }), { onLog: m => logs.push(m), beforeStage: info => info.stage === 'commit' ? { result: { result: 'COMMITTED', commitHash: 'h' } } : undefined });
+  assert.ok(logs.some(m => /Planned 2 wave\(s\).*W1\[A\] → W2\[B\]/.test(m)), logs.join('\n'));
+  logs.length = 0;
+  await run(two(), { onLog: m => logs.push(m) });
+  assert.ok(logs.some(m => /Planned 1 wave\(s\).*W1\[A, B\]/.test(m)), logs.join('\n'));
+});
+
+test('a caller still sending `native` is refused before any spawn', async () => {
+  const { summary, calls } = await run(args({ native: true }));
+  assert.match(summary.error, /`native` was replaced by `packet` and `hostCommits`/);
+  assert.equal(calls.length, 0);
+});

@@ -58,6 +58,9 @@ export const meta = {
  *   projectDir: string,
  *   strict?: boolean,            // fail closed on a scout HOLD or a verdict-less
  *                                // reviewer (express-approved contracts)
+ *   packet?: boolean,            // specPath is an approved work packet; see the
+ *                                // prompt section below for what changes
+ *   hostCommits?: boolean,       // the host registers files, checks and commits
  *   phases: [{ title, specPath, prereqs: [titles], risk, files }],
  *   executionMode?: 'strict' | 'adaptive', // adaptive omits scout only for risk:'low'
  *   maxReviewCycles?: number,   // integer 1..3; default 3
@@ -371,21 +374,56 @@ function phaseNumberOf(phase, index) {
   return m ? Number(m[1]) : index + 1;
 }
 
+/*
+ * One prompt per stage, written once. What differs between callers is passed as
+ * an argument that names the difference, never the harness:
+ *
+ *  - a.packet: the spec is an approved work packet (workflows/change-brief.mjs
+ *    workPacket), not a 0.x spec. The builder implements it directly, within
+ *    the paths, commands and invariants it grants, instead of running
+ *    /ideation:execute-spec. A scout HOLD is a finding, not a stop: a person
+ *    approved the plan. No stage writes context maps or implementation notes,
+ *    because the packet's Execution Boundary forbids artifacts.
+ *  - a.hostCommits: the host, not an agent, registers new files for review, runs
+ *    the approved checks, and stages and commits. Agents never stage. A builder's
+ *    NO-OP is only a claim that independent review and the host verify. The
+ *    commit stage is a host boundary, and the host gates one phase at a time.
+ *
+ * 0.x contracts pass neither. Claude Code run contracts pass packet (their
+ * commit stage is still an agent). Pi's change runner passes both.
+ */
+
+/** A labelled input line, padded so the values line up. */
+const field = (label, value, width) => `${`${label}:`.padEnd(width)} ${value}`;
+const specLabel = a => (a.packet ? 'Approved packet' : 'Spec file path');
+
 /** Per-invocation inputs only — workflow, gates and format come from agents/scout.md. */
 function scoutPrompt(phase, a, n, priorMapLikely) {
-  if (a.native) return `Read ${phase.specPath} and inspect current source read-only. Assess readiness within the approved authority. Do not write context maps or other artifacts. Return JSON {verdict:"GO"|"HOLD", contextMap:string} with findings inline.`;
   const dir = dirOf(a.projectDir);
+  const inputs = [field(specLabel(a), phase.specPath, 18)];
+  if (!a.packet) inputs.push(field('Project directory', dir, 18));
+  inputs.push(field('Phase number', n, 18));
+  if (!a.packet) {
+    inputs.push(field('Prior context map', priorMapLikely
+      ? `an earlier phase has already run, so ${dir}context-map.md very likely exists — read it and EXTEND it`
+      : `no earlier phase has run for this project, so ${dir}context-map.md may not exist yet`, 18));
+  }
+  const approved = a.packet
+    ? `
+A person approved this packet. Assess readiness within the authority it grants,
+and report every gap as a finding for the builder rather than a reason to stop.
+`
+    : '';
+  const contextMap = a.packet
+    ? `your findings, inline, as a string. The builder reads them as
+                   advisory. Do not write a context map or any other artifact.`
+    : `the FULL context map, in your documented markdown format, as a
+                   string. You cannot write files — a later stage persists this
+                   verbatim to ${dir}context-map.md.`;
   return `Scout the codebase for one phase of the "${a.projectName}" ideation project.
 
-Spec file path:    ${phase.specPath}
-Project directory: ${dir}
-Phase number:      ${n}
-Prior context map: ${
-    priorMapLikely
-      ? `an earlier phase has already run, so ${dir}context-map.md very likely exists — read it and EXTEND it`
-      : `no earlier phase has run for this project, so ${dir}context-map.md may not exist yet`
-  }
-
+${inputs.join('\n')}
+${approved}
 Tooling note: Glob and Grep may not be available in this context. Use Bash
 (\`rg\`, \`ls\`, \`find\`) for search if you have it; if you have neither, read the
 paths the spec names directly and mark any gate you could not evidence
@@ -395,97 +433,142 @@ Return a JSON object (the StructuredOutput tool will be provided):
   - verdict:       "GO" or "HOLD", per your gate rule
   - gatesReady:    how many of the 5 gates are ready (0-5)
   - notReadyGates: the names of the gates that are not ready (empty if none)
-  - contextMap:    the FULL context map, in your documented markdown format, as a
-                   string. You cannot write files — a later stage persists this
-                   verbatim to ${dir}context-map.md.
+  - contextMap:    ${contextMap}
 
 Do not ask the user anything.`;
 }
 
 function buildPrompt(phase, a, scout) {
-  if (a.native) return `Implement "${phase.title}" directly from the approved packet ${phase.specPath}.
-Read the packet, project conventions, affected source and analogous patterns before editing.
-Inspect dependencies and blast radius. Scout findings (advisory): ${scout.contextMap ?? 'Inspect source yourself'}.
-Implement only the unit goal within approved paths and invariants. Run only explicitly authorized commands.
-Do not invoke skills or subagents. Do not write context maps, implementation notes or host packets.
-Do not stage or commit: the host prepares the diff, runs checks and commits after independent review.
-Return JSON {result:"BUILT"|"NO-OP"|"FAIL",summary:string,filesChanged:string[],patternFiles:string[],validation:"PASS"|"FAIL"|"NONE"}.
-NO-OP is only a claim of no source changes; the host verifies it and independent review remains mandatory.`;
   const flags = a.strict ? '--headless --strict' : '--headless';
   const dir = dirOf(a.projectDir);
-  const holdNote =
-    scout.available && scout.verdict === 'HOLD'
-      ? `
-5. The scout returned HOLD (${scout.gatesReady ?? '?'}/5 gates ready; not ready:
-   ${(scout.notReadyGates ?? []).join(', ') || 'unspecified'}). You are proceeding
-   anyway. Treat the missing context-map sections as unavailable — read those
-   files directly — and watch the Risks section closely.
-`
-      : '';
-  const mapBlock = scout.available
-    ? `
---- CONTEXT MAP (write verbatim to ${dir}context-map.md) ---
-${scout.contextMap}
---- END CONTEXT MAP ---
-`
-    : '';
+  const artifacts = `${dir}context-map.md, ${dir}implementation-notes-*.html`;
 
-  return `You are building one phase of the "${a.projectName}" ideation project.
+  const how = a.packet
+    ? `Implement this unit directly from the approved packet. Read the packet, the
+project's conventions, the affected source and analogous patterns before editing,
+and inspect dependencies and blast radius. Implement only the unit's goal, within
+the packet's approved paths and invariants, and run only the commands it
+explicitly authorizes. Do not invoke skills.
 
-Phase: "${phase.title}"${phase.risk ? ` (risk: ${phase.risk})` : ''}
-Spec:  ${phase.specPath}
-
-Run the execute-spec skill in headless mode against this spec:
+The scout and reviewer run as SIBLING stages of this workflow: you cannot spawn
+agents at all here and must not try.`
+    : `Run the execute-spec skill in headless mode against this spec:
 
     /ideation:execute-spec ${flags} ${phase.specPath}
 
 ENGINE OVERRIDES — these supersede that skill wherever they differ. The scout and
 reviewer it invokes are running as SIBLING stages of this workflow, not as your
 subagents: you cannot spawn agents at all here (the Agent tool is not available)
-and must not try.
+and must not try.`;
 
-1. SKIP the skill's "Scout Codebase" step. ${
-    scout.available
-      ? `The scout already ran (verdict ${scout.verdict}). BEFORE building, write the
+  const explore = `${scout.omitted ? 'Adaptive low-risk execution omits the dedicated scout, so explore' : `The scout stage FAILED (${scout.error}), so take that step's fallback: explore`}
+   inline — read every "Pattern to follow" path and every modified file, read
+   analogues for new files, map the blast radius of each modified file, and read
+   CLAUDE.md / README for conventions.`;
+  const scoutRule = a.packet
+    ? scout.available
+      ? `The scout already ran (verdict ${scout.verdict}). Its findings at the end of
+   this prompt are advisory: use them, read the source yourself before editing,
+   and do not write them anywhere.`
+      : `${explore} Write no context map or notes.`
+    : scout.available
+      ? `SKIP the skill's "Scout Codebase" step. The scout already ran (verdict ${scout.verdict}). BEFORE building, write the
    context map at the end of this prompt verbatim to ${dir}context-map.md — the
    scout is read-only and cannot write it itself. Then use its Key Patterns,
    Dependencies, Conventions and Risks instead of re-exploring.`
-      : `${scout.omitted ? 'Adaptive low-risk execution omits the dedicated scout, so explore' : `The scout stage FAILED (${scout.error}), so take that step's fallback: explore`}
-   inline — read every "Pattern to follow" path and every modified file, read
-   analogues for new files, map the blast radius of each modified file, and read
-   CLAUDE.md / README for conventions. Do not write ${dir}context-map.md.`
-  }
-2. STOP after the skill's "Verify" step. Do NOT run the Review cycle and do NOT
-   commit — a sibling reviewer stage reviews your diff, and a later stage commits.
-3. Leave every change UNSTAGED, and run \`git add -N <path>\` on every net-new file
+      : `SKIP the skill's "Scout Codebase" step. ${explore} Do not write ${dir}context-map.md.`;
+
+  const after = a.hostCommits
+    ? 'the host runs the approved checks and commits once that review passes'
+    : 'a later stage commits';
+  const stopRule = a.packet
+    ? `Do NOT review your own work and do NOT commit — a sibling reviewer stage
+   reviews your diff, and ${after}.`
+    : `STOP after the skill's "Verify" step. Do NOT run the Review cycle and do NOT
+   commit — a sibling reviewer stage reviews your diff, and ${after}.`;
+  const stageRule = a.hostCommits
+    ? `Do not stage anything: leave every change unstaged. The host registers
+   net-new files so the reviewer's \`git diff HEAD\` shows them.`
+    : `Leave every change UNSTAGED, and run \`git add -N <path>\` on every net-new file
    so \`git diff HEAD\` shows it to the reviewer. Without that, a phase whose only
-   output is new files produces an empty diff, gets no review, and never lands.
-4. Run the spec's Validation Commands and fix every failure before you return —
-   validation failures are mechanical errors, not review findings.
+   output is new files produces an empty diff, gets no review, and never lands.`;
+  const validationRule = a.hostCommits
+    ? `You may run the packet's Validation Commands. The host runs them again before
+   review and sends any failure back as findings.`
+    : `Run the ${a.packet ? 'packet' : 'spec'}'s Validation Commands and fix every failure before you return —
+   validation failures are mechanical errors, not review findings.`;
+
+  const holdNote =
+    scout.available && scout.verdict === 'HOLD'
+      ? `
+5. The scout returned HOLD (${scout.gatesReady ?? '?'}/5 gates ready; not ready:
+   ${(scout.notReadyGates ?? []).join(', ') || 'unspecified'}). You are proceeding
+   anyway. Treat ${a.packet ? 'what the scout could not evidence' : 'the missing context-map sections'} as unavailable — read those
+   files directly — and watch the Risks section closely.
+`
+      : '';
+
+  const noop = a.hostCommits
+    ? `"NO-OP" if you made no
+                  source changes (only a claim: the host verifies it, and
+                  independent review remains mandatory)`
+    : a.packet
+      ? `"NO-OP" if \`git diff HEAD\` is empty after the \`git add -N\` pass`
+      : `"NO-OP" if \`git diff HEAD\`
+                  is empty after the \`git add -N\` pass once the process artifacts you
+                  just wrote (${artifacts})
+                  are excluded — they are not phase output, and in a repo that tracks
+                  ${dir} they would otherwise mask a genuine no-op`;
+  const filesNote = a.packet
+    ? ''
+    : `,
+                  EXCLUDING the process artifacts named above — the commit stage
+                  stages this list by name and must not commit them`;
+  const closing = a.hostCommits
+    ? 'Do NOT ask the user anything, and do NOT stage or commit.'
+    : `Do NOT ask the user anything and do NOT commit. If \`git add -N\` fails with an
+index.lock error, wait briefly and retry up to 3 times.`;
+  const mapBlock = !scout.available
+    ? ''
+    : a.packet
+      ? `
+--- SCOUT FINDINGS (advisory) ---
+${scout.contextMap}
+--- END SCOUT FINDINGS ---
+`
+      : `
+--- CONTEXT MAP (write verbatim to ${dir}context-map.md) ---
+${scout.contextMap}
+--- END CONTEXT MAP ---
+`;
+
+  return `You are building one phase of the "${a.projectName}" ideation project.
+
+Phase: "${phase.title}"${phase.risk ? ` (risk: ${phase.risk})` : ''}
+${a.packet ? 'Packet:' : 'Spec: '} ${phase.specPath}
+
+${how}
+
+1. ${scoutRule}
+2. ${stopRule}
+3. ${stageRule}
+4. ${validationRule}
 ${holdNote}
 Return a JSON object (the StructuredOutput tool will be provided):
-  - result:       "BUILT" if you changed the working tree; "NO-OP" if \`git diff HEAD\`
-                  is empty after the \`git add -N\` pass once the process artifacts you
-                  just wrote (${dir}context-map.md, ${dir}implementation-notes-*.html)
-                  are excluded — they are not phase output, and in a repo that tracks
-                  ${dir} they would otherwise mask a genuine no-op; "FAIL" if you could
+  - result:       "BUILT" if you changed the working tree; ${noop}; "FAIL" if you could
                   not build
   - summary:      one or two sentences on what was implemented, or why it failed
-  - filesChanged: every path you created or modified, exactly as git reports it,
-                  EXCLUDING the process artifacts named above — the commit stage
-                  stages this list by name and must not commit them
+  - filesChanged: every path you created or modified, exactly as git reports it${filesNote}
   - patternFiles: every "Pattern to follow" path you collected from the spec
                   (empty array if the spec names none)
   - validation:   "PASS", "FAIL", or "NONE" if the spec declares no validation commands
 
-Do NOT ask the user anything and do NOT commit. If \`git add -N\` fails with an
-index.lock error, wait briefly and retry up to 3 times.
+${closing}
 ${mapBlock}`;
 }
 
 /** Per-invocation inputs only — workflow, severities and format come from agents/reviewer.md. */
 function reviewPrompt(phase, a, cycle, priorFindings, patternFiles) {
-  if (a.native) return `Independently review ${phase.specPath} against current source and git diff HEAD (host prepared new files). If the diff is empty, verify the existing implementation satisfies the unit and explicitly explain no-change evidence. Read source; never trust builder claims. Do not edit or stage. Prior findings: ${JSON.stringify(priorFindings)}. Return JSON {verdict:"PASS"|"FAIL",findings:string[],summary:string}.`;
   const prior =
     cycle > 1
       ? `Prior findings (cycle ${cycle - 1}); entries prefixed [REFUTED: …] are ones the
@@ -494,18 +577,22 @@ ${priorFindings.map(f => `  ${f}`).join('\n') || '  (none carried forward)'}
 
 `
       : '';
+  const diff = a.hostCommits
+    ? `Run \`git diff HEAD\` yourself — the host left the work unstaged and registered
+net-new files. If the diff is empty, verify that the existing source already
+satisfies the unit and say what shows it. Read the source and never trust the
+builder's claims: its NO-OP is only a claim, and nothing lands without your verdict.`
+    : `Run \`git diff HEAD\` yourself — the builder left everything unstaged and
+registered net-new files with \`git add -N\`.`;
   return `Review the working-tree diff for one phase of the "${a.projectName}" ideation project.
 
-Spec file path: ${phase.specPath}
-Pattern files:  ${
-    patternFiles.length > 0
-      ? patternFiles.join(', ')
-      : 'none collected — extract the "Pattern to follow" paths from the spec yourself'
-  }
-Cycle number:   ${cycle} of ${maxReviewCycles}
+${field(specLabel(a), phase.specPath, 15)}
+${field('Pattern files', patternFiles.length > 0
+    ? patternFiles.join(', ')
+    : 'none collected — extract the "Pattern to follow" paths from the spec yourself', 15)}
+${field('Cycle number', `${cycle} of ${maxReviewCycles}`, 15)}
 
-${prior}Run \`git diff HEAD\` yourself — the builder left everything unstaged and
-registered net-new files with \`git add -N\`.
+${prior}${diff}
 
 Return a JSON object (the StructuredOutput tool will be provided):
   - verdict:  "PASS" (zero critical and zero high findings) or "FAIL"
@@ -514,33 +601,44 @@ Return a JSON object (the StructuredOutput tool will be provided):
   - blocking: how many findings are critical or high
   - summary:  2-3 sentences on implementation quality and commit readiness
 
-Do not ask the user anything, and do not edit files.`;
+Do not ask the user anything, and do not edit${a.hostCommits ? ' or stage' : ''} files.`;
 }
 
 function fixPrompt(phase, a, cycle, findings) {
-  if (a.native) return `Read ${phase.specPath} and repair these independently reviewed findings within approved authority: ${JSON.stringify(findings)}. Verify findings against source before editing. Run only approved commands. Do not write artifacts, stage, commit or invoke skills. Return JSON {result:"FIXED"|"FAIL",summary:string,carried:string[]} with inline evidence for any refutation.`;
+  const scope = a.packet
+    ? `
+Stay within the packet's approved paths and invariants, run only the commands it
+authorizes, and do not invoke skills or write artifacts.
+`
+    : '';
+  const refute = a.packet
+    ? 'with file:line evidence given inline in `carried`'
+    : 'with file:line evidence, logged as an implementation-notes entry';
+  const after = a.hostCommits
+    ? `Then leave everything unstaged and do NOT stage or commit — the host re-runs the
+packet's checks, a sibling reviewer re-reviews your diff, and the host commits.`
+    : `Then re-run the ${a.packet ? 'packet' : 'spec'}'s Validation Commands. Leave everything UNSTAGED, keep the
+\`git add -N\` registration for every new file, and do NOT commit — a sibling
+reviewer re-reviews your diff and a later stage commits.`;
   return `Fix review findings for one phase of the "${a.projectName}" ideation project.
 
 Phase: "${phase.title}"
-Spec:  ${phase.specPath}
+${a.packet ? 'Packet:' : 'Spec: '} ${phase.specPath}
 
 Review cycle ${cycle} of ${maxReviewCycles} returned FAIL. Blocking findings:
 ${findings.map(f => `  ${f}`).join('\n') || '  (the reviewer reported FAIL without listing findings — re-read the diff against the spec)'}
-
+${scope}
 For each finding, VERIFY BEFORE ACTING: read the target code, then apply its
 \`→ action\`. The one exception is a finding the code demonstrably contradicts —
-refute it once, with file:line evidence, logged as an implementation-notes entry,
+refute it once, ${refute},
 and carry it forward as "[REFUTED: <evidence>] <finding>" so the reviewer either
 withdraws it or restates it as maintained. Never refute the same finding twice.
 
-Then re-run the spec's Validation Commands. Leave everything UNSTAGED, keep the
-\`git add -N\` registration for every new file, and do NOT commit — a sibling
-reviewer re-reviews your diff and a later stage commits. You cannot spawn
+${after} You cannot spawn
 subagents (the Agent tool is not available here).
 
 Return a JSON object (the StructuredOutput tool will be provided):
-  - result:  "FIXED" if you applied or refuted every blocking finding and
-             validation passes, else "FAIL"
+  - result:  "FIXED" if you applied or refuted every blocking finding${a.hostCommits ? '' : ' and\n             validation passes'}, else "FAIL"
   - summary: one or two sentences
   - carried: EVERY finding listed above, in the strings you received, with any you
              refuted prefixed "[REFUTED: <evidence>] ". The reviewer needs the full
@@ -550,30 +648,35 @@ Do not ask the user anything.`;
 }
 
 function commitPrompt(phase, a, files, reviewCycles, reviewNote) {
-  if (a.native) return 'Host-only verified completion boundary. Do not spawn a child or stage/commit through an agent.';
+  // Never sent to an agent: a host that commits intercepts this stage before any
+  // spawn (workflows/change-run.mjs beforeStage), and its spawn refuses a commit.
+  if (a.hostCommits) return 'Host-only verified completion boundary. Do not spawn a child or stage/commit through an agent.';
   const dir = dirOf(a.projectDir);
+  const artifacts = a.packet
+    ? ''
+    : `Leave out process artifacts (${dir}context-map.md, ${dir}implementation-notes-*.html)
+unless this project's conventions already track ${dir}. `;
+  const cycles = reviewCycles > 1
+    ? `, and note "${reviewCycles} review cycles" in the body`
+    : '';
+  const reference = `The commit body MUST contain the spec path \`${phase.specPath}\` verbatim. This is
+not a style preference: autopilot's resume pre-pass and \`scripts/verify.mjs\` both
+grep commit bodies for exactly that string, so a phase committed without it reads
+as never-committed — it gets re-dispatched on resume and can never satisfy a
+\`/goal\`'s \`commits=N/N\` condition.`;
   return `Commit one completed phase of the "${a.projectName}" ideation project.
 
 Phase:  "${phase.title}"
-Spec:   ${phase.specPath}
+${a.packet ? 'Packet:' : 'Spec:  '} ${phase.specPath}
 Review: ${reviewNote}
 
 Stage these paths BY NAME — never \`git add -A\`:
 ${files.map(f => `  ${f}`).join('\n')}
 
-Leave out process artifacts (${dir}context-map.md, ${dir}implementation-notes-*.html)
-unless this project's conventions already track ${dir}. Commit following the
-project's existing commit conventions${
-    reviewCycles > 1
-      ? `, and note "${reviewCycles} review cycles" in the body`
-      : ''
-  }.
+${artifacts}Commit following the
+project's existing commit conventions${cycles}.
 
-The commit body MUST contain the spec path \`${phase.specPath}\` verbatim. This is
-not a style preference: autopilot's resume pre-pass and \`scripts/verify.mjs\` both
-grep commit bodies for exactly that string, so a phase committed without it reads
-as never-committed — it gets re-dispatched on resume and can never satisfy a
-\`/goal\`'s \`commits=N/N\` condition.
+${reference}
 
 If \`git add\` or \`git commit\` fails with an index.lock error, wait briefly and
 retry up to 3 times before reporting failure.
@@ -630,7 +733,9 @@ async function runReviewLoop(phase, a, phaseLabel, patternFiles, fail) {
       break;
     }
     review = res.value;
-    if (a.native && review.blocking !== undefined && review.blocking !== 0) review = { ...review, verdict: 'FAIL' };
+    // A host that commits gates on a zero blocking count (and reports failed checks
+    // as blocking findings), so a PASS that still counts blocking findings is a FAIL.
+    if (a.hostCommits && review.blocking !== undefined && review.blocking !== 0) review = { ...review, verdict: 'FAIL' };
     if (review.verdict === 'PASS' || cycle === 3 || cycle === maxReviewCycles) break;
 
     const fixRes = await safeAgent(
@@ -726,11 +831,11 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
     log(`WARN ${title}: scout stage failed (${scout.error}) — building with inline exploration`);
   } else if (scout.verdict === 'HOLD') {
     const gaps = (scout.notReadyGates ?? []).join(', ') || 'unspecified';
-    if (a.native) {
-      // A native brief was reviewed and approved by a person: the scout's doubts
+    if (a.packet) {
+      // An approved packet was reviewed and approved by a person: the scout's doubts
       // are findings for the builder, not a reason to stop the run.
       warnings.push(`SCOUT HOLD for "${title}" (not ready: ${gaps}) — building anyway from the approved brief, with the scout's findings.`);
-      log(`WARN ${title}: scout HOLD (${gaps}) — proceeding with an approved native brief`);
+      log(`WARN ${title}: scout HOLD (${gaps}) — proceeding with an approved packet`);
     } else if (a.strict) {
       log(`FAIL ${title}: scout HOLD under --strict (${gaps}) — not building`);
       return fail(
@@ -763,12 +868,13 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
   // mechanical errors." A builder that returns BUILT with failing validation is
   // schema-legal, so gate it here; otherwise a reviewer PASS commits code whose
   // type check or tests are red, including under --strict.
-  // Native: the host runs the approved checks before review and sends failures
+  // hostCommits: the host runs the approved checks before review and sends failures
   // back to the fixer, so a builder's own red validation is not a dead end.
-  if (build.validation === 'FAIL' && !a.native) {
+  if (build.validation === 'FAIL' && !a.hostCommits) {
     return fail(`Validation failed after build: ${build.summary}`);
   }
-  if (build.result === 'NO-OP' && !a.native) {
+  // hostCommits: a NO-OP is only a claim; the reviewer and the host verify it.
+  if (build.result === 'NO-OP' && !a.hostCommits) {
     // execute-spec: an empty diff skips review entirely and reports a no-op. It
     // is not a failure, and forcing it to FAIL re-dispatches the phase forever.
     log(`NO-OP ${title} — empty diff, review skipped`);
@@ -793,7 +899,7 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
   if (review === null) {
     // The reviewer crashed or never produced a verdict. This is the fork the
     // whole restructure exists for — make both branches visible in the result.
-    if (a.native || a.strict || a.executionMode === 'adaptive') {
+    if (a.hostCommits || a.strict || a.executionMode === 'adaptive') {
       const reviewPolicy = a.strict ? '--strict' : 'adaptive execution';
       log(`FAIL ${title}: reviewer unavailable under ${reviewPolicy} — not committing`);
       return fail(
@@ -826,7 +932,8 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
   const declared = phase.files ?? [];
   const files =
     (build.filesChanged ?? []).length > 0 ? build.filesChanged : declared;
-  if (files.length === 0 && !a.native) {
+  // hostCommits: the host stages within the approved paths, not from this list.
+  if (files.length === 0 && !a.hostCommits) {
     return fail(
       `Review ${reviewStatus}, but neither the builder nor the manifest named a file to stage — refusing to commit blind (never \`git add -A\`). Changes left unstaged.`,
       reviewStatus,
@@ -848,10 +955,10 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
       label: `commit:${title}`,
       phase: phaseLabel,
       agentType: agentNames.builder,
-      schema: a.native ? { ...COMMIT_RESULT_SCHEMA, properties: { ...COMMIT_RESULT_SCHEMA.properties, result: { enum: ['COMMITTED', 'VERIFIED', 'NO-OP', 'FAILED'] } } } : COMMIT_RESULT_SCHEMA,
+      schema: a.hostCommits ? { ...COMMIT_RESULT_SCHEMA, properties: { ...COMMIT_RESULT_SCHEMA.properties, result: { enum: ['COMMITTED', 'VERIFIED', 'NO-OP', 'FAILED'] } } } : COMMIT_RESULT_SCHEMA,
     },
   );
-  if (!commitRes.ok || !(a.native ? ['COMMITTED', 'VERIFIED', 'NO-OP'] : ['COMMITTED']).includes(commitRes.value.result)) {
+  if (!commitRes.ok || !(a.hostCommits ? ['COMMITTED', 'VERIFIED', 'NO-OP'] : ['COMMITTED']).includes(commitRes.value.result)) {
     return fail(
       `Review ${reviewStatus}, but the commit stage failed (${commitRes.error ?? commitRes.value?.summary ?? 'no result'}). Changes left unstaged.`,
       reviewStatus,
@@ -861,12 +968,12 @@ async function runPhase(phase, a, index, phaseLabel, priorMapLikely) {
 
   return {
     title,
-    result: a.native && commitRes.value.result === 'NO-OP' ? 'NO-OP' : 'PASS',
+    result: a.hostCommits && commitRes.value.result === 'NO-OP' ? 'NO-OP' : 'PASS',
     reviewStatus,
     commitHash: commitRes.value.commitHash ?? null,
     // Warnings lead the summary — a validation-only PASS must not read as a
     // clean PASS in the skill's report.
-    summary: [...warnings, build.summary, review?.summary, ...(a.native ? [commitRes.value.summary] : [])]
+    summary: [...warnings, build.summary, review?.summary, ...(a.hostCommits ? [commitRes.value.summary] : [])]
       .filter(Boolean)
       .join(' — '),
     findings: review?.findings ?? [],
@@ -934,6 +1041,13 @@ log(
   }`,
 );
 
+// `native` became `packet` and `hostCommits`. A caller still sending it is a host
+// process holding an older runner, which would push approved packets through the
+// 0.x prompts: refuse before anything runs.
+if (a?.native !== undefined) {
+  return { ...summarize([]), error: '`native` was replaced by `packet` and `hostCommits`; restart the host so it loads the current runner' };
+}
+
 const maxReviewCycles = a?.maxReviewCycles === undefined ? 3 : a.maxReviewCycles;
 if (!Number.isInteger(maxReviewCycles) || maxReviewCycles < 1 || maxReviewCycles > 3) {
   return { ...summarize([]), error: 'maxReviewCycles must be an integer from 1 to 3' };
@@ -983,7 +1097,8 @@ try {
   }
 
   waves = splitWavesByFileOverlap(prereqWaves, phases);
-  if (a.native) waves = waves.flatMap(wave => wave.map(title => [title]));
+  // The host's review and commit gates track one phase's source revision at a time.
+  if (a.hostCommits) waves = waves.flatMap(wave => wave.map(title => [title]));
 } catch (err) {
   log(`FAIL planning: ${err.message}`);
   return { ...summarize([]), error: err.message };

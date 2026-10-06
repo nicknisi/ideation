@@ -72,6 +72,11 @@ disagree, the tests are right and this table is stale.
 | Review FAIL at cycle 3                 | phase FAIL, nothing committed                                  | same                                    |
 | Empty diff after `git add -N`          | `NO-OP` — review skipped, nothing committed, own bucket        | same                                    |
 
+Two arguments change these rows, each for a stated reason (see the `args` contract):
+
+- **`packet`**: a scout HOLD builds anyway, strict or not, with the `SCOUT HOLD` warning leading the summary. A person approved the plan, so the scout's doubts are findings for the builder.
+- **`hostCommits`**: a NO-OP still goes to review, which must confirm the source already satisfies the unit, and then the host verifies it. A builder's red validation goes back to the fixer, because the host runs the approved checks before review. A missing reviewer fails closed, strict or not.
+
 `reviewStatus` is what lets the skill report the truth instead of a bare PASS: a
 validation-only PASS is still a PASS the human must be told about.
 
@@ -98,6 +103,8 @@ stringified one):
   "slug": "kebab-slug",
   "projectDir": "docs/ideation/<slug>/",
   "strict": false, // optional; true → phases dispatch as execute-spec --headless --strict
+  "packet": false, // optional; true → specPath is an approved work packet
+  "hostCommits": false, // optional; true → the host registers files, checks and commits
   "agentNames": { "scout": "…", "reviewer": "…", "builder": "…" }, // optional; harness override
   "phases": [
     {
@@ -119,6 +126,24 @@ stringified one):
   approval — no per-artifact human review). Strict phases fail **closed** where
   plain headless fails open: a scout HOLD or a crashed/verdict-less reviewer
   stops the phase as FAIL instead of proceeding or committing validation-only.
+- **`packet`** and **`hostCommits`** are optional. They replace the old `native` flag
+  (which the engine now refuses) with the two differences it stood for. Every
+  prompt is written once and reads them.
+  - **`packet: true`**: each `specPath` is an approved work packet
+    (`workflows/change-brief.mjs` `workPacket`). The builder implements it
+    directly, within the packet's paths, commands and invariants, instead of
+    running `/ideation:execute-spec`. A scout HOLD is advisory. No stage writes
+    `context-map.md` or implementation notes, because the packet forbids
+    artifacts.
+  - **`hostCommits: true`**: the host registers new files for review, runs the
+    approved checks, stages and commits. Agents never stage. A builder's NO-OP is
+    a claim that review and the host verify. A review PASS that still counts
+    blocking findings is a FAIL. The commit stage is a host boundary whose result
+    may also be `VERIFIED` or `NO-OP`. Phases run one per wave.
+
+  Who passes what: a 0.x contract passes neither, a Claude Code run contract
+  passes `packet` (with `strict`), and Pi's change runner
+  (`workflows/change-run.mjs`) passes both.
 - **`files`** is optional. The `/ideation:autopilot` skill populates it by parsing
   each spec's **File Changes** tables. It declares the paths a phase touches so the
   engine can serialize file-conflicting phases (see below). Omitting it (or `[]`)
