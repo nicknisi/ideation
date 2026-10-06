@@ -28,7 +28,7 @@ independent review. A compact, theme-aware Pi component shows the current stage,
 real progress, and a persistent **contract/receipt link**. Contracts retain
 ideation's paper/graphite-and-cobalt field-guide design, with before/after views,
 SVG dependencies, and deliverable-to-verification maps. No file paths to manage,
-raw JSON dumps, or document-sized approval dialogs. With the optional artifacts service ([`@nicknisi/pi-artifacts`](https://www.npmjs.com/package/@nicknisi/pi-artifacts) 1.5.0+), that same page updates live and
+raw JSON dumps, or document-sized approval dialogs. With the optional artifacts service ([`@nicknisi/pi-artifacts`](https://www.npmjs.com/package/@nicknisi/pi-artifacts) 1.5.2+), that same page updates live and
 annotations reach the coordinating session; without it, a local HTML snapshot
 remains available. With 1.6.0+, the live draft page also offers **Approve in Pi**,
 which only brings up the same terminal confirmation. Feedback never grants permission.
@@ -597,7 +597,7 @@ pi install npm:@nicknisi/pi-artifacts  # optional: live contract pages
 ```
 
 That is all the native `/ideation` change workflow needs (Pi 0.87.1 or newer). Without
-[`@nicknisi/pi-artifacts`](https://www.npmjs.com/package/@nicknisi/pi-artifacts) 1.5.0+,
+[`@nicknisi/pi-artifacts`](https://www.npmjs.com/package/@nicknisi/pi-artifacts) 1.5.2+,
 contracts are saved as local HTML you refresh by hand.
 
 The planning path — interview, critics, contract, autopilot — also calls two tools:
