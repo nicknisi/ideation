@@ -265,7 +265,8 @@ async function build(): Promise<Walkthrough> {
   const verifying = { ...ready, state: 'verifying', activeStage: 'acceptance' };
   const readyFrames = flipbook([verifying, ready], 'ready', 2.6, 'ready widget');
 
-  const toolCall = screen(tui.createChangeToolCall({ action: 'prepare', brief: previous }, theme, helpers), WIDTH, 'tool call');
+  // 1.0 prepares from the plan folder: the host derives the brief with toRunContract.
+  const toolCall = screen(tui.createChangeToolCall({ action: 'prepare', plan: `docs/ideation/${previous.id}` }, theme, helpers), WIDTH, 'tool call');
   const toolResult = screen(
     tui.createChangeToolResult(
       { details: { approved: false, title: previous.title, url: url('proposed') } },

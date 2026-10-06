@@ -1,7 +1,7 @@
 ---
 import Site from '../layouts/Site.astro';
 import InstallBlock from '../components/InstallBlock.astro';
-import ContractPlate from '../components/ContractPlate.astro';
+import PlanPlate from '../components/PlanPlate.astro';
 import Stamp from '../components/Stamp.astro';
 import { readInstall } from '../lib/install';
 import { readGates } from '../lib/gates';
@@ -21,22 +21,22 @@ const PI_STEPS = [
   {
     cmd: '/ideation',
     title: 'Say what should change',
-    body: 'The agent reads your code and asks only what the code cannot answer. Then it prepares a compact brief: before and after, what must hold, and the checks that prove it.',
+    body: 'The agent reads your code, picks a depth (just do it, short plan, interview or map) and says why in one line. Overrule it in a word. It asks only what the code cannot answer.',
   },
   {
-    cmd: 'the contract',
-    title: 'Read it in your browser',
-    body: 'It opens on its own: a dependency map, every check, the exact paths and commands it may use. Comment on anything. Comments are feedback, never permission.',
+    cmd: '/ideation respond',
+    title: 'Answer the plan',
+    body: 'A short plan or an interview opens a plan page, live with pi-artifacts, or a form in the terminal. Each answer becomes the next plan version only after you confirm it. A just-do-it change skips the page.',
   },
   {
     cmd: '/ideation approve',
     title: 'Approve once',
-    body: 'One short confirmation in Pi binds those paths and commands (with pi-artifacts 1.6.0, not yet published, Approve in Pi on the page brings it up too). There is no time or token limit; work starts right away in an isolated worktree on its own branch.',
+    body: 'The plan becomes a contract page with every check and the exact paths and commands. One short confirmation in Pi binds them; the page never approves (with pi-artifacts 1.6.0, not yet published, its Approve in Pi button brings up the same confirmation). Work starts right away in an isolated worktree on its own branch.',
   },
   {
     cmd: 'walk away',
     title: 'Let it work',
-    body: 'Each piece is planned just in time, built, and independently reviewed. The Pi widget and the same contract page update as evidence arrives.',
+    body: 'Each unit is built and independently reviewed, with no time or token limit. The Pi widget and the same contract page update as evidence arrives.',
   },
   {
     cmd: '/ideation accept',
@@ -54,22 +54,22 @@ const STAGES = [
   {
     title: 'Interview',
     body: `${gates.length} gates, each backed by an artifact rather than a confident sentence: the problem, the goals, the success criteria, the scope, and consistency with the code you already have.`,
-    stops: `a gate cannot be evidenced. It keeps asking; generation starts at ${gates.length} of ${gates.length}.`,
+    stops: `a gate cannot be evidenced. It keeps asking; the plan is written at ${gates.length} of ${gates.length}, or says why it stopped early.`,
   },
   {
     title: 'Critique',
     body: 'Four read-only critics — scope creep, over-engineering, hidden dependencies, unfalsifiable criteria — file findings at three severities.',
-    stops: 'a blocker is filed. The plan goes back, and the interview can reopen on that gate.',
+    stops: 'a blocker is filed. The plan is fixed first, and the interview can reopen on that gate.',
   },
   {
-    title: 'Contract',
-    body: 'One document to decide on, plus the specs that will be executed against it and a routing verdict: walk away, watch it run, or run it yourself.',
-    stops: 'always. Nothing proceeds until you approve, and the tier you pick bounds the specs.',
+    title: 'The plan',
+    body: 'plan.json, rendered as a page: claims, the decisions still open with a recommended answer each, checks and units. Your answers come back as the next version.',
+    stops: 'always. Nothing runs until you approve in the terminal; the page itself can never approve.',
   },
   {
     title: 'Execute',
-    body: 'Phases build in waves on an isolation branch, each reviewed before it commits, each commit naming its spec so a resumed run skips it.',
-    stops: 'five ways — including a reviewer that returns no verdict, or a commit that cannot name its files.',
+    body: 'Units build in waves on an isolation branch, each reviewed before it commits, each commit carrying its Ideation-Unit trailer so a resumed run skips it.',
+    stops: 'review still fails after three cycles, a strict run’s reviewer returns no verdict, or a commit cannot name its files.',
   },
   {
     title: 'Harvest',
@@ -94,14 +94,14 @@ const REFUSALS = [
   },
   {
     title: 'No silent edits',
-    body: 'Critics are read-only by construction. Every fold-in lands in the decision log, where you can see the reasoning and reverse it.',
+    body: 'Critics are read-only by construction. A fix that changes the plan lands as a decision on the claim it changes, with the old approach recorded as rejected.',
   },
 ];
 
 const EITHER_WAY = [
   {
     title: 'Approval is the only permission',
-    body: 'Nothing is built before you approve a contract. Comments, questions and silence never count as a yes.',
+    body: 'Nothing is built before you approve a plan in the terminal. Pages, comments, questions and silence never count as a yes.',
   },
   {
     title: 'Evidence, not confidence',
@@ -113,7 +113,7 @@ const EITHER_WAY = [
   },
   {
     title: 'Files you own',
-    body: 'Contracts, specs and receipts are files in docs/ideation/, yours to commit or not. There is no service and no account.',
+    body: 'Plans, their versions, run contracts and receipts are files in docs/ideation/, yours to commit or not. There is no service and no account.',
   },
 ];
 
@@ -123,20 +123,20 @@ const lede = 'max-w-[62ch] text-[1.0625rem] text-muted';
 ---
 
 <Site
-  title="ideation — agree on the contract, then walk away"
-  description="ideation turns what you want into a contract you approve before any code is written. Then your coding agent builds it on its own branch, proves it with checks, and stops for your review. In Pi or Claude Code."
+  title="ideation — agree on the plan, then walk away"
+  description="ideation turns what you want into a plan you answer and approve before any code is written. Then your coding agent builds it on its own branch, proves it with checks, and stops for your review. In Pi or Claude Code."
 >
   <main class="mx-auto max-w-[76rem] px-[clamp(1.25rem,4vw,2.5rem)]">
     <!-- ══════════ Hero ══════════ -->
     <section class="grid items-center gap-10 pt-16 pb-12 min-[960px]:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] max-[700px]:pt-10">
       <div>
         <h1 class="text-[clamp(2.4rem,6vw,4.25rem)] leading-[1.02] tracking-[-0.03em]">
-          <span class="block">Agree on the contract.</span> <span class="block text-accent">Then walk away.</span>
+          <span class="block">Agree on the plan.</span> <span class="block text-accent">Then walk away.</span>
         </h1>
         <p class="mt-6 max-w-[56ch] text-[1.1875rem] leading-[1.6] text-muted">
-          ideation turns what you want into a contract you can read and approve before a line of code
-          is written. Then your coding agent builds it on its own branch, proves it with checks, and
-          stops for your review.
+          One <code class="code">/ideation</code> turns what you want into a plan you can read, answer
+          and approve before a line of code is written, at the depth the work needs. Then your coding
+          agent builds it on its own branch, proves it with checks, and stops for your review.
         </p>
         <p class="mt-6 flex flex-wrap gap-x-5 gap-y-2 font-sans text-[0.9375rem]">
           <a class="link" href="#tracks">Choose your agent ↓</a>
@@ -167,14 +167,14 @@ const lede = 'max-w-[62ch] text-[1.0625rem] text-muted';
         <button type="button" role="tab" id="tab-pi" aria-controls="pi" data-track="pi" class="track-tab">
           <span class="track-label">In Pi</span>
           <span class="track-title">Agree once, walk away.</span>
-          <span class="track-body">A compact change contract, one approval, then a live page that stamps itself ready for review.</span>
-          <span class="track-best">Best when the change is clear enough to state as before and after.</span>
+          <span class="track-body">Plan at the right depth, answer it live, approve once, then a contract page that stamps itself ready for review.</span>
+          <span class="track-best">Best when you want to steer the run: pause, resume, accept or leave from the terminal.</span>
         </button>
         <button type="button" role="tab" id="tab-claude-code" aria-controls="claude-code" data-track="claude-code" class="track-tab">
           <span class="track-label">In Claude Code</span>
-          <span class="track-title">Plan it in depth.</span>
-          <span class="track-body">An evidence-gated interview, four critics, a contract and specs, then one reviewed commit per phase.</span>
-          <span class="track-best">Best when the idea is still messy, or big enough to need phases.</span>
+          <span class="track-title">Plan it, then run it.</span>
+          <span class="track-body">The same depths and plan page, approval in the terminal, then autopilot: one reviewed commit per unit.</span>
+          <span class="track-best">Best in Claude Code, or when a long run should go unattended with /goal.</span>
         </button>
       </div>
 
@@ -258,7 +258,7 @@ const lede = 'max-w-[62ch] text-[1.0625rem] text-muted';
             <h3 class={h3}>Where it lands</h3>
             <ul class="mt-3 grid list-none gap-2 p-0 text-[0.9375rem] text-muted">
               <li>Commits on <code class="code">ideation/&lt;run-id&gt;</code>, in its own worktree. Merging stays yours.</li>
-              <li>The brief, contract and receipt in <code class="code">docs/ideation/&lt;change&gt;/</code>: commit them, or don’t.</li>
+              <li>The plan and its versions, the brief, contract and receipt in <code class="code">docs/ideation/&lt;slug&gt;/</code>: commit them, or don’t.</li>
               <li>Uncommitted work never blocks it. Start from your last commit, or include your changes; it never stashes or edits them.</li>
               <li>Never trapped: <code class="code">/ideation exit</code> stops the run and brings its work into your checkout.</li>
             </ul>
@@ -266,7 +266,7 @@ const lede = 'max-w-[62ch] text-[1.0625rem] text-muted';
           <div class="strip-row grid items-center gap-x-8 gap-y-3 min-[900px]:grid-cols-[minmax(0,1fr)_minmax(0,36rem)]">
             <div>
               <h3 class={h3}>Install</h3>
-              <p class="mt-1.5 text-[0.9375rem] text-muted">Pi 0.87.1 or newer. The second line is optional and makes the contract a live page. Then run <code class="code">/ideation</code>.</p>
+              <p class="mt-1.5 text-[0.9375rem] text-muted">Pi 0.87.1 or newer. The second line is optional and makes plan and contract pages live. Then run <code class="code">/ideation</code>.</p>
             </div>
             <InstallBlock label="pi" lines={install.pi} />
           </div>
@@ -279,21 +279,22 @@ const lede = 'max-w-[62ch] text-[1.0625rem] text-muted';
 
       <!-- ── Claude Code ────────────────────────────────────────────── -->
       <div id="claude-code" role="tabpanel" aria-labelledby="tab-claude-code" data-track-panel="claude-code" class="track-panel scroll-mt-20 pt-12">
-        <h2 class={h2}><span class="mr-3 font-sans text-[0.9375rem] font-semibold tracking-normal text-accent">In Claude Code</span>Plan it in depth.</h2>
+        <h2 class={h2}><span class="mr-3 font-sans text-[0.9375rem] font-semibold tracking-normal text-accent">In Claude Code</span>Plan it, then run it.</h2>
 
         <div class="mt-8 grid items-start gap-10 min-[1000px]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
           <figure class="sheet m-0" data-settle>
-            <div class="sheet-bar"><span>docs/ideation/bookmark-garden/contract.html</span></div>
-            <ContractPlate />
+            <div class="sheet-bar"><span>docs/ideation/bookmark-garden/plan.html</span></div>
+            <PlanPlate />
             <figcaption class="border-t border-line px-4 py-2.5 font-sans text-[0.8125rem] text-muted">
-              The contract, generated at the end of the interview and before any execution.
+              The plan page, rendered from plan.json once the interview ends. You answer it; you approve in the terminal.
             </figcaption>
           </figure>
           <div>
             <p class="text-[1.0625rem]">
-              The interview keeps going until every claim carries evidence. Four adversarial critics read
-              the plan. You get one document to decide on, with specs to execute against it, and then
-              your agent builds it: one reviewed commit per phase, on its own branch.
+              <code class="code">/ideation</code> picks the depth. At the interview depth it keeps going
+              until every gate carries evidence, and four adversarial critics read the plan. You answer its
+              decisions on a page served from your machine, or paste them back. Approve in the terminal, and
+              autopilot builds it: one reviewed commit per unit, on its own branch.
             </p>
             <dl class="mt-6 grid grid-cols-3 gap-4 border-t border-line pt-5">
               <div><dt class="font-sans text-[0.8125rem] text-muted">evidence gates</dt><dd class="m-0 text-[2rem] leading-none font-bold text-accent">{gates.length}</dd></div>
@@ -301,7 +302,7 @@ const lede = 'max-w-[62ch] text-[1.0625rem] text-muted';
               <div><dt class="font-sans text-[0.8125rem] text-muted">stages that can stop it</dt><dd class="m-0 text-[2rem] leading-none font-bold text-accent">{STAGES.length - 1}</dd></div>
             </dl>
             <p class="mt-5 text-[0.9375rem] text-muted">
-              It also runs in Pi: start it with <code class="code">/skill:ideation</code>.
+              The same skill is <code class="code">/ideation</code> in Pi.
             </p>
           </div>
         </div>
@@ -363,12 +364,13 @@ const lede = 'max-w-[62ch] text-[1.0625rem] text-muted';
             <pre class="mt-3 overflow-x-auto font-mono text-[0.78rem] leading-[1.85] text-muted">docs/ideation/
 ├── learnings.md
 └── bookmark-garden/
-    ├── contract.html
-    ├── contract.md
-    ├── contract-data.json
-    ├── spec-phase-1.md …
-    └── verify.mjs</pre>
-            <p class="mt-2 font-sans text-[0.875rem] text-muted">Reviewable files, committed with the code.</p>
+    ├── plan.json          <span class="text-faint"># always the current plan</span>
+    ├── plan.v1.json …     <span class="text-faint"># every earlier version</span>
+    ├── plan.html          <span class="text-faint"># the page you answer</span>
+    ├── run-contract.json  <span class="text-faint"># frozen when you approve</span>
+    ├── unit-&lt;id&gt;.md …     <span class="text-faint"># one work packet per unit</span>
+    └── run-&lt;date&gt;.html    <span class="text-faint"># the run report (+ .json)</span></pre>
+            <p class="mt-2 font-sans text-[0.875rem] text-muted">Reviewable files, yours to commit with the code. In Pi, a change also keeps <code class="code">brief.json</code>, <code class="code">contract.html</code> and its <code class="code">receipt.json</code> here.</p>
           </div>
           <div class="strip-row grid items-start gap-x-8 gap-y-3 min-[900px]:grid-cols-[minmax(0,1fr)_minmax(0,36rem)]">
             <div>
@@ -376,7 +378,7 @@ const lede = 'max-w-[62ch] text-[1.0625rem] text-muted';
               <p class="mt-1.5 text-[0.9375rem] text-muted">Paste both lines together, then run <code class="code">/ideation</code> and describe the messy version of your idea.</p>
               <details class="mt-3 font-sans text-[0.875rem]">
                 <summary class="cursor-pointer text-accent">Running it in Pi instead</summary>
-                <p class="mt-2 text-muted">Install the plugin and the two tools the planning path calls, then run <code class="code">/skill:ideation</code>. Every command here works the same way, as <code class="code">/skill:&lt;name&gt;</code>.</p>
+                <p class="mt-2 text-muted">Install the plugin and the two tools planning calls, then run <code class="code">/ideation</code>. The execution commands here also run as <code class="code">/skill:&lt;name&gt;</code>.</p>
                 <InstallBlock label="pi · planning path" lines={[install.pi[0], ...install.piPlanning]} class="mt-3" />
               </details>
             </div>

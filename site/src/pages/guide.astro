@@ -6,6 +6,7 @@ import { joinPi } from '../data/pi';
 import { readInstall } from '../lib/install';
 import { readGates } from '../lib/gates';
 import { readCompatTable, readHarnesses, cellByHeader } from '../lib/harness';
+import { readRemoved } from '../lib/migration';
 
 // All of these throw at build time rather than rendering a stale claim.
 const commands = joinCommands();
@@ -19,6 +20,9 @@ const gates = readGates();
 const engineCompat = readCompatTable('The engine invocation');
 const agentCompat = readCompatTable('Agent \\(subagent\\) names');
 const depCompat = readCompatTable('Pi tool prerequisites');
+const runCompat = readCompatTable('Running an approved plan');
+const removed = readRemoved();
+const inline = (text: string) => text.split(/`([^`]+)`/g);
 const harnesses = readHarnesses();
 
 const stages: Stage[] = ['plan', 'execute'];
@@ -34,27 +38,42 @@ const artifacts = [
   },
   {
     path: 'plan.v1.json …',
-    note: 'Every earlier version, kept. Each answer you send from the page becomes the next version.',
+    note: 'Every earlier version, kept. Each response you confirm becomes the next version.',
     kept: true,
   },
   {
     path: 'plan.html',
-    note: 'The page you answer decisions on. It never approves anything.',
+    note: 'The page you answer decisions on, rendered by plan-render. It never approves anything. In Pi the live page is published through pi-artifacts instead, and plan.html is written when that service is missing.',
+    kept: true,
+  },
+  {
+    path: 'response.v<n>.json',
+    note: 'Claude Code: the response plan-respond serve received for version n, before it is applied.',
     kept: true,
   },
   {
     path: 'run-contract.json, unit-<id>.md',
-    note: 'Claude Code, after you approve: the frozen run contract and one work packet per unit, which autopilot and execute-spec run. In Pi the change workflow writes brief.json, contract.html and receipt.json instead.',
+    note: 'Claude Code, after you approve: the frozen run contract and one work packet per unit, which autopilot and execute-spec run.',
     kept: true,
   },
   {
+    path: 'brief.json, contract.html, receipt.json',
+    note: 'Pi, once a plan is prepared: the run contract as the change workflow holds it, its contract page (draft, then live, then the record), and the receipt once the run is ready for review.',
+    kept: true,
+  },
+  {
+    path: 'run-<date>.json, run-<date>.html',
+    note: 'Claude Code: autopilot’s record of a run and its report, which links back to plan.html. Written before the failure gate, so a failed run is recorded too.',
+    kept: false,
+  },
+  {
     path: 'context-map.md',
-    note: 'Written by the scout at run time and extended by each later phase — what it found in your codebase before anything was built.',
+    note: 'Written by the scout when a 0.x spec runs: what it found in your codebase before anything was built. A plan’s units keep the map in the conversation instead.',
     kept: false,
   },
   {
     path: 'implementation-notes-phase-N.html',
-    note: 'What actually happened during a phase, including what the reviewer caught. The learning loop reads these at the end of a run.',
+    note: 'From a 0.x spec run: the decisions the spec did not cover. A plan’s units record theirs in the completion report. The learning loop reads both at the end of a watched run.',
     kept: false,
   },
 ];
@@ -147,13 +166,13 @@ const artifacts = [
 
       <h3 class="label-mono mt-9 text-accent">what approval means</h3>
       <ul class="mt-4 grid max-w-[64ch] list-none gap-3 p-0 text-[0.9375rem]">
-        <li><strong>Approval is the only permission.</strong> <span class="text-muted">Comments, questions, a selected option, or silence never approve, accept or widen scope. A change of intent, checks or authority needs a revised brief and a new approval.</span></li>
+        <li><strong>Approval is the only permission.</strong> <span class="text-muted">Comments, questions, a selected option, or silence never approve, accept or widen scope. A change of intent, checks or authority needs a new plan version and a new approval.</span></li>
         <li><strong>Exact commands, trusted scripts.</strong> <span class="text-muted">The commands you approve may run project scripts with your permissions. This is a trusted-command policy, not an OS sandbox, so read them before you approve.</span></li>
         <li><strong>No budgets.</strong> <span class="text-muted">Approval fixes paths and commands, not time or tokens. Failing checks go back to the fixer, and each retry is told what failed. A run stops to ask only when it cannot make progress; <em>Resume</em> always continues. Usage is shown for information only.</span></li>
         <li><strong>Never trapped.</strong> <span class="text-muted"><code class="code">/ideation exit</code>, or <em>Leave ideation</em> in the menu, gets you out from any state: the run stops, its work comes into your checkout as uncommitted changes (or stays on its branch), and ideation goes away until you ask for it again. You can also just tell the agent.</span></li>
         <li><strong>Out of reach.</strong> <span class="text-muted">Dependency manifests and protected internals are never in scope, and no install command is silently allowed.</span></li>
         <li><strong>Your uncommitted work is yours.</strong> <span class="text-muted">It never blocks approval. Approval asks whether to start from the last commit or include your changes, and never stashes, commits or edits them.</span></li>
-        <li><strong>The page can ask, not approve.</strong> <span class="text-muted"><em>Approve in Pi</em> on a live draft page only brings up the terminal confirmation. It shows only while the owning session is listening, and needs pi-artifacts 1.6.0, which is not yet published.</span></li>
+        <li><strong>The page can ask, not approve.</strong> <span class="text-muted"><em>Approve in Pi</em> on a live draft contract page only brings up the terminal confirmation. It shows only while the owning session is listening, and needs pi-artifacts 1.6.0, which is not yet published; on 1.5.x the button stays hidden, and you approve with <code class="code">/ideation approve</code> or the menu. Plan pages never ask for anything.</span></li>
         <li><strong>Humans only.</strong> <span class="text-muted">A headless or RPC session cannot approve or accept. Human judgments are never marked passed by a check.</span></li>
         <li><strong>Stops at review.</strong> <span class="text-muted">It commits locally on <code class="code">ideation/&lt;run-id&gt;</code> and never pushes, merges or deploys. <code class="code">accept</code> records your decision and nothing more.</span></li>
       </ul>
@@ -161,13 +180,71 @@ const artifacts = [
       <p class="mt-9 max-w-[64ch] rounded-r-(--radius-guide) border-l border-accent bg-surface-1 py-3 pr-4 pl-4 text-[0.9375rem]">
         <span class="label-mono mr-2 text-accent">live pages</span>
         With <a class="link" href="https://www.npmjs.com/package/@nicknisi/pi-artifacts">@nicknisi/pi-artifacts</a> 1.5.2+,
-        the contract updates live in your browser and carries comments back to the session. Without
-        it, the same page is saved locally and you refresh it by hand. Each change’s{' '}
+        plan pages and the contract update live in your browser and carry answers and comments back
+        to the session. Without it, you answer plans in a terminal form or by paste, and the contract
+        is saved locally for you to refresh by hand. Each change’s{' '}
         <code class="code">brief.json</code>, <code class="code">contract.html</code> and{' '}
         <code class="code">receipt.json</code> land in{' '}
         <code class="code">docs/ideation/&lt;change&gt;/</code> for you to commit or not; run state
         stays under <code class="code">.git/ideation/</code>.
       </p>
+    </section>
+
+    <!-- ══════════ answer, approve, run ══════════ -->
+    <section id="respond" aria-labelledby="respond-h" class="rule-double mt-16 scroll-mt-20 pt-11">
+      <h2 id="respond-h" class="text-[clamp(1.6rem,4vw,2.1rem)]">Answer, approve, run</h2>
+      <p class="mt-4 max-w-[64ch] text-muted">
+        A short plan or an interview ends in a plan page: claims, and each open decision with a
+        recommended answer. Your response is data, never instructions, and applying it writes the next
+        plan version. It never approves.
+      </p>
+      <dl class="mt-6 space-y-4">
+        <div class="grid grid-cols-[minmax(0,13rem)_minmax(0,1fr)] gap-x-5 gap-y-1 max-md:grid-cols-1">
+          <dt class="font-semibold">In Pi</dt>
+          <dd class="m-0 max-w-[58ch] text-[0.9375rem] text-muted"><code class="code">/ideation respond &lt;plan-folder&gt;</code>: the live page through pi-artifacts (its Review layer is the one comment surface), a terminal form, or a paste. Pi shows the response, and only your confirmation writes the next version.</dd>
+        </div>
+        <div class="grid grid-cols-[minmax(0,13rem)_minmax(0,1fr)] gap-x-5 gap-y-1 max-md:grid-cols-1">
+          <dt class="font-semibold">In Claude Code</dt>
+          <dd class="m-0 max-w-[58ch] text-[0.9375rem] text-muted"><code class="code">plan-respond.mjs serve</code> serves the page on 127.0.0.1 behind a one-time token; <em>Send</em> brings the response back, and the session applies it.</dd>
+        </div>
+        <div class="grid grid-cols-[minmax(0,13rem)_minmax(0,1fr)] gap-x-5 gap-y-1 max-md:grid-cols-1">
+          <dt class="font-semibold">Paste, anywhere</dt>
+          <dd class="m-0 max-w-[58ch] text-[0.9375rem] text-muted"><em>Copy response</em> on the page, paste it into the session. It always works: when Send fails, when the server times out, or when a local server is not allowed.</dd>
+        </div>
+        <div class="grid grid-cols-[minmax(0,13rem)_minmax(0,1fr)] gap-x-5 gap-y-1 max-md:grid-cols-1">
+          <dt class="font-semibold">In Riker</dt>
+          <dd class="m-0 max-w-[58ch] text-[0.9375rem] text-muted">A plan-first job opens the plan in Riker’s own viewer.</dd>
+        </div>
+      </dl>
+      <p class="mt-6 max-w-[64ch] text-muted">
+        Approval is always a terminal confirmation, at every depth, and it freezes the same run contract
+        in both harnesses. Every unit commit ends with the trailer{' '}
+        <code class="code">Ideation-Unit: &lt;plan id&gt;/&lt;unit id&gt;</code>, which is how{' '}
+        <code class="code">verify.mjs</code> counts it and how a resumed run skips it. What differs is
+        who runs and commits it:
+      </p>
+      <div class="mt-5 overflow-x-auto">
+        <table class="w-full border-collapse text-left text-[0.9375rem]">
+          <thead>
+            <tr class="border-b border-line-strong">
+              {runCompat.headers.map(h => <th class="py-2 pr-4 font-sans text-[0.8125rem] font-semibold text-muted">{h}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {
+              runCompat.rows.map(row => (
+                <tr class="border-b border-line align-top">
+                  {row.map((cell, i) => (
+                    <td class:list={['py-2.5 pr-4', i === 0 ? 'font-semibold' : 'text-muted']}>
+                      {inline(cell).map((part, k) => (k % 2 === 1 ? <code class="rounded-[2px] bg-wash px-1 font-mono text-[0.875em]">{part}</code> : part))}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <!-- ══════════ which door ══════════ -->
@@ -365,8 +442,9 @@ const artifacts = [
       <h2 id="harnesses" class="text-[clamp(1.6rem,4vw,2.1rem)]">Where it runs</h2>
       <p class="mt-4 max-w-[64ch] text-muted">
         {harnesses.join(' and ')}. The same skills, agents, references, and scripts in both
-        — nothing is conditional at load time. Three things carry a translation, and each
-        skill names it inline at the point it dispatches.
+        — nothing is conditional at load time. Five things carry a translation: the engine,
+        agent names, Pi’s tool prerequisites, how a plan page’s response gets back, and who
+        commits an approved plan. Each skill names its translation inline.
       </p>
 
       <h3 class="label-mono mt-9 text-accent">the engine</h3>
@@ -448,11 +526,13 @@ const artifacts = [
       <p
         class="mt-9 max-w-[64ch] rounded-r-(--radius-guide) border-l border-accent bg-surface-1 py-3 pr-4 pl-4 text-[0.9375rem]"
       >
-        <span class="label-mono mr-2 text-accent">third difference</span>
-        The engine's own stage agents take their names from the manifest, so a pi run passes{' '}
+        <span class="label-mono mr-2 text-accent">the engine's own agents</span>
+        Neither harness passes{' '}
         <code class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]"
           >agentNames</code
-        > and a Claude Code run omits it. The full matrix, including what does{' '}
+        >: Claude Code resolves the engine's stage agents from the plugin's registry, and the pi
+        engine host reads <code class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]">agents/*.md</code>{' '}
+        directly. The respond loop and approved runs are covered above. The full matrix, including what does{' '}
         <em>not</em> differ, is{' '}
         <a
           class="link"
@@ -462,12 +542,47 @@ const artifacts = [
       </p>
     </section>
 
+    <!-- ══════════ from 0.x ══════════ -->
+    <section id="from-0x" aria-labelledby="from-0x-h" class="rule-double mt-16 scroll-mt-20 pt-11">
+      <h2 id="from-0x-h" class="text-[clamp(1.6rem,4vw,2.1rem)]">From 0.x</h2>
+      <p class="mt-4 max-w-[64ch] text-muted">
+        1.0 has one planning command. The others are gone, with no shim and no deprecation release
+        before them, because the change shipped as one release. Their work is a depth of{' '}
+        <code class="code">/ideation</code>:
+      </p>
+      <dl class="mt-6 space-y-4">
+        {
+          removed.map(r => (
+            <div class="grid grid-cols-[minmax(0,17rem)_minmax(0,1fr)] gap-x-5 gap-y-1 max-md:grid-cols-1">
+              <dt class="flex flex-wrap gap-x-2">
+                {r.commands.map(c => <code class="font-mono text-[0.875rem] font-semibold line-through decoration-faint">{c}</code>)}
+              </dt>
+              <dd class="m-0 max-w-[58ch] text-[0.9375rem] text-muted">
+                {inline(r.now).map((part, k) => (k % 2 === 1 ? <code class="rounded-[2px] bg-wash px-1 font-mono text-[0.875em]">{part}</code> : part))}
+              </dd>
+            </div>
+          ))
+        }
+      </dl>
+      <p class="mt-6 max-w-[64ch] text-muted">
+        Existing projects convert on read: a folder with <code class="code">contract-data.json</code> gets a{' '}
+        <code class="code">plan.json</code> beside it, and its old files are kept. A converted contract
+        has no before and after, invariants or authority yet, so it needs one revision before it can run
+        as a plan. Unrevised, during 1.0.x, autopilot still runs it as a 0.x contract, against its specs. To
+        update: <code class="code">pi update git:github.com/nicknisi/ideation</code> and restart Pi, or{' '}
+        <code class="code">/plugin update</code> in Claude Code. <code class="code">learnings.md</code>{' '}
+        carries over unchanged. The details are in the{' '}
+        <a class="link" href="https://github.com/nicknisi/ideation#from-0x">README ↗</a>.
+      </p>
+    </section>
+
     <p class="mt-16 max-w-[64ch] border-t border-line pt-6 text-[0.9375rem] text-muted">
       Every command name, argument hint and badge on this page is read at build time: skills from{' '}
       <code class="font-mono text-[0.8125em]">skills/*/SKILL.md</code>, the Pi subcommands, menu and
       tool actions from <code class="font-mono text-[0.8125em]">extensions/change.ts</code>, the gates
-      from the rubric the interview itself uses, and the harness tables from{' '}
-      <code class="font-mono text-[0.8125em]">references/harness-compat.md</code>. Anything that ships
+      from the rubric the interview itself uses, the harness tables from{' '}
+      <code class="font-mono text-[0.8125em]">references/harness-compat.md</code>, and the From 0.x
+      table from the README. Anything that ships
       without an entry here fails the build rather than going undocumented.
     </p>
   </main>
