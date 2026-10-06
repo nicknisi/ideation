@@ -14,8 +14,7 @@
  * that misstates a run is worse than no report, because the reader calibrates
  * how much to trust the next unattended run on it.
  *
- * Sibling of contract-gen.ts and deliberately dumber than it: render input →
- * output, overwrite allowed. Phase 2 re-renders the same path after
+ * Deliberately dumb: render input → output, overwrite allowed. Phase 2 re-renders the same path after
  * verification runs, so there is no lineage or rename machinery here and no
  * --force — filename choice belongs to the caller.
  */
@@ -578,7 +577,28 @@ function runStamp(f: Facts): { cls: string; label: string } {
     band's contract link at the foot of the page is too late to orient the
     reader (a project literally named "Run Report" proved the masthead alone
     reads as tautology). */
-function ledeFor(d: RunRecord, f: Facts): string {
+/** The page that shows what this run executed, beside the report: plan.html,
+    rendered from plan.json by scripts/plan-render.ts. A run of a migrated 0.x
+    folder may only have its old contract.html; then that page is linked, and
+    the report says it is the 0.x contract rather than the plan. */
+interface PlanPage {
+  href: 'plan.html' | 'contract.html';
+  noun: 'plan' | 'contract';
+  meta: string;
+}
+
+function planPageBeside(dir: string): PlanPage {
+  if (!existsSync(join(dir, 'plan.html')) && existsSync(join(dir, 'contract.html'))) {
+    return {
+      href: 'contract.html',
+      noun: 'contract',
+      meta: 'the 0.x contract this run executed; this folder has no plan.html',
+    };
+  }
+  return { href: 'plan.html', noun: 'plan', meta: 'the plan this run executed' };
+}
+
+function ledeFor(d: RunRecord, f: Facts, page: PlanPage): string {
   const total = f.phases.length;
   const parts = [
     `<strong>${f.completed} of ${total} ${plural(total, 'phase')} completed</strong>`,
@@ -592,10 +612,10 @@ function ledeFor(d: RunRecord, f: Facts): string {
   const findings = f.findingsCount
     ? ` ${f.findingsCount} reviewer ${plural(f.findingsCount, 'finding')} ${plural(f.findingsCount, 'is', 'are')} recorded below.`
     : ' No reviewer findings were recorded.';
-  return `Execution record of the <a href="contract.html">${esc(d.projectName)} contract</a>: ${parts.join(', ')}.${review}${findings}`;
+  return `Execution record of the <a href="${page.href}">${esc(d.projectName)} ${page.noun}</a>: ${parts.join(', ')}.${review}${findings}`;
 }
 
-function buildMasthead(d: RunRecord, f: Facts): string {
+function buildMasthead(d: RunRecord, f: Facts, page: PlanPage): string {
   const stamp = runStamp(f);
   return `
     <header class="band masthead" id="top">
@@ -626,7 +646,7 @@ function buildMasthead(d: RunRecord, f: Facts): string {
             </button>
           </div>
         </div>
-        <p class="masthead-lede">${ledeFor(d, f)}</p>
+        <p class="masthead-lede">${ledeFor(d, f, page)}</p>
 ${buildFlightStrip(d, f)}
       </div>
     </header>`;
@@ -957,12 +977,12 @@ function closeAdvice(f: Facts): { head: string; body: string } {
   };
 }
 
-function buildClose(d: RunRecord, f: Facts, recordPath: string): string {
+function buildClose(d: RunRecord, f: Facts, recordPath: string, page: PlanPage): string {
   // Relative hrefs only: a report lives in the project directory next to the
-  // contract and the notes it points at, and is opened over file:// where an
+  // plan page and the notes it points at, and is opened over file:// where an
   // absolute path from the generating machine would be a dead link.
   const links = [
-    `        <li><a href="contract.html">contract.html</a><span class="meta">the plan this run executed</span></li>`,
+    `        <li><a href="${page.href}">${page.href}</a><span class="meta">${page.meta}</span></li>`,
     ...d.notesFiles.map(
       n =>
         `        <li><a href="${esc(n)}">${esc(n)}</a><span class="meta">implementation notes</span></li>`,
@@ -1077,7 +1097,7 @@ const CLIENT_JS = String.raw`
 })();
 `;
 
-function generate(d: RunRecord, f: Facts, recordPath: string): string {
+function generate(d: RunRecord, f: Facts, recordPath: string, page: PlanPage): string {
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -1098,12 +1118,12 @@ ${CSS}
     </style>
   </head>
   <body data-run-outcome="${esc(runStamp(f).label)}">
-${buildMasthead(d, f)}
+${buildMasthead(d, f, page)}
     <main>
 ${buildWarnings(f)}
 ${buildPhases(f)}
 ${buildVerification(d)}
-${buildClose(d, f, recordPath)}
+${buildClose(d, f, recordPath, page)}
     </main>
     <script>${CLIENT_JS}</script>
   </body>
@@ -1205,7 +1225,7 @@ if (outputDir && !existsSync(outputDir)) {
 // same numbers, so they cannot disagree about the run they describe.
 const f = deriveFacts(record);
 
-const html = generate(record, f, recordPath);
+const html = generate(record, f, recordPath, planPageBeside(outputDir || '.'));
 writeFileSync(outputPath, html, 'utf8');
 console.log(`Generated ${outputPath} (${html.length} bytes)`);
 
