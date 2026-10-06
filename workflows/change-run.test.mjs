@@ -10,7 +10,7 @@ import { createChangeRunner } from './change-run.mjs';
 const exec = promisify(execFile);
 const ok = data => ({ ok: true, data, usage: { totalTokens: 1 } });
 const brief = {
-  schemaVersion: 1, id: 'change', title: 'Change', revision: 1, executionMode: 'strict',
+  schemaVersion: 1, id: 'change', title: 'Change', revision: 1, why: 'Because it matters', executionMode: 'strict',
   authority: { paths: ['src/'], commands: ['test'], allowLocalCommit: true, maxDurationMs: 60000, maxStageMs: 1000, maxTokens: 100, maxAttempts: 2, maxReviewCycles: 2, maxTurns: 10, maxToolCalls: 10 },
   acceptance: [{ id: 'test', criterion: 'works', check: { cmd: 'test' } }, { id: 'human', criterion: 'usable', check: { judgment: 'Inspect UI' } }],
   units: [{ id: 'one', title: 'One', needs: [], acceptanceIds: ['test', 'human'], risk: 'low' }],
@@ -278,20 +278,54 @@ test('run-changed events carry what observers such as Riker read', async t => {
   await new Promise(resolve => setTimeout(resolve, 20));
   assert.ok(events.length > 0);
   assert.ok(events.every(event => event.type === 'ideation:v1:run-changed'));
+  // The run and unit state names Riker maps to its own statuses.
+  assert.deepEqual([...new Set(events.map(event => event.run.state))], ['ready', 'running', 'verifying', 'ready-for-review']);
+  assert.deepEqual([...new Set(events.flatMap(event => event.run.units.map(u => u.state)))], ['ready', 'running', 'completed']);
   const last = events.at(-1).run;
   assert.equal(last.id, approved.id);
+  assert.match(last.id, /^[\w.-]+$/);
   assert.equal(last.state, 'ready-for-review');
   assert.equal(typeof last.repoRoot, 'string');
   assert.match(last.branch, /^ideation\//);
   assert.equal(typeof last.workspace, 'string');
   assert.equal(typeof last.baseRevision, 'string');
-  assert.ok(last.attention === null || typeof last.attention.message === 'string');
+  assert.equal(typeof last.attention.message, 'string');
   assert.deepEqual(Object.keys(last.units[0]).filter(k => ['id', 'title', 'state', 'attempts'].includes(k)).sort(), ['attempts', 'id', 'state', 'title']);
+  assert.deepEqual([last.units[0].id, last.units[0].title, last.units[0].state, last.units[0].attempts], ['one', 'One', 'completed', 1]);
   assert.equal(last.brief.id, brief.id);
   assert.equal(last.brief.title, brief.title);
+  assert.equal(last.brief.why, brief.why);
   assert.deepEqual(last.brief.units.map(u => ({ id: u.id, needs: u.needs })), [{ id: 'one', needs: [] }]);
   assert.deepEqual(last.brief.acceptance.map(a => [a.id, a.criterion, a.check.cmd ?? null, a.check.judgment ?? null]), [['test', 'works', 'test', null], ['human', 'usable', null, 'Inspect UI']]);
   // An observer gets a copy: changing it changes nothing in the run.
   last.state = 'cancelled';
   assert.equal((await f.runner.status(approved.id)).state, 'ready-for-review');
+  await f.runner.accept(approved.id);
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(events.at(-1).run.state, 'accepted');
+
+  // A run that stops to ask: Riker shows it waiting, with the failed unit's attempts and why it stopped.
+  const stuck = [];
+  const g = await fixture(t, { onEvent: event => stuck.push(event), workspace: { commitWorkspace: async () => { throw new Error('hook rejected'); } } });
+  await g.runner.start((await g.runner.approve('brief.json')).id);
+  await new Promise(resolve => setTimeout(resolve, 20));
+  const stopped = stuck.at(-1).run;
+  assert.equal(stopped.state, 'needs-decision');
+  assert.equal(stopped.units[0].state, 'failed');
+  assert.equal(stopped.units[0].attempts, 2);
+  assert.equal(typeof stopped.attention.message, 'string');
+
+  // A stopped run passes through cancelling to cancelled.
+  const stopping = [];
+  let entered, settle;
+  const enteredPromise = new Promise(resolve => { entered = resolve; });
+  const child = new Promise(resolve => { settle = resolve; });
+  const h = await fixture(t, { onEvent: event => stopping.push(event), spawn: async () => { entered(); await child; return ok({ plan: 'plan' }); } });
+  const running = h.runner.start((await h.runner.approve('brief.json')).id); await enteredPromise;
+  const stop = h.runner.stop(stopping.at(-1).run.id);
+  await new Promise(resolve => setTimeout(resolve, 20));
+  settle(); await stop; await running;
+  await new Promise(resolve => setTimeout(resolve, 20));
+  const states = stopping.map(event => event.run.state);
+  assert.ok(states.indexOf('cancelling') !== -1 && states.indexOf('cancelling') < states.lastIndexOf('cancelled'), states.join(' → '));
 });
