@@ -23,6 +23,11 @@ import vm from 'node:vm';
 const STRIP_META = /export\s+const\s+meta\s*=/;
 
 /** Compile the engine script body into a callable with injected globals. */
+/** Bumped when the runner/host hook contract changes. The runner checks it so a
+ * Pi process holding an older copy of this module says "restart Pi" instead of
+ * refusing every stage. */
+export const HOST_HOOKS = 1;
+
 export function loadEngine(scriptSrc) {
   const stripped = scriptSrc.replace(STRIP_META, 'const meta =');
   const wrapped = `(async function(args, agent, parallel, phase, log){\n${stripped}\n})`;

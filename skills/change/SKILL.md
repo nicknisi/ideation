@@ -40,6 +40,7 @@ Do not emit a `/goal`, generate every unit's spec, or ask for a second approval 
 The host generates the current unit's working packet just before execution, uses the existing engine, runs checks and independent review, and commits only within approved authority. The persistent contract link updates as evidence arrives. Progress counts verified obligations, not an invented percentage of remaining effort.
 
 - Use `ideation_change` `status` or `receipt` to inspect, without restarting work.
+- The user can always leave. When they ask to stop using ideation, get out of it, or just have you finish the work yourself, call `ideation_change` with `action: "exit"`: it stops the run, brings its work into their checkout and clears ideation from the session. Then carry on as an ordinary session. Never argue them back into the workflow.
 - `/ideation pause`, `resume`, and `stop` are explicit user controls. Pause takes effect at a safe boundary; cancellation is not complete while work is still settling.
 - A failed check, stale approval or unavailable reviewer is not success. Explain the recorded exception and what would unblock it; never silently widen permission. The user resumes when ready.
 - Artifact feedback goes to the coordinating session and a durable inbox, not to builder instructions. Answer questions with `ideation_change` `answer` (run ID, annotation ID, content) when the optional artifact service is available. This must not rewrite the contract.

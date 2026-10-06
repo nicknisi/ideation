@@ -40,16 +40,19 @@ Pi application is current.
    deployment or external publication happens automatically.
 
 The explicit `plan`, `approve`, `status`, `review`, `pause`, `resume`, `stop`,
-`accept` and `motion` subcommands remain available; run controls take an optional
-run ID. An explicit brief path remains supported for
+`accept`, `exit` and `motion` subcommands remain available; run controls take an
+optional run ID. `/ideation <tab>` completes subcommands, then `motion on|off` and
+run IDs. An explicit brief path remains supported for
 power users. Pause waits for a safe boundary; stop waits for owned processes to
 settle. Blocked runs can be set aside without deleting their work.
 
 There are no time, token or attempt budgets. A run keeps going until it is ready for
-review, until you pause or stop it, or until it is stuck and stops to ask: the same
-check failing twice, a review that still fails after the engine's review/fix rounds,
-another error it cannot recover from (a commit hook rejecting the commit, say), or
-the model provider still failing after a few spaced retries. **Resume** always
+review or you pause, stop or leave it. When checks fail, their output goes to the
+fixer as findings, and every new attempt is told what went wrong last time. A scout's
+doubts about an approved brief are handed to the builder instead of stopping the run.
+It stops to ask only when it cannot make progress: an attempt that changed nothing and
+failed exactly as before, three attempts in a row ending on the same failure, or a
+model provider that keeps failing after spaced retries. **Resume** always
 continues the same run in the same worktree. **Start fresh (new approval)** reuses the
 agreement as a new revision in a new worktree; only after that approval is the prior
 run set aside, and its worktree and work are retained. Token and cost usage are
@@ -77,10 +80,32 @@ afterwards. Local artifact previews and the change's own `docs/ideation/` files 
 never treated as your uncommitted work.
 
 Headless sessions cannot approve or accept. The model tool exposes only `prepare`,
-`status`, `receipt`, `feedback`, and `answer`. Human artifact feedback is persisted
+`status`, `receipt`, `feedback`, `answer` and `exit`. Human artifact feedback is persisted
 before a parent/coordinator follow-up. Model-authored feedback is inbox-only, avoiding
 self-directed follow-up loops. Neither is permission or inserted into builder
 instructions. Changed scope requires new explicit approval.
+
+## Leaving ideation
+
+You are never stuck in it. `/ideation exit` — or **Leave ideation**, always in the
+`/ideation` menu — works from any state:
+
+- a working run is stopped;
+- if the run changed anything, you choose to **bring the work into your checkout**
+  (its commits, uncommitted edits and new files arrive as ordinary uncommitted
+  changes) or **keep it on its branch**; a patch that does not apply cleanly writes
+  nothing and the work stays on the branch;
+- the exact final state is kept under `refs/ideation/<run-id>/exit`, and the worktree
+  is removed only after the work applied cleanly;
+- the widget and status link go away, and a left run or draft never comes back on its
+  own. The next `/ideation` starts something new.
+
+You can also just tell the agent to leave ideation; the `ideation_change` tool's `exit`
+action does the same and brings the work over.
+
+After updating ideation, quit and restart Pi: `/reload` does not refresh every module.
+A run that says Pi is running an out-of-date copy of ideation is telling you exactly
+that; nothing is lost, and Resume works after the restart.
 
 ## Trust and durability
 

@@ -12,7 +12,7 @@ const waitFor = async fn => {
   for (let n = 0; n < 500; n++) { if (await fn()) return; await new Promise(r => setTimeout(r, 10)); }
   throw new Error('Timed out waiting for boundary');
 };
-async function fixture(t, { noop = false, lie = false, multi = false, maxAttempts = 1, block, reviewFail = false, reviewBlocking = 0, checkFail = false } = {}) {
+async function fixture(t, { noop = false, lie = false, multi = false, maxAttempts = 1, block, reviewFail = false, reviewBlocking = 0, checkFail = false, scoutHold = false, fixWorks = false } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'native-integrated-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const git = async (cwd, ...args) => (await exec('git', ['-C', cwd, ...args])).stdout.trim();
@@ -29,13 +29,13 @@ async function fixture(t, { noop = false, lie = false, multi = false, maxAttempt
     authority: { paths: ['src/'], commands: [cmd], maxAttempts, maxDurationMs: 60000, maxStageMs: 10000 } };
   await writeFile(join(root, 'brief.json'), JSON.stringify(brief));
   await git(root, 'add', '.'); await git(root, 'commit', '-m', 'baseline');
-  const stages = [];
+  const stages = [], prompts = [];
   const spawn = async opts => {
-    stages.push(opts.agent);
+    stages.push(opts.agent); prompts.push([opts.agent, opts.prompt]);
     assert.ok(opts.cwd); assert.ok(opts.outputSchema); assert.equal(opts.extensionPaths.length, 1);
     await block?.(opts);
     if (opts.agent.startsWith('plan:')) return ok({ plan: 'Read and implement the unit within scope' });
-    if (opts.agent.startsWith('scout:')) return ok({ verdict: 'GO', contextMap: 'src/value is the target' });
+    if (opts.agent.startsWith('scout:')) return ok(scoutHold ? { verdict: 'HOLD', notReadyGates: ['success-criteria'], contextMap: 'src/value is the target' } : { verdict: 'GO', contextMap: 'src/value is the target' });
     if (opts.agent.startsWith('build:')) {
       assert.doesNotMatch(opts.prompt, /\/ideation:execute-spec|write verbatim|git add -N/);
       if (!noop) await writeFile(join(opts.cwd, 'src', 'value'), checkFail ? 'broken' : 'done');
@@ -46,13 +46,17 @@ async function fixture(t, { noop = false, lie = false, multi = false, maxAttempt
       await git(opts.cwd, 'diff', 'HEAD');
       return ok({ verdict: reviewFail ? 'FAIL' : 'PASS', blocking: reviewBlocking, findings: reviewBlocking ? ['high/logic src/value:1 — blocking finding'] : [], summary: 'Independently inspected src/value: it satisfies the packet, including when unchanged.' });
     }
-    if (opts.agent.startsWith('fix:')) return ok({ result: 'FAIL', summary: 'Cannot resolve finding' });
+    if (opts.agent.startsWith('fix:')) {
+      if (!fixWorks) return ok({ result: 'FAIL', summary: 'Cannot resolve finding' });
+      await writeFile(join(opts.cwd, 'src', 'value'), 'done');
+      return ok({ result: 'FIXED', summary: 'Set the value the check expects', carried: [] });
+    }
     throw new Error(`Unexpected child stage ${opts.agent}`);
   };
   const config = { repoRoot: root, pluginRoot: resolve('.'), spawn };
   const runner = createChangeRunner(config);
   t.after(() => runner.dispose());
-  return { root, runner, config, stages, git };
+  return { root, runner, config, stages, prompts, git };
 }
 
 test('real engine + brief + workspace: host commit, durable review receipt, checks and immutable acceptance', async t => {
@@ -262,4 +266,36 @@ test('leaving without bringing the work keeps it on its branch and worktree', as
   assert.equal(await readFile(join(f.root, 'src', 'value'), 'utf8'), 'before', 'your checkout is untouched');
   assert.equal(await readFile(join(r.workspace, 'src', 'value'), 'utf8'), 'done');
   assert.equal(await f.git(f.root, 'rev-parse', '--verify', `refs/heads/${r.branch}`) !== '', true);
+});
+
+test('a failing check goes back to the fixer with its output, and the run carries on to review', async t => {
+  const f = await fixture(t, { checkFail: true, fixWorks: true });
+  const a = await f.runner.approve('brief.json');
+  const r = await f.runner.start(a.id);
+  assert.equal(r.state, 'ready-for-review', r.attention?.message);
+  assert.equal(r.units[0].attempts, 1, 'fixed inside the first attempt');
+  const fix = f.prompts.find(([agent]) => agent.startsWith('fix:'));
+  assert.ok(fix, 'the fixer ran'); assert.match(fix[1], /Check \\?"works\\?" failed/);
+  assert.ok(f.stages.indexOf('review:One#2') > f.stages.findIndex(s => s.startsWith('fix:')), 'the real reviewer runs once the checks pass');
+});
+
+test('a scout HOLD does not stop an approved run', async t => {
+  const f = await fixture(t, { scoutHold: true });
+  const a = await f.runner.approve('brief.json');
+  const r = await f.runner.start(a.id);
+  assert.equal(r.state, 'ready-for-review', r.attention?.message);
+  assert.ok(f.stages.some(s => s.startsWith('build:')));
+});
+
+test('a retry is told what failed; a run that cannot make progress says so plainly', async t => {
+  const f = await fixture(t, { checkFail: true });
+  const a = await f.runner.approve('brief.json');
+  const r = await f.runner.start(a.id);
+  assert.equal(r.state, 'needs-decision');
+  const plans = f.prompts.filter(([agent]) => agent.startsWith('plan:'));
+  assert.ok(plans.length >= 2, 'it tried again');
+  assert.doesNotMatch(plans[0][1], /previous attempt/);
+  assert.match(plans[1][1], /The previous attempt at this unit did not pass/);
+  assert.match(plans[1][1], /test "\$\(cat src\/value\)" = done/);
+  assert.match(r.attention.message, /the check “works” kept failing the same way\. Resume to keep trying, or choose Leave ideation/);
 });

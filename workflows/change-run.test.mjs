@@ -91,11 +91,12 @@ test('a changed approval fails closed; a moved HEAD cannot change the approved s
 
 test('resume rejects an amended brief without resetting attempts', async t => {
   const f = await fixture(t, { engine: async () => ({ results: [] }) });
-  const a = await f.runner.approve('brief.json'); await f.runner.start(a.id);
+  const a = await f.runner.approve('brief.json'); const first = await f.runner.start(a.id);
+  assert.equal(first.units[0].attempts, 2, 'one more try, then stuck: the second changed nothing and failed the same way');
   await writeFile(join(f.root, 'brief.json'), JSON.stringify({ ...brief, title: 'Amended' }));
   const r = await f.runner.resume(a.id);
   assert.equal(r.state, 'needs-decision'); assert.match(r.attention.message, /Approved brief changed/);
-  assert.equal(r.units[0].attempts, 1);
+  assert.equal(r.units[0].attempts, 2);
 });
 
 test('missing reviewer and missing evidence cannot complete', async t => {
@@ -114,14 +115,15 @@ test('a failing hook stops to ask; reload does nothing on its own, and every exp
   const f = await fixture(t, { workspace: { commitWorkspace: async () => { throw new Error('hook rejected'); } } });
   const r = await f.runner.approve('brief.json');
   const failed = await f.runner.start(r.id); assert.equal(failed.state, 'needs-decision');
-  assert.equal(failed.units[0].attempts, 1);
+  assert.equal(failed.units[0].attempts, 2, 'it tries again once before calling it stuck');
+  assert.match(failed.attention.message, /Resume to keep trying, or choose Leave ideation/);
   const count = f.calls.length;
   const reload = createChangeRunner({ repoRoot: f.root, pluginRoot: f.root, spawn: f.spawn, dependencies: f.dependencies });
   t.after(() => reload.dispose());
-  assert.equal((await reload.status(r.id)).usage.totalTokens, 3); assert.equal(f.calls.length, count);
-  assert.equal((await reload.resume(r.id)).units[0].attempts, 2);
+  assert.equal((await reload.status(r.id)).usage.totalTokens, failed.usage.totalTokens); assert.equal(f.calls.length, count, 'reload does nothing on its own');
+  assert.equal((await reload.resume(r.id)).units[0].attempts, 4, 'a resume is a fresh go');
   const again = await reload.resume(r.id);
-  assert.equal(again.units[0].attempts, 3, 'no allowance runs out'); assert.equal(again.state, 'needs-decision');
+  assert.equal(again.units[0].attempts, 6, 'no allowance runs out'); assert.equal(again.state, 'needs-decision');
 });
 
 test('stale integrated evidence blocks explicit acceptance', async t => {
@@ -221,7 +223,8 @@ test('unhooked legacy host cannot spawn children through the native controller',
   const r = await f.runner.approve('brief.json');
   const result = await f.runner.start(r.id);
   assert.equal(result.state, 'needs-decision');
-  assert.match(result.attention.message, /correctness hooks/);
+  assert.match(result.attention.message, /Quit Pi completely and start it again/);
+  assert.match(result.attention.detail, /correctness hooks/);
   assert.equal(f.calls.filter(c => c === 'plan').length, 1);
 });
 
