@@ -28,5 +28,29 @@ text is included.
 
 ## Local modifications
 
-None. Any modified file carries a notice at its top, as Apache-2.0 §4(b)
-requires, and is listed here.
+Each modified file carries a notice at its top, as Apache-2.0 §4(b) requires.
+The original headers are kept. `htmlplan.css` and `pack.mjs` are unmodified.
+
+### `htmlplan.js`: Send hook
+
+Upstream ships a dormant Send path in `openResponse()`
+(`const liveOn = false, send = null;`). Three changes make it live when a
+host is present; nothing is restyled or renamed:
+
+1. Line 1: a one-line modification notice, above the original header.
+2. Before `globalThis.HtmlPlan = NW;`: a pure function `NW.planHost(w)`. If
+   `w.__planRespond` is a function it returns `payload => w.__planRespond(payload)`;
+   else, if the page is framed (`w.parent && w.parent !== w`), it returns
+   `payload => w.parent.postMessage({ type: 'ideation:plan-respond', payload }, '*')`;
+   else `null`. It sits in the DOM-free part of the file, so pack and the
+   tests can load it without a document.
+3. In `openResponse()`, the dormant line becomes
+   `const host = NW.planHost(window), liveOn = !!host, send = liveOn ? <Send button> : null;`.
+   Send calls `host({ markdown: r.md, answers: ans })`: the response markdown
+   the sheet shows, and the form answers `readAnswers()` collected (control
+   name → value). It then writes "Sent" into the sheet's existing
+   `.nw-send-state` span. Upstream's own `liveOn` branches then make Send the
+   primary button and Copy secondary, and switch the hint text.
+
+With no host, `planHost` returns `null`, so `liveOn` is `false` and `send` is
+`null`, exactly as upstream: only Copy response is offered.

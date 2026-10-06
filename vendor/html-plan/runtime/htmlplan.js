@@ -1,3 +1,4 @@
+/* Modified for ideation (see ../SOURCE.md): Respond hands the response to a host page or frame, when there is one (NW.planHost). */
 /* htmlplan.js — runtime for coding artifacts.
    One file, no dependencies. Registers <doc-*> elements, builds the TOC,
    collects answers/comments/edits into one copyable response.
@@ -419,6 +420,8 @@ NW.diffWords = function diffWords(a, b) {
   return out;
 };
 
+/** ideation: a page with window.__planRespond, or in a frame, sends its response to that host; else null (copy only). */
+NW.planHost = (w) => typeof w.__planRespond === 'function' ? (payload) => w.__planRespond(payload) : w.parent && w.parent !== w ? (payload) => w.parent.postMessage({ type: 'ideation:plan-respond', payload }, '*') : null;
 globalThis.HtmlPlan = NW;
 if (!HAS_DOM) { if (typeof module !== 'undefined') module.exports = NW; return; }
 
@@ -624,7 +627,7 @@ function openResponse() {
     asks.map((a, i) => { const st = askChanged(a, ans) ? 'changed' : S.seen[a.id] ? 'kept' : 'todo'; const no = a.closest('doc-claim')?.dataset.no;
       return h('button', { class: 'nw-askrow ' + st, onclick: () => goToAsk(a) }, h('span', { class: 'k' }, String(i + 1)), h('span', { class: 'q' }, askQ(a, i), h('small', null, [no ? `claim ${no}` : '', words(askPick(a, ans), 9)].filter(Boolean).join(' · '))), h('span', { class: 's' }, st === 'todo' ? 'to answer' : st === 'kept' ? 'as proposed' : 'changed')); })) : null;
   const state = h('span', { class: 'nw-send-state' });
-  const liveOn = false, send = null;
+  const host = NW.planHost(window), liveOn = !!host, send = liveOn ? h('button', { class: 'nw-btn primary', onclick: () => { host({ markdown: r.md, answers: ans }); state.textContent = 'Sent'; } }, 'Send') : null;
   const copy = h('button', { class: 'nw-btn' + (liveOn ? '' : ' primary'), onclick: async () => { try { await navigator.clipboard.writeText(r.md); toast('Copied — paste it back to Claude'); } catch { const ta = h('textarea'); ta.value = r.md; document.body.append(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('Copied'); } } }, 'Copy response');
   const reset = h('button', { class: 'nw-btn danger', onclick: () => { if (reset.dataset.arm !== '1') { reset.dataset.arm = '1'; reset.textContent = 'Clear everything?'; setTimeout(() => { reset.dataset.arm = ''; reset.textContent = 'Reset'; }, 3000); return; } S.comments = {}; S.drafts = {}; S.strikes = {}; S.seen = {}; writeAnswers(S.defaults); $$('doc-calls').forEach((d) => d._reset?.()); $$('doc-draft, doc-schema').forEach((d) => d._reset?.()); try { localStorage.removeItem(KEY); } catch {} $$('.has-comment').forEach((e) => e.classList.remove('has-comment')); onFormChange(); closeSheet(); toast('Reset'); } }, 'Reset');
   openSheet('Your response', [list, h('p', { class: 'hint' }, liveOn ? 'This goes to Claude when you press Send.' : 'Copy this and paste it to Claude.'), pre], [reset, state, h('span', { class: 'sp' }), copy, send]);
