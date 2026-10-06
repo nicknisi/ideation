@@ -16,7 +16,7 @@ function validateCheck(check) {
 // Runs have no budgets. Briefs written before that still carry these fields;
 // they are accepted unchanged (so their fingerprints and approvals still hold)
 // and ignored. New briefs neither need nor advertise them.
-const LEGACY_LIMITS = ['maxDurationMs', 'maxStageMs', 'maxTokens', 'maxAttempts', 'maxReviewCycles', 'maxTurns', 'maxToolCalls'];
+export const LEGACY_LIMITS = ['maxDurationMs', 'maxStageMs', 'maxTokens', 'maxAttempts', 'maxReviewCycles', 'maxTurns', 'maxToolCalls'];
 const textSchema = { type: 'string', minLength: 1, pattern: '\\S' };
 const slugSchema = { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' };
 const stringsSchema = { type: 'array', items: textSchema };
