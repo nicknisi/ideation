@@ -38,6 +38,7 @@ const Phase = Type.Object({
 	prereqs: Type.Optional(Type.Array(Type.String())),
 	risk: Type.Optional(Type.String()),
 	files: Type.Optional(Type.Array(Type.String())),
+	trailer: Type.Optional(Type.String()),
 });
 
 export default function (pi: ExtensionAPI) {
@@ -48,7 +49,7 @@ export default function (pi: ExtensionAPI) {
 			"Run the ideation execute-contract engine: dispatch a contract's phases in dependency-ordered waves, each phase as scout → build → review ⇄ fix → commit child-agent stages, and return the structured summary { completed, noops, failed, skipped, results }. Synchronous — the result comes back as this tool's result. Used by /ideation:autopilot.",
 		promptSnippet: "Run an approved ideation contract's phases through the engine",
 		promptGuidelines: [
-			"Call with the manifest autopilot builds from contract-data.json (projectName, slug, projectDir, strict, phases, completedPhases).",
+			"Call with the manifest autopilot builds: for an approved plan, the output of `node scripts/plan-data.ts manifest <folder>` verbatim (it carries packet, hostCommits and each phase's trailer); for a 0.x contract, the one built from contract-data.json (projectName, slug, projectDir, strict, phases, completedPhases).",
 			"The result is the engine summary; failed phases list their stage and reason in results[].",
 		],
 		parameters: Type.Object({
@@ -56,6 +57,8 @@ export default function (pi: ExtensionAPI) {
 			slug: Type.String(),
 			projectDir: Type.String(),
 			strict: Type.Optional(Type.Boolean()),
+			packet: Type.Optional(Type.Boolean()),
+			hostCommits: Type.Optional(Type.Boolean()),
 			phases: Type.Array(Phase),
 			completedPhases: Type.Optional(Type.Array(Type.String())),
 		}),
