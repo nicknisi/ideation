@@ -2,7 +2,7 @@
 
 **Archetype**: a long, unstructured, self-contradictory brain dump. The
 interview must surface the silent assumptions instead of drowning, keep to one
-focused question per turn, and hold the contract shut while the contradictions
+focused question per turn, and hold the plan shut while the contradictions
 leave gates open.
 
 **Exercises**: invariant 1 (every turn), invariant 2 (turn 4).
@@ -69,7 +69,7 @@ can explore — the dump deliberately under-specifies it.
 
 - [ ] **I2** — if any gate is still open, the interviewer **declines**: it
       names the open gates and what would close them, and does not start
-      generating the contract. (If the interview genuinely closed all five
+      writing the plan. (If the interview genuinely closed all five
       gates by turn 4, generating is correct — but then every earlier
       scoreboard must show the climb to 5/5.)
 - [ ] **I1** — the scoreboard still prints with this turn's state; the refusal
@@ -80,4 +80,4 @@ can explore — the dump deliberately under-specifies it.
 All assertions hold across the four turns. Typical failures this transcript
 catches: the interview swallowing the contradictions and asking generic
 questions, the scoreboard going quiet once the conversation gets long, and the
-contract phase starting on "you've got enough" with gates still open.
+plan being written on "you've got enough" with gates still open.
