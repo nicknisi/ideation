@@ -364,16 +364,22 @@ describe('render honesty', () => {
   });
 
   it('links plan.html beside it, falling back to a migrated folder\'s contract.html and saying so', () => {
-    const both = runGen({ inputPath: VALID_FIXTURE, beside: ['plan.html', 'contract.html'] });
+    const both = runGen({ inputPath: VALID_FIXTURE, beside: ['plan.html', 'contract.html', 'contract-data.json'] });
     assert.equal(both.code, 0, both.err);
     has(both.html, /<a href="plan\.html">plan\.html<\/a><span class="meta">the plan this run executed</, 'plan.html must win when it exists');
     lacks(both.html, /href="contract\.html"/, 'a 0.x page must not be linked once plan.html exists');
 
-    const legacy = runGen({ inputPath: VALID_FIXTURE, beside: ['contract.html'] });
+    const legacy = runGen({ inputPath: VALID_FIXTURE, beside: ['contract.html', 'contract-data.json'] });
     assert.equal(legacy.code, 0, legacy.err);
     has(legacy.html, /Execution record of the <a href="contract\.html">[^<]+ contract<\/a>/, 'the lede must link the page that exists');
     has(legacy.html, /<a href="contract\.html">contract\.html<\/a><span class="meta">the 0\.x contract this run executed; this folder has no plan\.html</, 'the fallback must say what it is');
     lacks(legacy.html, /href="plan\.html"/, 'no dead plan.html link when only contract.html exists');
+
+    // Pi's change page in a 1.0 plan folder is not the plan this run executed.
+    const pi = runGen({ inputPath: VALID_FIXTURE, beside: ['contract.html', 'plan.json'] });
+    assert.equal(pi.code, 0, pi.err);
+    lacks(pi.html, /href="contract\.html"/, 'a 1.0 folder never links contract.html as its plan');
+    has(pi.html, /<a href="plan\.html">plan\.html<\/a>/, 'a 1.0 folder links its plan page');
   });
 
   it('renders the review diff in merge-base form against baseBranch', () => {

@@ -579,8 +579,10 @@ function runStamp(f: Facts): { cls: string; label: string } {
     reads as tautology). */
 /** The page that shows what this run executed, beside the report: plan.html,
     rendered from plan.json by scripts/plan-render.ts. A run of a migrated 0.x
-    folder may only have its old contract.html; then that page is linked, and
-    the report says it is the 0.x contract rather than the plan. */
+    folder (one holding contract-data.json) may only have its old
+    contract.html; then that page is linked, and the report says it is the 0.x
+    contract rather than the plan. Any other contract.html is Pi's change page
+    for the same plan, which is not what this run executed. */
 interface PlanPage {
   href: 'plan.html' | 'contract.html';
   noun: 'plan' | 'contract';
@@ -588,7 +590,8 @@ interface PlanPage {
 }
 
 function planPageBeside(dir: string): PlanPage {
-  if (!existsSync(join(dir, 'plan.html')) && existsSync(join(dir, 'contract.html'))) {
+  const legacy = existsSync(join(dir, 'contract-data.json')) && existsSync(join(dir, 'contract.html'));
+  if (!existsSync(join(dir, 'plan.html')) && legacy) {
     return {
       href: 'contract.html',
       noun: 'contract',
