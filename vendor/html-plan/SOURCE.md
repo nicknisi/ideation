@@ -54,3 +54,24 @@ host is present; nothing is restyled or renamed:
 
 With no host, `planHost` returns `null`, so `liveOn` is `false` and `send` is
 `null`, exactly as upstream: only Copy response is offered.
+
+### `htmlplan.js`: comment controls off
+
+A page served by `@nicknisi/pi-artifacts` already carries that package's own
+Review layer, which it injects into every served page and which 1.5.x has no
+per-page way to leave out. So that such a page has one comment surface, a
+page can turn html-plan's comment controls off with
+`<meta name="htmlplan" content="no-comments">` (the same meta name and
+token-list convention as upstream's `readonly`). Respond, Send, Copy,
+decisions, schema edits and strikes are unchanged.
+
+1. Line 1: the modification notice names this switch.
+2. Above `openComment()`: `const noComments = () => !!$('meta[name="htmlplan"][content~="no-comments"]');`.
+3. `openComment()` returns at once, and `commentable()` returns a no-op
+   without adding its `+` button or click handler, when `noComments()`.
+4. The code-line gutter (title and click) and the calls row's `✎ comment`
+   button are only added when comments are on.
+5. `buildResponse()` writes no `## Comments` section, and the bar's button
+   reads Respond rather than Comment, when comments are off.
+
+Without the meta, the runtime behaves exactly as before.
