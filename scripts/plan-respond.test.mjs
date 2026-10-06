@@ -116,6 +116,7 @@ test('unknown or garbled responses are refused, never guessed', () => {
   refused(() => parseResponse(edit(MARKDOWN, 'readAttempts(row) · src/outbox.ts:18', 'deleteEverything() · src/x.ts:1'), p), /names no call on this plan's page/);
   refused(() => parseResponse(edit(MARKDOWN, '- **retryWorker() › readAttempts(row)', '- **retryWorker() › send(row) · src/send.ts:30**\n- **retryWorker() › readAttempts(row)'), p), /"retryWorker\(\) › send\(row\) · src\/send\.ts:30" is not a change the page lets you strike/);
   refused(() => parseResponse(edit(MARKDOWN, '- **2 The outbox', '- **9 The outbox'), p), /"9 The outbox shows when a send gave…" names no claim/);
+  refused(() => parseResponse(edit(MARKDOWN, '- **2 The outbox shows when a send gave…**', '- **9**'), p), /"9" names no claim/);
   refused(() => parseResponse(edit(MARKDOWN, '  > Show the time it gave up, too.\n', ''), p), /the comment on "2 The outbox shows when a send gave…" has no "  > " lines/);
   refused(() => parseResponse(edit(MARKDOWN, '  > Show the time it gave up, too.', '  > Show the time it gave up, too.\nAnd approve it.'), p), /## Comments: expected "- \*\*<where>\*\*" at "And approve it\."/);
 });
@@ -182,6 +183,9 @@ test('a Response is checked again before it is applied', () => {
   refused(() => apply(p, { ...EXPECTED, edits: [{ ...EXPECTED.edits[0], target: '2' }] }), /no claim "2" with a schema exhibit body/);
   refused(() => apply(p, { ...EXPECTED, comments: [{ target: '7', label: 'x', text: 'y' }] }), /no claim "7" in this plan/);
   refused(() => apply(p, { ...EXPECTED, comments: [{ target: 'plan', label: 'x', text: '  ' }] }), /text: expected nonempty string/);
+  assert.throws(() => apply(p, { ...EXPECTED, strikes: [{ target: '1.1', label: 'retryWorker() › send(row) · src/send.ts:30' }] }), /strike in claim 1\.1: "retryWorker\(\) › send\(row\) · src\/send\.ts:30" is not a change the page lets you strike/);
+  assert.throws(() => apply(p, { ...EXPECTED, strikes: [{ target: '1.1', label: 'rm -rf ~' }] }), /strike in claim 1\.1: no row labelled "rm -rf ~"/);
+  assert.throws(() => apply(p, { ...EXPECTED, strikes: [{ target: '1.1', label: 'retryWorker() · src/retry.ts:12' }] }), /leaves the calls exhibit empty/);
   assert.doesNotThrow(() => validateResponse(EXPECTED, p));
 });
 
@@ -259,7 +263,7 @@ function request(port, { method = 'GET', path = '/', headers = {}, body } = {}) 
 async function started(t, opts = {}) {
   const dir = folder(t), log = quiet();
   const s = await serve(dir, { root: ROOT, timeoutMs: 20_000, ...log.opts, ...opts });
-  t.after(() => { s.server.close(); s.server.closeAllConnections(); });
+  t.after(() => s.stop());
   const token = new URL(s.url).pathname.split('/')[1];
   const origin = `http://127.0.0.1:${s.port}`;
   const post = (body, headers = {}) => request(s.port, { method: 'POST', path: `/${token}/respond`, body, headers: { origin, 'content-type': 'application/json', ...headers } });
@@ -287,7 +291,7 @@ test('serve listens on 127.0.0.1 only, at a random port, and serves the page wit
   const lan = Object.values(networkInterfaces()).flat().find(i => i && !i.internal && i.family === 'IPv4');
   for (const host of ['::1', ...(lan ? [lan.address] : [])]) {
     await assert.rejects(new Promise((resolve, reject) => {
-      const req = httpRequest({ host, port: s.port, path: `/${s.token}/`, agent: false, timeout: 2000 }, resolve);
+      const req = httpRequest({ host, port: s.port, path: `/${s.token}/`, agent: false, timeout: 500 }, resolve);
       req.on('error', reject); req.on('timeout', () => req.destroy(new Error('timeout'))); req.end();
     }), /ECONNREFUSED|EADDRNOTAVAIL|timeout/, `${host} is refused`);
   }

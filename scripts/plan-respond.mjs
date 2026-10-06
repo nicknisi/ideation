@@ -232,7 +232,7 @@ function parseComments(lines, page) {
     for (i++; i < lines.length && /^ {2}>( |$)/.test(lines[i]); i++) text.push(lines[i].slice(4));
     if (!text.join('').trim()) refuse(`## Comments: the comment on ${q(label)} has no "  > " lines`);
     const hit = page.claims.find(c => label === c.ref || label.startsWith(`${c.ref} › `));
-    if (!hit && /^\d+(\.\d+)* /.test(label)) refuse(`## Comments: ${q(label)} names no claim on this plan's page`);
+    if (!hit && /^\d+(\.\d+)*( |$)/.test(label)) refuse(`## Comments: ${q(label)} names no claim on this plan's page`);
     out.push({ target: hit ? hit.claim.id : 'plan', label, text: text.join('\n') });
   }
   return out;
@@ -401,6 +401,7 @@ function strike(body, labels, where) {
   for (const label of labels) {
     const hits = nodes.filter(n => callLabel(n) === label);
     if (hits.length !== 1) throw new Error(`strike in ${where}: ${hits.length ? `${hits.length} rows` : 'no row'} labelled ${q(label)}`);
+    if (hits[0].mark === ' ' || hits[0].gap) throw new Error(`strike in ${where}: ${q(label)} is not a change the page lets you strike`);
     const mark = (n) => { drop.add(n.ln); n.children.forEach(mark); };
     mark(hits[0]);
   }
@@ -500,7 +501,7 @@ const PAGE_CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'uns
 /**
  * Serves the latest plan in `folder` for one response. Resolves once listening
  * with the page URL; `done` settles with the exit code (0: a response was
- * received and written; 1: timed out).
+ * received and written; 1: timed out, or stopped).
  */
 export async function serve(folder, { timeoutMs = DEFAULT_TIMEOUT_S * 1000, root = process.cwd(), out = (s) => process.stdout.write(s), err = (s) => process.stderr.write(s) } = {}) {
   const plan = load(join(folder, 'plan.json'));
@@ -535,11 +536,11 @@ export async function serve(folder, { timeoutMs = DEFAULT_TIMEOUT_S * 1000, root
   };
 
   server.on('request', (req, res) => {
-    if (finished) return reply(res, 410, 'This page already sent its response.\n', { connection: 'close' });
     const host = req.headers.host;
     if (host !== `127.0.0.1:${port}` && host !== `localhost:${port}`) return reply(res, 403, 'Forbidden\n');
     const path = /^\/([^/?#]*)(\/[^?#]*)?(?:\?[^#]*)?$/.exec(req.url ?? '');
     if (!path || !tokenMatches(path[1], token)) return reply(res, 403, 'Forbidden\n');
+    if (finished) return reply(res, 410, 'This page already sent its response.\n', { connection: 'close' });
     const rest = path[2] ?? '';
     if (rest === '/') {
       if (req.method !== 'GET') return reply(res, 405, 'Method Not Allowed\n', { allow: 'GET' });
@@ -589,7 +590,7 @@ export async function serve(folder, { timeoutMs = DEFAULT_TIMEOUT_S * 1000, root
   }, timeoutMs);
   out(`Plan page for ${plan.id} v${plan.version}: ${url}\n`);
   out(`Open it, answer, and press Send. Waiting ${Math.round(timeoutMs / 1000)}s for one response. If Send fails, press Copy response and paste it instead.\n`);
-  return { url, port, server, done };
+  return { url, port, server, done, stop: () => shutdown(1) };
 }
 
 async function main(argv) {
