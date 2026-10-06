@@ -170,23 +170,32 @@ test('checks produce bounded real evidence and invalidate all objective evidence
   const mutated = await api.runChecks(root, [{ id: 'before', check: { cmd: 'true' } }, { id: 'mutate', check: { cmd: 'echo changed > src/a.txt' } }], { timeoutMs: 1000 });
   assert.ok(mutated.every(r => r.status === 'failed' && r.output.includes('mutated')));
 });
-test('timeout and cancellation settle and kill process-group descendants, including redirected backgrounds', async t => {
+// Outcomes, not wall-clock speed: each mode must settle for its own reason, and the
+// SIGTERM-ignoring descendant must be gone. A loaded machine may take seconds; a
+// missing kill hangs forever, which the test timeout catches.
+test('timeout and cancellation settle and kill process-group descendants, including redirected backgrounds', { timeout: 60_000 }, async t => {
   const root = await fixture(t);
-  for (const mode of ['timeout', 'abort', 'background']) {
-    const pidfile = join(root, '.ideation-policy-pid');
+  // The abort case gets a deadline it can never reach, so only the abort can end it.
+  const modes = { timeout: { timeoutMs: 200, reason: /^Timed out\n/ }, abort: { timeoutMs: 30_000, reason: /^Cancelled\n/ }, background: { timeoutMs: 30_000, reason: /^Command left background processes\n/ } };
+  for (const [mode, { timeoutMs, reason }] of Object.entries(modes)) {
+    const pidfile = join(root, `.ideation-policy-pid-${mode}`);
     const controller = new AbortController();
     const cmd = `node -e 'process.on("SIGTERM",()=>{});setInterval(()=>{},1000)' >/dev/null 2>&1 & echo $! > '${pidfile}'; ${mode === 'background' ? 'exit 0' : 'wait'}`;
-    const timer = mode === 'abort' ? setTimeout(() => controller.abort(), 120) : undefined;
+    // Abort once the descendant exists, so cancellation has something to kill.
+    if (mode === 'abort') void (async () => { for (const end = Date.now() + 20_000; Date.now() < end && !(await readFile(pidfile, 'utf8').catch(() => ''));) await new Promise(r => setTimeout(r, 10)); controller.abort(); })();
     const start = Date.now();
-    const [result] = await api.runChecks(root, [{ id: mode, check: { cmd } }], { timeoutMs: 200, signal: controller.signal });
-    clearTimeout(timer);
-    assert.ok(Date.now() - start < 2000);
-    assert.equal(result.status, 'failed');
+    const [result] = await api.runChecks(root, [{ id: mode, check: { cmd } }], { timeoutMs, signal: controller.signal });
+    assert.equal(result.status, 'failed', mode);
+    assert.match(result.output, reason, `${mode} settled for its own reason`);
+    // Generous: 75 times the short deadline, and half the long ones, so neither can end the others.
+    assert.ok(Date.now() - start < 15_000, `${mode} settled in bounded time`);
     const pid = Number(await readFile(pidfile, 'utf8'));
+    assert.ok(pid > 0, `${mode} recorded its descendant`);
     let alive = true;
-    for (let i = 0; i < 40 && alive; i++) {
+    for (const end = Date.now() + 15_000; alive && Date.now() < end;) {
       try { process.kill(pid, 0); await new Promise(r => setTimeout(r, 25)); } catch (e) { if (e.code === 'ESRCH') alive = false; else throw e; }
     }
+    if (alive) try { process.kill(pid, 'SIGKILL'); } catch {}
     assert.equal(alive, false, `lingering ${mode} child ${pid}`);
   }
 });
