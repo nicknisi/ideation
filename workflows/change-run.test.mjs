@@ -267,3 +267,31 @@ test('local commit prohibition is respected without claiming a commit', async t 
   const r = await f.runner.approve('brief.json'); const result = await f.runner.start(r.id);
   assert.equal(result.state, 'ready-for-review'); assert.equal(result.units[0].commitHash, null); assert.ok(!f.calls.includes('commit'));
 });
+
+// Riker tracks an approved change as a delegate from these events (Riker decision 170): it reads
+// exactly these fields, so they are a contract. Change them only together with Riker's reader.
+test('run-changed events carry what observers such as Riker read', async t => {
+  const events = [];
+  const f = await fixture(t, { onEvent: event => events.push(event) });
+  const approved = await f.runner.approve('brief.json');
+  await f.runner.start(approved.id);
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.ok(events.length > 0);
+  assert.ok(events.every(event => event.type === 'ideation:v1:run-changed'));
+  const last = events.at(-1).run;
+  assert.equal(last.id, approved.id);
+  assert.equal(last.state, 'ready-for-review');
+  assert.equal(typeof last.repoRoot, 'string');
+  assert.match(last.branch, /^ideation\//);
+  assert.equal(typeof last.workspace, 'string');
+  assert.equal(typeof last.baseRevision, 'string');
+  assert.ok(last.attention === null || typeof last.attention.message === 'string');
+  assert.deepEqual(Object.keys(last.units[0]).filter(k => ['id', 'title', 'state', 'attempts'].includes(k)).sort(), ['attempts', 'id', 'state', 'title']);
+  assert.equal(last.brief.id, brief.id);
+  assert.equal(last.brief.title, brief.title);
+  assert.deepEqual(last.brief.units.map(u => ({ id: u.id, needs: u.needs })), [{ id: 'one', needs: [] }]);
+  assert.deepEqual(last.brief.acceptance.map(a => [a.id, a.criterion, a.check.cmd ?? null, a.check.judgment ?? null]), [['test', 'works', 'test', null], ['human', 'usable', null, 'Inspect UI']]);
+  // An observer gets a copy: changing it changes nothing in the run.
+  last.state = 'cancelled';
+  assert.equal((await f.runner.status(approved.id)).state, 'ready-for-review');
+});
