@@ -19,7 +19,7 @@ import { join } from 'node:path';
 import { LEGACY_LIMITS } from '../workflows/change-brief.mjs';
 import { GATE_KEYS, MAX_CLAIMS, MAX_DEPTH } from '../schemas/plan.ts';
 import { load, validate } from './plan-data.ts';
-import { isEntryPoint, normalizeCriterion } from './verify.mjs';
+import { isEntryPoint, normalizeCriterion, slug } from './verify.mjs';
 
 /** Where each carried input field lands in the plan. Paths are rooted at migrate's input keys; `[]` is any array item. */
 export const CARRIED = {
@@ -113,7 +113,6 @@ export const DROPPED = [
 
 const closedGates = () => Object.fromEntries(GATE_KEYS.map(k => [k, { ready: false, evidence: '' }]));
 const noAuthority = () => ({ paths: [], commands: [], allowLocalCommit: true });
-const slug = s => String(s).normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 /**
  * Converts parsed 0.x inputs to a plan. Pure: no I/O, clock or randomness.
