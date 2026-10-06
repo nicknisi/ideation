@@ -67,6 +67,17 @@ A plan page (`scripts/plan-render.ts`) ends in a response: the reader's decision
 
 `serve` waits 30 minutes (`--timeout <seconds>`) for one response, then exits 1.
 
+**Pi:** `/ideation respond <plan-folder>`. It offers three ways to answer, and each one ends the same way. Pi shows the parsed response in the session, and only the user's terminal confirmation ("Write plan v<n+1>?") writes the next version. If the user declines, nothing is written.
+
+- **On the plan page**, with `@nicknisi/pi-artifacts` 1.5.2 or later. The page is published to one slug per plan id, so later versions update the same page. **Send** saves the response as one whole-page annotation and posts it to the page's own `POST /api/feedback`. The annotation holds the response markdown and a fenced `json ideation-plan-answers` block with `{ plan, answers }`. pi-artifacts 1.5.x posts the page's saved draft annotations and takes no response body of its own, so that annotation is the only way to carry it. 1.6.0 works the same way: ideation asks it for no page requests. A response longer than 20,000 characters (pi-artifacts' cap on one annotation) cannot be sent. In that case the page says so, and the user pastes it instead.
+- **One comment surface.** pi-artifacts injects its own Review layer into every page it serves, and neither 1.5.x nor 1.6.0 can leave it out of a page. So on a pi-artifacts page, html-plan's own comment controls are off (`<meta name="htmlplan" content="no-comments">`). Comments are left with Review, and arrive in the same batch as plan-level comments, kept verbatim. Decisions, schema edits and strikes stay on html-plan's Respond sheet.
+- **In a terminal form.** It walks the decisions in claim order. The current answer, or the recommended option, is listed first. Choosing an option moves past a decision: the current option keeps it, and any other changes it. A comment rides with the choice it was added to. Stop (or Esc) leaves that decision, and every later one, not opened. Pi offers the form on its own when the artifacts service is missing or incompatible. It also writes a local, copy-only `plan.html` beside the plan, with html-plan's comments on, and prints its path.
+- **By paste:** press **Copy response** on any page, then paste it into Pi.
+
+The response reaches the model as one custom message. Its header says that the response is user feedback and approves nothing, and every typed string follows inside a JSON block. Nothing from the page can approve a plan or run anything. A batch that arrives twice is applied once.
+
+Without the extension (Riker's Pi workers run with `--no-extensions`), use `plan-render`, `plan-respond serve` and `plan-respond apply` as in Claude Code.
+
 **Paste always works.** It is the guaranteed path, in either harness. On the page, the user presses **Copy response** and pastes it into the session. The session saves it to a file and runs `apply <plan-folder>` with that file on stdin. Use paste when Claude Code's permission classifier denies running a local server, when Send fails, or when `serve` times out.
 
 ## What does NOT differ
