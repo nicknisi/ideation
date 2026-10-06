@@ -59,7 +59,7 @@ about their contracts changed.
 ### Gate behavior
 
 This table is the single prose owner of headless/strict gate semantics — the
-skills (`execute-spec`, `autopilot`, ideation's express finish) point here
+skills (`execute-spec`, `autopilot`) point here
 rather than restating them. The executable owner is `execute-contract.mjs`,
 covered row-by-row by `execute-contract.smoke.test.mjs`; when prose and engine
 disagree, the tests are right and this table is stale.
