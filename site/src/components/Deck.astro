@@ -1,0 +1,16 @@
+---
+/** A Pi terminal on the graphite deck. The body scrolls sideways, never the page. */
+interface Props {
+  title?: string;
+  class?: string;
+  bodyClass?: string;
+}
+const { title = 'pi · field-notes', class: className = '', bodyClass = '' } = Astro.props;
+---
+
+<figure class:list={['deck m-0', className]} data-settle>
+  <div class="deck-bar" aria-hidden="true"><i></i><i></i><i></i><span>{title}</span></div>
+  <div class:list={['deck-body', bodyClass]}>
+    <slot />
+  </div>
+</figure>

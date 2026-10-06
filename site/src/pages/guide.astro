@@ -1,11 +1,22 @@
 ---
-import Guide from '../layouts/Guide.astro';
+import Site from '../layouts/Site.astro';
+import InstallBlock from '../components/InstallBlock.astro';
 import { joinCommands, STAGES, type Stage } from '../data/commands';
+import { joinPi } from '../data/pi';
+import { readInstall } from '../lib/install';
 import { readGates } from '../lib/gates';
 import { readCompatTable, readHarnesses, cellByHeader } from '../lib/harness';
 
 // All of these throw at build time rather than rendering a stale claim.
-const commands = joinCommands();
+const all = joinCommands();
+// The Pi change workflow has its own section; the rest is the planning path.
+const change = all.find(c => c.slug === 'change')!;
+const commands = all.filter(c => c.slug !== 'change');
+const pi = joinPi();
+const install = readInstall();
+const words = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const say = (n: number) => words[n] ?? String(n);
+const claudeCanStart = commands.filter(c => c.modelInvocable).length;
 const gates = readGates();
 const engineCompat = readCompatTable('The engine invocation');
 const agentCompat = readCompatTable('Agent \\(subagent\\) names');
@@ -51,44 +62,117 @@ const artifacts = [
 ];
 ---
 
-<Guide
-  title="ideation — field guide"
-  description="Which ideation command to run for your situation, what each one writes, and the five evidence gates the interview will not proceed without."
+<Site
+  title="ideation — the guide"
+  description="Every ideation command in Pi and Claude Code: what to run for your situation, what it writes, what approval means, and the evidence gates the planning interview will not skip."
+  ogType="article"
 >
-  <main class="mx-auto max-w-[52rem] px-5 pb-24">
+  <main class="mx-auto max-w-[52rem] px-5 pb-8">
     <!-- ══════════ masthead ══════════ -->
     <header class="pt-16 pb-10">
       <p class="label-mono text-accent">
         <span class="mr-2 inline-block h-px w-6 translate-y-[-4px] bg-accent"></span
-        >the field guide
+        >the guide
       </p>
       <h1 class="mt-3 text-[clamp(2.1rem,6vw,3.1rem)]">Which command, and what you get</h1>
       <p class="mt-5 max-w-[64ch] text-muted">
-        Seven commands, three of which Claude can reach for on its own. They divide by the
-        question you are actually asking: <em>which way</em> to go at all, <em>whether</em>
-        to build the thing, <em>how</em> to build it, or getting it <em>built</em>. This page
-        is the reference; the <a
-          class="text-accent underline decoration-line-strong underline-offset-2 hover:decoration-accent"
-          href="/walkthrough/">illustrated walkthrough is its own page</a
-        >.
+        Two front doors. In Pi, <code class="code">/ideation</code> runs the change workflow:
+        one compact contract, one approval, a live page. The planning path's{' '}
+        {say(commands.length)} commands run in Claude Code, and in Pi as{' '}
+        <code class="code">/skill:&lt;name&gt;</code>; {say(claudeCanStart)} of them Claude can
+        reach for on its own. This page is the
+        reference. The walkthroughs are{' '}
+        <a class="link" href="/walkthrough/pi/">one change in Pi</a> and{' '}
+        <a class="link" href="/walkthrough/">one idea through the planning path</a>.
       </p>
 
-      <div
-        class="mt-7 inline-flex flex-col gap-1 rounded-(--radius-guide) border border-line-strong bg-surface-2 px-4 py-3 press"
-      >
-        <code class="font-mono text-[0.8125rem]"
-          ><span class="mr-1 text-faint">&gt;</span>/plugin marketplace add
-          nicknisi/ideation</code
-        >
-        <code class="font-mono text-[0.8125rem]"
-          ><span class="mr-1 text-faint">&gt;</span>/plugin install ideation@ideation</code
-        >
+      <div class="mt-7 grid max-w-[40rem] gap-4">
+        <InstallBlock label="pi" lines={install.pi} />
+        <InstallBlock label="Claude Code" lines={install.claudeCode} />
       </div>
     </header>
 
+    <!-- ══════════ pi ══════════ -->
+    <section id="pi" aria-labelledby="pi-h" class="rule-double scroll-mt-20 pt-11">
+      <h2 id="pi-h" class="text-[clamp(1.6rem,4vw,2.1rem)]">In Pi: <code class="font-mono text-[0.85em]">/ideation</code></h2>
+      <p class="mt-4 max-w-[64ch] text-muted">
+        {change.headline} The agent shapes the change with the{' '}
+        <code class="code">{change.name}</code> skill, which{' '}
+        {change.modelInvocable ? 'Claude may also start on its own' : 'only ever starts when you ask'};
+        everything that grants permission is a command you type.
+      </p>
+
+      <h3 class="label-mono mt-9 text-accent">bare /ideation</h3>
+      <p class="mt-3 max-w-[64ch] text-[0.9375rem] text-muted">
+        With nothing in flight it starts planning from the conversation. Otherwise it offers only
+        what applies to the current change:
+      </p>
+      <ul class="mt-3 flex max-w-[64ch] list-none flex-wrap gap-2 p-0">
+        {
+          [...new Set(pi.menu.map(m => m.label))].map(label => (
+            <li class="rounded-(--radius-guide) border border-line bg-surface-1 px-2.5 py-1 font-sans text-[0.8125rem]">{label}</li>
+          ))
+        }
+      </ul>
+
+      <h3 class="label-mono mt-9 text-accent">subcommands</h3>
+      <dl class="mt-4 space-y-4">
+        {
+          pi.subcommands.map(c => (
+            <div class="grid grid-cols-[minmax(0,13rem)_minmax(0,1fr)] gap-x-5 gap-y-1 max-md:grid-cols-1">
+              <dt>
+                <code class="font-mono text-[0.875rem] font-semibold">/ideation {c.name}</code>
+                {c.args && <code class="ml-1.5 font-mono text-[0.8125rem] text-muted">{c.args}</code>}
+              </dt>
+              <dd class="m-0 max-w-[58ch] text-[0.9375rem] text-muted">{c.summary}</dd>
+            </div>
+          ))
+        }
+      </dl>
+
+      <h3 class="label-mono mt-9 text-accent">the model's tool</h3>
+      <p class="mt-3 max-w-[64ch] text-[0.9375rem] text-muted">
+        The agent drives <code class="code">ideation_change</code>. None of its actions can approve,
+        accept or widen what was agreed.
+      </p>
+      <dl class="mt-4 space-y-3">
+        {
+          pi.toolActions.map(a => (
+            <div class="grid grid-cols-[minmax(0,13rem)_minmax(0,1fr)] gap-x-5 gap-y-1 max-md:grid-cols-1">
+              <dt><code class="font-mono text-[0.875rem] font-semibold">{a.name}</code></dt>
+              <dd class="m-0 max-w-[58ch] text-[0.9375rem] text-muted">{a.summary}</dd>
+            </div>
+          ))
+        }
+      </dl>
+
+      <h3 class="label-mono mt-9 text-accent">what approval means</h3>
+      <ul class="mt-4 grid max-w-[64ch] list-none gap-3 p-0 text-[0.9375rem]">
+        <li><strong>Approval is the only permission.</strong> <span class="text-muted">Comments, questions, a selected option, or silence never approve, accept or widen scope. A change of intent, checks or authority needs a revised brief and a new approval.</span></li>
+        <li><strong>Exact commands, trusted scripts.</strong> <span class="text-muted">The commands you approve may run project scripts with your permissions. This is a trusted-command policy, not an OS sandbox, so read them before you approve.</span></li>
+        <li><strong>No budgets.</strong> <span class="text-muted">Approval fixes paths and commands, not time or tokens. A run goes until it is verified, you pause or stop it, or it is stuck and stops to ask; <em>Resume</em> always continues. Usage is shown for information only.</span></li>
+        <li><strong>Out of reach.</strong> <span class="text-muted">Dependency manifests and protected internals are never in scope, and no install command is silently allowed.</span></li>
+        <li><strong>Your uncommitted work is yours.</strong> <span class="text-muted">It never blocks approval. Approval asks whether to start from the last commit or include your changes, and never stashes, commits or edits them.</span></li>
+        <li><strong>The page can ask, not approve.</strong> <span class="text-muted"><em>Approve in Pi</em> on a live draft page only brings up the terminal confirmation. It shows only while the owning session is listening.</span></li>
+        <li><strong>Humans only.</strong> <span class="text-muted">A headless or RPC session cannot approve or accept. Human judgments are never marked passed by a check.</span></li>
+        <li><strong>Stops at review.</strong> <span class="text-muted">It commits locally on <code class="code">ideation/&lt;run-id&gt;</code> and never pushes, merges or deploys. <code class="code">accept</code> records your decision and nothing more.</span></li>
+      </ul>
+
+      <p class="mt-9 max-w-[64ch] rounded-r-(--radius-guide) border-l border-accent bg-surface-1 py-3 pr-4 pl-4 text-[0.9375rem]">
+        <span class="label-mono mr-2 text-accent">live pages</span>
+        With <a class="link" href="https://www.npmjs.com/package/@nicknisi/pi-artifacts">@nicknisi/pi-artifacts</a> 1.5.0+,
+        the contract updates live in your browser and carries comments back to the session. Without
+        it, the same page is saved locally and you refresh it by hand. Each change’s{' '}
+        <code class="code">brief.json</code>, <code class="code">contract.html</code> and{' '}
+        <code class="code">receipt.json</code> land in{' '}
+        <code class="code">docs/ideation/&lt;change&gt;/</code> for you to commit or not; run state
+        stays under <code class="code">.git/ideation/</code>.
+      </p>
+    </section>
+
     <!-- ══════════ which door ══════════ -->
-    <section aria-labelledby="doors" class="border-t-[3px] border-double border-line-strong pt-11">
-      <h2 id="doors" class="text-[clamp(1.6rem,4vw,2.1rem)]">Pick a door</h2>
+    <section aria-labelledby="doors" class="rule-double mt-16 pt-11">
+      <h2 id="doors" class="text-[clamp(1.6rem,4vw,2.1rem)]">The planning path: pick a door</h2>
       <p class="mt-4 max-w-[64ch] text-muted">
         In the order you would meet them. Only the charting stage writes files before a
         contract exists — and all it writes is a map of decisions, never a plan.
@@ -110,6 +194,9 @@ const artifacts = [
                 <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <code class="font-mono text-[1.0625rem] font-semibold text-ink">
                     {c.command}
+                  </code>
+                  <code class="font-mono text-[0.8125rem] text-muted" title="The same skill in Pi">
+                    pi: /skill:{c.name}
                   </code>
                   {c.argumentHint && (
                     <code class="font-mono text-[0.8125rem] text-faint">{c.argumentHint}</code>
@@ -175,7 +262,7 @@ const artifacts = [
     <!-- ══════════ the gates ══════════ -->
     <section
       aria-labelledby="gates"
-      class="mt-16 border-t-[3px] border-double border-line-strong pt-11"
+      class="rule-double mt-16 pt-11"
     >
       <h2 id="gates" class="text-[clamp(1.6rem,4vw,2.1rem)]">
         The five gates it will not skip
@@ -213,7 +300,7 @@ const artifacts = [
     <!-- ══════════ what lands on disk ══════════ -->
     <section
       aria-labelledby="disk"
-      class="mt-16 border-t-[3px] border-double border-line-strong pt-11"
+      class="rule-double mt-16 pt-11"
     >
       <h2 id="disk" class="text-[clamp(1.6rem,4vw,2.1rem)]">What lands on disk</h2>
       <p class="mt-4 max-w-[64ch] text-muted">
@@ -273,7 +360,7 @@ const artifacts = [
     <!-- ══════════ where it runs ══════════ -->
     <section
       aria-labelledby="harnesses"
-      class="mt-16 border-t-[3px] border-double border-line-strong pt-11"
+      class="rule-double mt-16 pt-11"
     >
       <h2 id="harnesses" class="text-[clamp(1.6rem,4vw,2.1rem)]">Where it runs</h2>
       <p class="mt-4 max-w-[64ch] text-muted">
@@ -336,14 +423,11 @@ const artifacts = [
 
       <h3 class="label-mono mt-9 text-accent">pi installation</h3>
       <p class="mt-4 max-w-[64ch] text-muted">
-        Install the two tools the plugin calls, then the plugin itself —
-        <code class="font-mono text-[0.875rem]">pi install npm:&lt;tool&gt;</code> twice, then
-        <code class="font-mono text-[0.875rem]">pi install git:github.com/nicknisi/ideation</code>.
-        The tools are deliberately not bundled: pi allows one owner per tool name, so a bundled
-        copy would fatally conflict with the same tool installed at the user level. Your installs
-        are the ones the skills call. The contract engine needs no external tool — the plugin
-        bundles it. Claude Code has the tools built in and ignores the
-        <code class="font-mono text-[0.875rem]">pi</code> manifest.
+        The Pi change workflow needs only the plugin. The planning path also calls two tools, which
+        are deliberately not bundled: pi allows one owner per tool name, so a bundled copy would
+        fatally conflict with the same tool installed at the user level. Your installs are the ones
+        the skills call. The contract engine needs no external tool; the plugin bundles it. Claude
+        Code has the tools built in and ignores the <code class="font-mono text-[0.875rem]">pi</code> manifest.
       </p>
       <div class="mt-4 space-y-3">
         {
@@ -365,43 +449,26 @@ const artifacts = [
         class="mt-9 max-w-[64ch] rounded-r-(--radius-guide) border-l border-accent bg-surface-1 py-3 pr-4 pl-4 text-[0.9375rem]"
       >
         <span class="label-mono mr-2 text-accent">third difference</span>
-        The engine's own stage agents take their names from the manifest, so a pi run passes
+        The engine's own stage agents take their names from the manifest, so a pi run passes{' '}
         <code class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]"
           >agentNames</code
         > and a Claude Code run omits it. The full matrix, including what does{' '}
         <em>not</em> differ, is{' '}
         <a
-          class="text-accent underline decoration-line-strong underline-offset-2 hover:decoration-accent"
+          class="link"
           href="https://github.com/nicknisi/ideation/blob/main/references/harness-compat.md"
           >references/harness-compat.md ↗</a
         >.
       </p>
     </section>
 
-    <footer class="mt-16 border-t border-line pt-8 text-[0.9375rem] text-muted">
-      <p>
-        <a
-          class="text-accent underline decoration-line-strong underline-offset-2 hover:decoration-accent"
-          href="/">← the overview</a
-        >
-        <span class="mx-2 text-faint">·</span>
-        <a
-          class="text-accent underline decoration-line-strong underline-offset-2 hover:decoration-accent"
-          href="/walkthrough/">the illustrated walkthrough</a
-        >
-        <span class="mx-2 text-faint">·</span>
-        <a
-          class="text-accent underline decoration-line-strong underline-offset-2 hover:decoration-accent"
-          href="https://github.com/nicknisi/ideation">source &amp; releases on GitHub ↗</a
-        >
-      </p>
-      <p class="mt-3 max-w-[64ch] text-faint">
-        Every command name, argument hint, and badge on this page is read out of{' '}
-        <code class="font-mono text-[0.8125em]">skills/*/SKILL.md</code> at build time, the
-        gates out of the rubric the interview itself uses, and the harness tables out of{' '}
-        <code class="font-mono text-[0.8125em]">references/harness-compat.md</code>. A skill
-        that ships without an entry here fails the build rather than going undocumented.
-      </p>
-    </footer>
+    <p class="mt-16 max-w-[64ch] border-t border-line pt-6 text-[0.9375rem] text-muted">
+      Every command name, argument hint and badge on this page is read at build time: skills from{' '}
+      <code class="font-mono text-[0.8125em]">skills/*/SKILL.md</code>, the Pi subcommands, menu and
+      tool actions from <code class="font-mono text-[0.8125em]">extensions/change.ts</code>, the gates
+      from the rubric the interview itself uses, and the harness tables from{' '}
+      <code class="font-mono text-[0.8125em]">references/harness-compat.md</code>. Anything that ships
+      without an entry here fails the build rather than going undocumented.
+    </p>
   </main>
-</Guide>
+</Site>

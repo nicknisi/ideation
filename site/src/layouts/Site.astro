@@ -1,0 +1,105 @@
+---
+import '../styles/global.css';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  ogType?: 'website' | 'article';
+}
+const { title, description, ogType = 'website' } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content="https://ideation.engineering/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href={canonical} />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='26' y='26' width='48' height='48' rx='9' transform='rotate(45 50 50)' fill='%232b46c7'/%3E%3C/svg%3E"
+    />
+    <title>{title}</title>
+    <!-- Before first paint: the saved theme (mirrored to the embedded
+         contracts, which share this origin), and whether motion is welcome.
+         Content never depends on the motion flag; it only permits entrances. -->
+    <script is:inline>
+      (function () {
+        var root = document.documentElement;
+        try {
+          var t = localStorage.getItem('ideation-theme');
+          if (t === 'light' || t === 'dark') {
+            root.dataset.theme = t;
+            localStorage.setItem('ideation-contract-theme', t);
+          } else localStorage.removeItem('ideation-contract-theme');
+        } catch (e) {}
+        try {
+          if (
+            typeof IntersectionObserver !== 'undefined' &&
+            !matchMedia('(prefers-reduced-motion: reduce)').matches &&
+            !matchMedia('print').matches
+          )
+            root.dataset.motion = 'on';
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+
+  <body class="grain">
+    <a
+      href="#content"
+      class="sr-only z-50 bg-surface-2 px-3 py-2 focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+      >Skip to content</a
+    >
+    <SiteHeader />
+    <div id="content">
+      <slot />
+    </div>
+    <SiteFooter />
+
+    <script is:inline>
+      // Ink & press reveals: mark each element as it arrives, once. Anything
+      // already above the fold counts as arrived, so a fast flick never
+      // leaves a section waiting to be scrolled back to.
+      (function () {
+        var root = document.documentElement;
+        var els = [].slice.call(document.querySelectorAll('[data-settle],[data-stamp],[data-ink],[data-wash]'));
+        function seen(el) {
+          el.classList.add('is-seen');
+        }
+        if (root.dataset.motion !== 'on') return els.forEach(seen);
+        try {
+          var io = new IntersectionObserver(
+            function (entries) {
+              entries.forEach(function (e) {
+                if (!e.isIntersecting && e.boundingClientRect.top >= 0) return;
+                io.unobserve(e.target);
+                seen(e.target);
+              });
+            },
+            { rootMargin: '0px 0px -8% 0px' },
+          );
+          els.forEach(function (el) {
+            io.observe(el);
+          });
+        } catch (e) {
+          els.forEach(seen);
+        }
+        addEventListener('beforeprint', function () {
+          els.forEach(seen);
+        });
+      })();
+    </script>
+  </body>
+</html>
