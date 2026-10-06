@@ -22,6 +22,21 @@ async function motionPreference() {
   try { return JSON.parse(await readFile(settingsPath(), 'utf8')).motion !== false; } catch { return true; }
 }
 const FRAME_MS = 100;
+// `/ideation <tab>`: every subcommand, then `on|off` for motion and run IDs for
+// run controls. [name, what it does, whether a value must follow].
+const SUBCOMMANDS: [string, string, boolean][] = [
+  ['plan', 'Shape a new change from an idea', true],
+  ['approve', 'Approve the prepared change and start', false],
+  ['status', 'Where every change stands', false],
+  ['review', 'Open the contract', false],
+  ['pause', 'Stop at the next safe point', false],
+  ['resume', 'Keep going with approved work', false],
+  ['stop', 'Stop a run and set it aside', false],
+  ['accept', 'Record your acceptance of a ready change', false],
+  ['exit', 'Leave ideation and take the work with you', false],
+  ['motion', 'Turn the widget animation on or off', true],
+];
+const RUN_ARGUMENT = new Set(['status', 'review', 'pause', 'resume', 'stop', 'accept', 'exit']);
 
 // Dependency injection keeps command authorization and lifecycle testable without paid calls.
 export function registerChange(pi: ExtensionAPI, deps: any = {}) {
@@ -64,7 +79,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
       const stateDir = join(resolve(ctx.cwd, await git('rev-parse', '--git-common-dir')), 'ideation');
       const tui = ctx.mode === 'tui' ? await loadTui() : undefined;
       if (epoch !== generation) throw new Error('Session changed during initialization');
-      const s: any = { ctx, cwd: ctx.cwd, repoRoot, ownerId, stateDir, live: true, shown: new Map(), drafts: new Map(), docsPublished: new Map(), tui };
+      const s: any = { ctx, cwd: ctx.cwd, repoRoot, ownerId, stateDir, live: true, shown: new Map(), drafts: new Map(), docsPublished: new Map(), left: new Set(), tui };
       const runtime = runtimeFactory({ namespace: 'ideation-change', artifactsDir: join(stateDir, 'children') });
       // Model tool path: RECORD to the run inbox only. Never emit a self-directed follow-up,
       // which would loop the coordinator's own feedback straight back into itself.
@@ -159,7 +174,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
         const html = renderBrief(run.brief, { run, previous: await s.priorBrief(run.brief) });
         const view = await s.bridge.update(run.id, html, { sequence: run.sequence, open });
         void publishDocs(s, run.brief, html, run);
-        if (s.live && current === s && s.ctx.hasUI && run.sequence === s.shown.get(run.id)) {
+        if (s.live && current === s && s.ctx.hasUI && run.sequence === s.shown.get(run.id) && !run.exit && !s.left.has(run.id)) {
           s.paint(run, view);
         }
         return view;
@@ -188,7 +203,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
     if (s.prepared) return s.prepared;
     for (const entry of [...(ctx.sessionManager.getBranch?.() ?? [])].reverse()) {
       if (entry.type !== 'custom' || (entry.data?.repoRoot && entry.data.repoRoot !== s.repoRoot)) continue;
-      if (entry.customType === 'ideation:handoff') return undefined;
+      if (entry.customType === 'ideation:handoff' || entry.customType === 'ideation:exit') return undefined;
       if (entry.customType === 'ideation:preview' && entry.data?.approved === false && typeof entry.data.briefPath === 'string') return entry.data;
     }
     return undefined;
@@ -245,7 +260,12 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
     const s = await ensure(ctx), runs = await s.runner.status();
     const prepared = preparedFor(s, ctx);
     if (prepared && !runs.some((r: any) => r.briefHash === prepared.briefHash)) await showPrepared(s, prepared, false);
-    else { const r = chooseRun(runs, s.repoRoot, s.ownerId); if (r) await s.show(r); }
+    else {
+      // Only in-flight work comes back on its own; finished, set-aside and left
+      // runs stay out of the way until /ideation is asked for.
+      const r = chooseRun(runs, s.repoRoot, s.ownerId);
+      if (r && !['accepted', 'cancelled', 'cancelling'].includes(r.state)) await s.show(r);
+    }
   } catch { /* Git is optional until invoked. */ } });
   pi.on('session_shutdown', shutdown);
   // The Pi workflow's documents, written into the checkout for the user to keep
@@ -284,6 +304,60 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
     }).catch((e: Error) => { if (!s.docsWarned) { s.docsWarned = true; notify(s, `Could not write docs/ideation: ${e.message}`, 'warning'); } });
     return s.docsTail;
   };
+  const hide = (s: any) => {
+    s.lastPresentation = undefined;
+    clearInterval(s.repaint);
+    if (s.live && s.ctx.hasUI) { s.ctx.ui.setWidget('ideation', undefined); s.ctx.ui.setStatus('ideation', undefined); }
+    s.widget = undefined;
+  };
+  /**
+   * Leave ideation from any state: stop the run if it is working, bring its work
+   * into the checkout (or keep it on its branch), and put ideation away for this
+   * session — no widget, no status link, and nothing resurfaces on its own.
+   * `apply` undefined asks when there is UI; the model tool passes it.
+   */
+  async function leaveIdeation(s: any, ctx: any, arg: string, apply?: boolean) {
+    const runs = await s.runner.status();
+    const run = arg ? runs.find((r: any) => r.id === arg) : chooseRun(runs, s.repoRoot, s.ownerId);
+    if (arg && !run) throw new Error(`No run ${arg} in this repository`);
+    const prepared = preparedFor(s, ctx);
+    const draft = prepared && !runs.some((r: any) => r.briefHash === prepared.briefHash) ? prepared : undefined;
+    const lines: string[] = [];
+    if (run && !run.exit) {
+      const title = summaryText(run.brief?.title ?? run.id, 60);
+      let bring = apply;
+      const { files = [] } = typeof s.runner.work === 'function' ? await s.runner.work(run.id).catch(() => ({ files: [] })) : {};
+      if (files.length && bring === undefined) {
+        if (ctx.hasUI) {
+          const count = `${files.length} changed file${files.length === 1 ? '' : 's'}`;
+          const take = `Bring the ${count} into my checkout`, keep = `Keep them on branch ${run.branch}`;
+          const picked = await ctx.ui.select(`Leave ideation: ${title}`, [take, keep, 'Stay in ideation']);
+          if (picked !== take && picked !== keep) return 'Still in ideation.';
+          bring = picked === take;
+        } else bring = false;
+      }
+      s.left.add(run.id);
+      try {
+        const out = await s.runner.leave(run.id, { apply: Boolean(bring) });
+        if (!out.files.length) lines.push(`Left ideation. “${title}” had not changed any files.`);
+        else if (out.applied) lines.push(`Left ideation. ${out.files.length} changed file${out.files.length === 1 ? ' from' : 's from'} “${title}” ${out.files.length === 1 ? 'is' : 'are'} now uncommitted changes in your checkout.`);
+        else if (bring) lines.push(`Left ideation. The work did not apply cleanly to your checkout (${out.reason}), so it stays on branch ${out.branch}.`);
+        else lines.push(`Left ideation. The work stays on branch ${out.branch}.`);
+      } catch (e: any) {
+        lines.push(`Left ideation in this session, but the run could not be stopped here: ${e.message}`);
+      }
+      pi.appendEntry('ideation:exit', { runId: run.id, briefHash: run.briefHash, repoRoot: s.repoRoot });
+    } else if (draft) {
+      pi.appendEntry('ideation:exit', { briefHash: draft.briefHash, repoRoot: s.repoRoot });
+      lines.push('Left ideation. Nothing was approved or started.');
+    } else lines.push('Left ideation.');
+    s.prepared = undefined; s.drafts.clear();
+    hide(s);
+    lines.push('The brief and contract stay in docs/ideation/. Run /ideation whenever you want it again.');
+    const message = lines.join('\n');
+    notify(s, message);
+    return message;
+  }
   // One approval path for the command, the guided menu, Start fresh and a
   // request from the contract page. Only the terminal confirmation approves.
   async function approveChange(s: any, ctx: any, arg: string, prepared: any) {
@@ -349,7 +423,29 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
     return;
   }
   pi.registerCommand('ideation', {
-    description: 'Open ideation: review or approve your prepared change, follow progress, or control a run. Also: plan <idea>, approve [path], status, review, pause, resume, stop, accept, motion [on|off].',
+    description: 'Open ideation: review or approve your prepared change, follow progress, or control a run. Also: plan <idea>, approve [path], status, review, pause, resume, stop, accept, exit, motion [on|off].',
+    getArgumentCompletions: async (prefix: string) => {
+      const [head = '', ...rest] = prefix.split(' ');
+      const tail = rest.join(' ');
+      if (!rest.length) {
+        const items = SUBCOMMANDS.filter(([name]) => name.startsWith(head))
+          .map(([name, description, takesArg]) => ({ value: takesArg ? `${name} ` : name, label: name, description }));
+        return items.length ? items : null;
+      }
+      if (head === 'motion') {
+        const items = ['on', 'off'].filter(v => v.startsWith(tail)).map(v => ({ value: `motion ${v}`, label: v, description: `Widget animation ${v}` }));
+        return items.length ? items : null;
+      }
+      if (RUN_ARGUMENT.has(head) && current?.live) {
+        try {
+          const runs = (await current.runner.status()).filter((r: any) => r.repoRoot === current.repoRoot && !r.exit && r.id.startsWith(tail));
+          const items = runs.sort((a: any, b: any) => b.updatedAt - a.updatedAt).slice(0, 20)
+            .map((r: any) => ({ value: `${head} ${r.id}`, label: r.id, description: `${summaryText(r.brief?.title ?? '', 40)} · ${r.state}` }));
+          return items.length ? items : null;
+        } catch { return null; }
+      }
+      return null;
+    },
     handler: async (args, ctx) => {
       const s = await ensure(ctx);
       try {
@@ -367,16 +463,17 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
           }
           if (run) {
             choices.push({ label: 'Open the live contract', action: 'review', arg: run.id });
-            if (['running','verifying'].includes(run.state)) choices.push({ label: 'Pause at a safe point', action: 'pause', arg: run.id }, { label: 'Stop this run', action: 'stop', arg: run.id });
+            if (['running','verifying'].includes(run.state)) choices.push({ label: 'Pause at a safe point', action: 'pause', arg: run.id });
             if (['paused','interrupted','needs-decision','ready'].includes(run.state)) {
               // There is no budget to run out: approved work can always be resumed.
               if (!s.busy || run.state === 'paused' || run.pauseRequested) choices.push({ label: 'Resume approved work', action: 'resume', arg: run.id });
-              choices.push({ label: 'Set this run aside (keep its work)', action: 'stop', arg: run.id });
             }
             if (!s.busy && ['needs-decision','interrupted','cancelled'].includes(run.state)) choices.push({ label: 'Start fresh (new approval)', action: 'fresh', arg: run.id });
             if (run.state === 'ready-for-review') choices.push({ label: 'Accept the reviewed change', action: 'accept', arg: run.id });
           }
           choices.push({ label: 'Plan a new change', action: 'plan' });
+          // Always a way out: stop, take the work, and put ideation away.
+          if (run || draft) choices.push({ label: 'Leave ideation', action: 'exit', arg: run?.id ?? '' });
           const picked = choices.length === 1 ? choices[0].label : await ctx.ui.select('Ideation', choices.map(c => c.label));
           const choice = choices.find(c => c.label === picked); if (!choice) return;
           action = choice.action; arg = choice.arg ?? '';
@@ -386,6 +483,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
           } else if (action === 'plan' && (run || draft)) arg = 'The user selected Plan a new change. Ask what they want to change next; do not duplicate the existing run.';
         }
         if (!action) action = 'status';
+        if (action === 'exit') { await leaveIdeation(s, ctx, arg); return; }
         if (action === 'motion') {
           const want = /^(on|off)$/i.test(arg) ? arg.toLowerCase() === 'on' : !s.motionOn;
           const path = settingsPath();
@@ -474,10 +572,10 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
     name: 'ideation_change', label: 'Ideation change',
     renderCall: (args, theme) => createChangeToolCall(args, theme, current?.tui),
     renderResult: (result, options, theme) => createChangeToolResult(result, options, theme, current?.tui),
-    description: 'Prepare a brief preview, read status/receipt, record feedback, or answer an artifact question. For prepare, pass brief as an object (not a JSON string), or path to an existing JSON file. Inline briefs are stored by the host; do not create a temporary file just to prepare one. Never grants approval. Output limited to 40KB.',
-    parameters: Type.Object({ action: Type.String({ enum: ['prepare','status','receipt','feedback','answer'] }), path: Type.Optional(Type.String()), brief: Type.Optional(Type.Unsafe(briefSchema)), runId: Type.Optional(Type.String()), markdown: Type.Optional(Type.String()), annotationId: Type.Optional(Type.String()), content: Type.Optional(Type.String()) }),
+    description: 'Prepare a brief preview, read status/receipt, record feedback, answer an artifact question, or exit: leave ideation when the user asks to (stops the run, brings its work into the checkout unless apply is false, and clears ideation from the session). For prepare, pass brief as an object (not a JSON string), or path to an existing JSON file. Inline briefs are stored by the host; do not create a temporary file just to prepare one. Never grants approval. Output limited to 40KB.',
+    parameters: Type.Object({ action: Type.String({ enum: ['prepare','status','receipt','feedback','answer','exit'] }), apply: Type.Optional(Type.Boolean()), path: Type.Optional(Type.String()), brief: Type.Optional(Type.Unsafe(briefSchema)), runId: Type.Optional(Type.String()), markdown: Type.Optional(Type.String()), annotationId: Type.Optional(Type.String()), content: Type.Optional(Type.String()) }),
     async execute(_id, p, _signal, _update, ctx) {
-      if (!['prepare','status','receipt','feedback','answer'].includes(p.action)) throw new Error('Unsupported model action');
+      if (!['prepare','status','receipt','feedback','answer','exit'].includes(p.action)) throw new Error('Unsupported model action');
       const s = await ensure(ctx); let result: any;
       if (p.action === 'prepare') {
         if ((p.path && p.brief !== undefined) || (!p.path && p.brief === undefined)) throw new Error('Provide exactly one of path or brief');
@@ -506,7 +604,8 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
         s.prepared = result; s.drafts.set(b.id, { previewId, brief: b, previous });
         s.paint({ state: 'draft', brief: b }, result);
         pi.appendEntry('ideation:preview', result);
-      } else if (p.action === 'status') result = await s.runner.status(p.runId);
+      } else if (p.action === 'exit') result = { left: await leaveIdeation(s, ctx, p.runId ?? '', p.apply ?? true) };
+      else if (p.action === 'status') result = await s.runner.status(p.runId);
       else {
         const r = await selected(s, p.runId);
         if (p.action === 'receipt') result = { run: r, ...await s.show(r) };

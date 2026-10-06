@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile, rename, rm, readdir, rmdir, unlink } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
-import { realpathSync } from 'node:fs';
+import { realpathSync, existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { gitText } from './change-workspace.mjs';
 import { runContractEngine } from './engine-host.mjs';
@@ -449,5 +449,45 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
     disposed = true;
     if (active) { const ctx = active; ctx.shutdown = true; ctx.abort.abort(); if (ctx.promise) await ctx.promise; }
   }
-  return { approve, uncommitted, start: id => launch(id, false), status, pause, resume, stop, accept, recordFeedback, dispose };
+  /** What a run has changed so far, for the "bring it over?" question. */
+  async function work(id) {
+    const r = await load(id);
+    if (!r.workspace || !existsSync(r.workspace)) return { files: [], branch: r.branch, workspace: r.workspace };
+    const { workspace: w } = await modules();
+    const { files } = await w.workPatch(r.workspace, r.baseRevision);
+    return { files, branch: r.branch, workspace: r.workspace };
+  }
+  /** Leave ideation for a run. Stops it if it is working, keeps its exact final
+   * state under refs/ideation/<id>/exit, and with `apply` brings the work into
+   * the checkout as ordinary uncommitted changes (removing the worktree only
+   * once that has succeeded). Nothing the run produced is thrown away. */
+  async function leave(id, { apply = false } = {}) {
+    if (disposed) throw new Error('Runner disposed');
+    let r = await status(id);
+    if (!['cancelled', 'accepted'].includes(r.state)) r = await stop(id);
+    const { workspace: w } = await modules();
+    const outcome = { files: [], applied: false, branch: r.branch, workspace: r.workspace };
+    if (r.workspace && existsSync(r.workspace)) {
+      const exported = await w.workPatch(r.workspace, r.baseRevision);
+      outcome.files = exported.files;
+      if (exported.files.length) {
+        const kept = await git('commit-tree', exported.tree, '-p', exported.head, '-m', `ideation: work when leaving ${r.brief.id}`);
+        await git('update-ref', `refs/ideation/${r.id}/exit`, kept);
+        outcome.ref = `refs/ideation/${r.id}/exit`;
+        if (apply) {
+          const result = await w.applyWork(repoRoot, exported.patch);
+          outcome.applied = result.applied; outcome.reason = result.reason;
+          if (result.applied) { await git('worktree', 'remove', '--force', r.workspace); outcome.workspaceRemoved = true; }
+        }
+      }
+    }
+    const release = await lease(true);
+    try {
+      r = await load(id);
+      r.exit = { at: now(), files: outcome.files.length, applied: outcome.applied, ref: outcome.ref ?? null, workspaceRemoved: Boolean(outcome.workspaceRemoved) };
+      r.attention = null; await save(r);
+    } finally { await release(); }
+    return { run: clone(r), ...outcome };
+  }
+  return { approve, uncommitted, start: id => launch(id, false), status, pause, resume, stop, accept, recordFeedback, work, leave, dispose };
 }

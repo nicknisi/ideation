@@ -219,7 +219,7 @@ export function createLiveProgressWidget(getPresentation, theme, helpers, motion
 
 const callLabels = {
   prepare: 'Preparing contract', status: 'Checking progress', receipt: 'Opening receipt',
-  feedback: 'Sending feedback', answer: 'Answering review question',
+  feedback: 'Sending feedback', answer: 'Answering review question', exit: 'Leaving ideation',
 };
 export function createChangeToolCall(args, theme, helpers) {
   return component(() => ({
@@ -243,6 +243,7 @@ export function createChangeToolResult(result, options, theme, helpers) {
       note: 'Review contract · approval required to start',
     };
     if (Array.isArray(d)) return { heading: d.length ? `${d.length} change${d.length === 1 ? '' : 's'}` : 'No changes yet', role: 'muted', note: d.length ? 'Select a run to review its progress' : '' };
+    if (typeof d?.left === 'string') return { heading: 'Left ideation', role: 'muted', note: clean(d.left.split('\n')[0]) };
     if (typeof d?.delivered === 'boolean') return { heading: d.delivered ? 'Feedback delivered' : 'Feedback not delivered', role: d.delivered ? 'success' : 'warning' };
     if (d?.ok === true) return { heading: 'Answer recorded', role: 'success' };
     if (d?.ok === false) return { heading: 'Needs attention', role: 'warning', note: 'Answer was not recorded' };

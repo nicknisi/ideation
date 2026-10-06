@@ -9,7 +9,7 @@ import { validateBrief } from './change-brief.mjs';
 // serialization separately in the installed-Pi smoke.
 const hooks = registerHooks({ resolve(specifier, context, next) {
   if (specifier === '@nicknisi/pi-shared') return { url: 'data:text/javascript,export const createSubagentRuntime=()=>{throw new Error("not used")}', shortCircuit: true };
-  if (specifier === 'typebox') return { url: 'data:text/javascript,' + encodeURIComponent(`export const Type={Object:(properties,options={})=>({type:'object',properties,...options}),Optional:s=>s,Unknown:()=>({}),Unsafe:s=>s,String:(options={})=>({type:'string',...options})};`), shortCircuit: true };
+  if (specifier === 'typebox') return { url: 'data:text/javascript,' + encodeURIComponent(`export const Type={Object:(properties,options={})=>({type:'object',properties,...options}),Optional:s=>s,Unknown:()=>({}),Unsafe:s=>s,String:(options={})=>({type:'string',...options}),Boolean:(options={})=>({type:'boolean',...options})};`), shortCircuit: true };
   return next(specifier, context);
 } });
 const { registerChange } = await import('../extensions/change.ts');

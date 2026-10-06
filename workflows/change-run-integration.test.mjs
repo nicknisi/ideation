@@ -234,3 +234,32 @@ test('the run is built from its approved starting point even after HEAD moves', 
   assert.equal(r.state, 'ready-for-review', r.attention?.message);
   await assert.rejects(f.git(r.workspace, 'cat-file', '-e', 'HEAD:later.txt'));
 });
+
+test('leaving ideation brings the work into the checkout, keeps its exact state, and the run never resurfaces', async t => {
+  const f = await fixture(t);
+  const a = await f.runner.approve('brief.json');
+  const r = await f.runner.start(a.id);
+  assert.equal(r.state, 'ready-for-review', r.attention?.message);
+  assert.deepEqual((await f.runner.work(r.id)).files, ['src/value']);
+  const out = await f.runner.leave(r.id, { apply: true });
+  assert.equal(out.applied, true);
+  assert.equal(await readFile(join(f.root, 'src', 'value'), 'utf8'), 'done');
+  assert.equal(await f.git(f.root, 'show', `refs/ideation/${r.id}/exit:src/value`), 'done', 'the exact final state is kept');
+  assert.equal(out.workspaceRemoved, true);
+  const after = await f.runner.status(r.id);
+  assert.equal(after.state, 'cancelled');
+  assert.equal(after.exit.applied, true);
+  const { chooseRun } = await import('./change-ui.mjs');
+  assert.equal(chooseRun(await f.runner.status(), after.repoRoot, 'anyone'), undefined, 'a left run is never picked again');
+});
+
+test('leaving without bringing the work keeps it on its branch and worktree', async t => {
+  const f = await fixture(t);
+  const a = await f.runner.approve('brief.json');
+  const r = await f.runner.start(a.id);
+  const out = await f.runner.leave(r.id, { apply: false });
+  assert.equal(out.applied, false);
+  assert.equal(await readFile(join(f.root, 'src', 'value'), 'utf8'), 'before', 'your checkout is untouched');
+  assert.equal(await readFile(join(r.workspace, 'src', 'value'), 'utf8'), 'done');
+  assert.equal(await f.git(f.root, 'rev-parse', '--verify', `refs/heads/${r.branch}`) !== '', true);
+});
