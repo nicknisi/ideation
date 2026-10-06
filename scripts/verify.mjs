@@ -28,14 +28,14 @@
 // contract's checks no longer hold", never "the repo is broken". The header
 // prints the contract's date and status so a stale run is obvious on sight.
 //
-// It reads contract-data.json directly rather than executing an emitted
-// verify.sh: an emitted script would be a second source of truth, and
-// contract-gen's lineage logic would archive it out from under itself.
+// It reads the data directly rather than executing an emitted verify.sh: an
+// emitted script would be a second source of truth.
 //
 // This file also OWNS the definition of what a `check` is (normalizeCheck /
 // validateCheck below) — the thing that runs the checks decides what is
-// runnable. scripts/contract-gen.ts imports these so the renderer and the
-// executor can never disagree about a criterion's kind.
+// runnable. workflows/change-brief.mjs (and so plan approval), plan-migrate
+// and plan-goal import these, so nothing that writes or runs a check can
+// disagree with the executor about a criterion's kind.
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
@@ -44,7 +44,7 @@ import { fileURLToPath } from 'node:url';
 
 const TIMEOUT_MS = 120_000;
 
-// --- Check normalization (shared with contract-gen.ts) ---
+// --- Check normalization (shared with change-brief, plan-migrate and plan-goal) ---
 
 /** A criterion's check is either a runnable command with its expected
     outcome, or an explicit statement that a human has to look. */
@@ -101,9 +101,9 @@ export function normalizeCheck(raw) {
 /** Malformed criteria are not a legacy shape — strings and { criterion, check }
     objects are the only valid forms, and anything else used to crash outright.
     Returns a readable error string naming the index, or null when the entry is
-    well-formed. Shared with contract-gen.ts so the renderer and the executor
-    reject the same file: a contract that renders but cannot verify hands /goal
-    a done condition it can never satisfy. */
+    well-formed. Shared with plan-goal.mjs so the goal and the executor reject
+    the same file: a contract that cannot verify must not hand /goal a done
+    condition it can never satisfy. */
 export function malformedCriterionError(raw, index) {
   if (typeof raw === 'string') return null;
   if (raw !== null && typeof raw === 'object' && !Array.isArray(raw)) return null;

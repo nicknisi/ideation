@@ -365,7 +365,7 @@ describe('isStaticCheck — does the check actually run anything?', () => {
   it('does NOT flag a pipeline that executes something, even if it greps after', () => {
     // The grep is reading real output here — that is a genuine behavioral check.
     assert.equal(
-      isStaticCheck("node scripts/contract-gen.ts --input x.json --output /tmp/o.html && grep -ci 'decisions' /tmp/o.html"),
+      isStaticCheck("node scripts/plan-render.ts x.json -o /tmp/o.html && grep -ci 'decisions' /tmp/o.html"),
       false,
     );
     assert.equal(isStaticCheck('npm run docs:build'), false);

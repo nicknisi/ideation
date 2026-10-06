@@ -109,7 +109,7 @@ the approval dialog or the stamps change; the dialog lines come from `approvalTe
 ## Design
 
 One world: the field guide. `DESIGN.md` at the repo root owns the tokens; this site's
-`global.css` and `scripts/contract-gen.css` declare them. Paper, ink, one cobalt
+`global.css` and `scripts/field-guide.css` declare them. Paper, ink, one cobalt
 accent, serif display, hairline rules, 3px radii, the press offset as the only depth,
 system fonts only, and no external requests of any kind.
 

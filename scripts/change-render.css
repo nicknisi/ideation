@@ -1,5 +1,5 @@
 /* Native change documents inherit all colour, type and depth tokens from
-   contract-gen.css. Only editorial composition belongs here. */
+   field-guide.css. Only editorial composition belongs here. */
 .native-document main { max-width: 1160px; margin: auto; padding: var(--s7) var(--s6) var(--s8); }
 .native-document header { border-top: 2px solid var(--accent); padding: var(--s5) 0 var(--s7); }
 .document-slug { display: flex; justify-content: space-between; align-items: center; gap: var(--s4); font: var(--t-small)/1.5 var(--font-sans); color: var(--accent); }

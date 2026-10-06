@@ -8,8 +8,8 @@ const section = (title, body, anchor = title.toLowerCase().replace(/[^a-z0-9]+/g
 const code = value => `<pre><code>${esc(value)}</code></pre>`;
 const fold = (title, body) => `<details><summary>${esc(title)}</summary><div class="detail-body">${body}</div></details>`;
 const badge = (text, tone = '') => `<span class="badge ${tone}">${esc(text)}</span>`;
-// The canonical sheet is included verbatim. This surface defines layout, not a palette.
-const css = readFileSync(new URL('./contract-gen.css', import.meta.url), 'utf8') + '\n' + readFileSync(new URL('./change-render.css', import.meta.url), 'utf8');
+// The canonical field-guide sheet is included verbatim. This surface defines layout, not a palette.
+const css = readFileSync(new URL('./field-guide.css', import.meta.url), 'utf8') + '\n' + readFileSync(new URL('./change-render.css', import.meta.url), 'utf8');
 // Motion is opt-in per page view: content is visible unless this pre-paint script
 // confirms motion is welcome, and entrances replay only when the stamped state changes.
 const themeBoot = `try{var saved=localStorage.getItem('ideation-contract-theme');if(saved==='light'||saved==='dark')document.documentElement.dataset.theme=saved;}catch{}try{var r=document.documentElement;if(typeof matchMedia==='function'&&typeof IntersectionObserver!=='undefined'&&!matchMedia('(prefers-reduced-motion: reduce)').matches&&!matchMedia('print').matches){r.dataset.motion='on';var k='ideation-stamp:'+location.pathname,st=r.dataset.stampState||'';if(sessionStorage.getItem(k)!==st){r.dataset.fresh='1';sessionStorage.setItem(k,st);}}}catch{}`;

@@ -9,7 +9,7 @@
  * disagrees with itself.
  *
  * Two of these tests exist because the bug already happened in this repo's
- * sibling generator: contract-gen once advertised an outcome the engine cannot
+ * retired sibling generator, contract-gen, once advertised an outcome the engine cannot
  * produce (an invented `PARTIAL`), which is why the accepted enums are drift-
  * tested against workflows/execute-contract.mjs rather than trusted, and why a
  * record carrying `PARTIAL` has its own negative control.
@@ -122,7 +122,7 @@ describe('validation', () => {
   });
 
   it('refuses an invented outcome (negative control)', () => {
-    // The exact bug class this repo already shipped once, in contract-gen's
+    // The exact bug class this repo already shipped once, in the retired contract-gen's
     // run-model diagram: an outcome no engine code path can produce.
     const record = clone();
     record.summary.results[0].result = 'PARTIAL';

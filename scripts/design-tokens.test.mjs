@@ -70,29 +70,39 @@ describe('renounced command-deck palette', () => {
 });
 
 /**
- * Token values. DESIGN.md's table owns the palette and contract-gen.css is its
+ * Token values. DESIGN.md's table owns the palette and field-guide.css is its
  * canonical declaration; plan-render.css maps html-plan's token names onto
- * field-guide tokens, naming the one it copies in a trailing comment. Both must
- * carry DESIGN.md's values, so the plan page cannot drift into a third world.
+ * field-guide tokens, naming the one it copies in a trailing comment, and
+ * change-render.css composes Pi's change page from field-guide tokens alone.
+ * All of them must carry DESIGN.md's values, so no page drifts into a third world.
  */
 const read = (path) => readFileSync(join(repoRoot, path), 'utf8');
 const squash = (value) => value.replace(/\s+/g, ' ').trim();
-/** DESIGN.md's token table: role → light-dark(light, dark), as contract-gen.css writes it. */
+/** DESIGN.md's token table: role → light-dark(light, dark), as field-guide.css writes it. */
 const designTokens = () => new Map(
   [...read('DESIGN.md').matchAll(/^\| `(--[\w-]+)` \| `(#[0-9a-f]{6})` \| `(#[0-9a-f]{6})` \|$/gim)]
     .map(([, role, light, dark]) => [role, `light-dark(${light}, ${dark})`]),
 );
-/** contract-gen.css's first :root block (later blocks are print overrides): token → value. */
+/** field-guide.css's first :root block (later blocks are print overrides): token → value. */
 const contractTokens = () => new Map(
-  [...read('scripts/contract-gen.css').match(/^:root \{([\s\S]*?)^\}/m)[1].matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)]
+  [...read('scripts/field-guide.css').match(/^:root \{([\s\S]*?)^\}/m)[1].matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)]
     .map(([, name, value]) => [name, squash(value)]),
 );
 
 describe('field-guide token values', () => {
-  it('DESIGN.md lists the palette, and contract-gen.css declares those values', () => {
+  it('DESIGN.md lists the palette, and field-guide.css declares those values', () => {
     const design = designTokens(), contract = contractTokens();
     assert.equal(design.size, 13, 'DESIGN.md token table should have its 13 roles');
-    for (const [role, value] of design) assert.equal(contract.get(role), value, `contract-gen.css ${role}`);
+    for (const [role, value] of design) assert.equal(contract.get(role), value, `field-guide.css ${role}`);
+  });
+
+  it('change-render.css declares no colour and uses only field-guide tokens', () => {
+    const contract = contractTokens();
+    const css = read('scripts/change-render.css');
+    assert.deepEqual(css.match(/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/gi), null, 'change-render.css invents a colour');
+    const local = new Set([...css.matchAll(/(--[\w-]+)\s*:/g)].map(m => m[1]));
+    const missing = [...new Set([...css.matchAll(/var\((--[\w-]+)/g)].map(m => m[1]))].filter(t => !contract.has(t) && !local.has(t));
+    assert.deepEqual(missing, [], 'change-render.css uses tokens field-guide.css does not declare');
   });
 
   it('plan-render.css maps every html-plan token onto a field-guide value, light and dark, and holds no other colour', () => {
@@ -106,7 +116,7 @@ describe('field-guide token values', () => {
     assert.ok(mapped.length >= 20, `expected the html-plan palette, found ${mapped.length} mapped tokens`);
     const colours = mapped.filter((m) => m.value.startsWith('#'));
     for (const { name, value, role } of mapped) {
-      assert.ok(contract.has(role), `${name} names ${role}, which contract-gen.css does not declare`);
+      assert.ok(contract.has(role), `${name} names ${role}, which field-guide.css does not declare`);
       const expected = value.startsWith('#') ? lightOf(contract.get(role)) : contract.get(role);
       assert.equal(value, expected, `plan-render.css ${name} should equal ${role}`);
       if (design.has(role)) assert.equal(value, lightOf(design.get(role)), `plan-render.css ${name} should equal DESIGN.md ${role} (light)`);

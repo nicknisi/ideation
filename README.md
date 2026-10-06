@@ -121,11 +121,9 @@ Resuming Bookmark Garden: 3/5 gates ready — 2 open questions
 
 A question only gets written if you can phrase it precisely enough to hand to someone else unchanged. Anything vaguer leaves the gate `not-ready` with the gap named in its evidence, and no question.
 
-## Contract Lineage
+## Plan Versions
 
-Contracts track revision history via a `Supersedes` link. When re-running ideation on the same project, the prior **Approved** `contract.html` is renamed to `contract-{date}.html` (and the sibling `contract.md` to `contract-{date}.md`) and the new contract references it, creating a traceable revision chain. Draft contracts are replaced in place — interview revisions and the same-session Draft→Approved flip don't accumulate snapshot files; only approved commitments earn lineage.
-
-Lineage and resuming answer different questions: lineage records that a commitment changed, resuming picks up an interview that never finished. A Draft with open questions is the second case, so re-entering it replaces the draft rather than snapshotting it.
+Plans track revision history through versions. `plan.json` is always the latest; each version it replaces is kept beside it as `plan.v{n}.json`, and `supersedes` names the one before. Approval freezes one version into `run-contract.json`, so a plan edited after approval has to be approved again before anything runs from it.
 
 ## Evidence Gates
 
@@ -203,7 +201,7 @@ search too...
 3. Explores codebase inline — finds existing tag system, recommends reusing it instead of asking
 4. Challenges assumptions: "Have users complained about folders, or is this your gut?"
 5. All 5 evidence gates reach `ready` after ~5 questions
-6. Four plan critics stress-test the plan; then generates `contract.html` via contract-gen CLI — flight strip, gate readiness board, nested scope tiers, interactive phase graph, run model, and copyable execution commands. Pick your scope in the terminal.
+6. Four plan critics stress-test the plan; then renders the plan page (`plan.html`) with `scripts/plan-render.ts`, where you answer its decisions. Approve it in the terminal.
 7. After approval, asks: "Straight to specs or PRDs first?"
 8. At decision points (phasing, orchestration), opens side-by-side visual comparisons in browser
 9. Generates Markdown specs with feedback loops and failure modes
@@ -403,17 +401,17 @@ Generate a `/goal` command that runs the project **unattended** by driving `/ide
 **Usage:**
 
 ```bash
-# Auto-detect contract
+# Auto-detect the project
 /ideation:get-goal-prompt
 
-# Specify contract path
-/ideation:get-goal-prompt docs/ideation/my-project/contract.md
+# Specify the project folder
+/ideation:get-goal-prompt docs/ideation/my-project
 ```
 
 **How it works:**
 
-- Resolves the project's `contract-data.json` (source of truth; `contract.md` is a legacy fallback)
-- The `/goal` string itself is owned by the generator — `contract-gen.ts --print-goal` emits it (branch clause, background-workflow rule, and a `verify.mjs`-based done-when included); the skill never hand-authors it
+- Resolves the project folder: an approved plan (its `run-contract.json`, which must still match `plan.json`), or a 0.x `contract-data.json`
+- The `/goal` string itself is owned by `scripts/plan-goal.mjs`, which prints it (branch clause, background-workflow rule, and a `verify.mjs`-based done-when included); the skill never hand-authors it
 - The `/goal` does **not** inline per-phase steps — autopilot + the specs hold that detail
 - Completion is judged by `scripts/verify.mjs`'s `VERIFY` line, with an escape hatch for rotted contracts (two consecutive identical failing runs)
 - Copies the `/goal` to clipboard and prints it; you paste to start
@@ -535,7 +533,7 @@ Current owners:
 | Check semantics     | `scripts/verify.mjs`             | `scripts/verify.test.mjs`                                              |
 | Planner             | `workflows/wave-planner.mjs`     | `workflows/wave-planner.test.mjs` (incl. the engine-mirror drift suite) |
 | Gates               | `references/confidence-rubric.md` | `site/src/lib/gates.ts` (build throws unless exactly 5 gates parse)    |
-| Goal string         | `scripts/contract-gen.ts`        | `scripts/contract-gen.test.mjs`                                        |
+| Goal string         | `scripts/plan-goal.mjs`          | `scripts/plan-goal.test.mjs`                                           |
 | Express semantics   | `skills/ideation/SKILL.md`       | — (prose owner; the express alias carries no section references)       |
 | Gate behavior       | `workflows/README.md`            | `workflows/execute-contract.smoke.test.mjs` covers the engine row-by-row |
 | Harness translation | `references/harness-compat.md`   | — (prose owner; the guide page renders from it at build time)          |
