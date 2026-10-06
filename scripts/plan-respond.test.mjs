@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { load, toRunContract, validate } from './plan-data.ts';
 import { renderPlan } from './plan-render.ts';
-import { apply, applyDiff, applyFolder, BODY_LIMIT, parseResponse, readResponse, serve, validateResponse } from './plan-respond.mjs';
+import { apply, applyDiff, applyFolder, BODY_LIMIT, formQuestions, formResponse, parseResponse, readResponse, serve, validateResponse, withHead } from './plan-respond.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SCRIPT = join(ROOT, 'scripts/plan-respond.mjs');
@@ -170,6 +170,29 @@ test('kept leaves an answered decision answered; not opened never counts as agre
   const chosen = apply(p, { ...EXPECTED, decisions: [EXPECTED.decisions[0], EXPECTED.decisions[1], { decisionId: 'setting-home', state: 'changed', value: 'env' }] });
   assert.equal(chosen.claims[2].decision.state, 'answered');
   assert.doesNotThrow(() => toRunContract(chosen));
+});
+
+test('the terminal form: decisions in claim order, current choice first; moved past is kept, unreached is not opened', () => {
+  const p = plan();
+  assert.deepEqual(formQuestions(p).map(q => [q.decisionId, q.claimId, q.claim, q.preselected, q.state]), [
+    ['retries', '1', '1 A failed send retries three times, five…', 'three', 'kept'],
+    ['give-up-label', '2', '2 The outbox shows when a send gave…', 'count', 'answered'],
+    ['setting-home', '3', '3 Retry timing is one setting.', 'config', 'not-opened'],
+  ]);
+  assert.deepEqual(formQuestions(p)[1].options, [{ value: 'count', label: 'Gave up after 3 tries' }, { value: 'plain', label: 'Not sent' }]);
+  // The same Response the page gives for the same choices: EXPECTED, without what only the page can do.
+  const r = formResponse(p, { retries: {}, 'give-up-label': { value: 'plain', comment: '  Show the time it gave up, too.\n' } });
+  assert.deepEqual(r, { ...EXPECTED, edits: [], strikes: [], comments: [EXPECTED.comments[1]] });
+  assert.deepEqual(formResponse(p, {}).decisions.map(d => d.state), ['not-opened', 'not-opened', 'not-opened'], 'nothing opened is nothing agreed');
+  assert.deepEqual(formResponse(p, { 'setting-home': { value: 'config' } }).decisions[2], { decisionId: 'setting-home', state: 'kept' });
+  assert.deepEqual(formResponse(p, { 'give-up-label': { comment: ' ' } }).comments, [], 'an empty comment is dropped, as the page drops it');
+  refused(() => formResponse(p, { approve: {} }), /the form answers "approve", which is no decision of this plan/);
+  refused(() => formResponse(p, { retries: { value: 'eleven' } }), /"eleven" is not an option of "retries"/);
+  refused(() => formResponse(p, { retries: { value: 'three', run: true } }), /unknown field "run"/);
+  refused(() => formResponse(p, { retries: 'three' }), /must be an object/);
+  // withHead puts a host's hook before the runtime, or refuses a page it cannot place it in.
+  assert.equal(withHead('<meta charset="utf-8">\n<script>x</script>', '<script>h</script>'), '<meta charset="utf-8">\n<script>h</script>\n<script>x</script>');
+  assert.throws(() => withHead('<script>x</script><meta charset="utf-8">', 'h'), /no <meta charset> before its scripts/);
 });
 
 test('a Response is checked again before it is applied', () => {
