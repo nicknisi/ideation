@@ -10,13 +10,14 @@ Transform brain dumps into structured implementation artifacts through a convers
 
 ## Pi-native change workflow
 
-In Pi, `/ideation` runs the change workflow. It agrees on a **compact change brief**,
-then creates working plans just in time rather than requiring every implementation
-recipe upfront:
+In Pi, `/ideation` starts planning at the right depth (see [Skills](#skills)), and an
+approved plan runs through the change workflow. It freezes the plan into a **compact
+change brief**, then creates working plans just in time rather than requiring every
+implementation recipe upfront:
 
 ```text
 /ideation
-# Describe the change in conversation; review the contract it opens.
+# Describe the change in conversation; answer the plan, review the contract it opens.
 /ideation approve
 # Or use /ideation again for review, revision, progress and run controls.
 ```
@@ -44,155 +45,37 @@ commit or include it, and never stashes or edits your files. Each change's brief
 contract and receipt land in `docs/ideation/<change-id>/` for you to commit or not.
 
 See [the native workflow guide](docs/native-workflow.md) and
-[the worked brief](test-fixtures/native-change/brief.json). The old skills and
-Claude Code integration remain supported. This new native front door is Pi-only;
-the brief, renderer, verifier primitives and existing engine are portable. In Claude
-Code, `/ideation:change` only explains that it needs Pi and points to the planning
-interview. In Pi, the
-planning path below runs as `/skill:<name>` — `/skill:ideation`, `/skill:chart`,
-`/skill:express`, `/skill:autopilot` and so on.
+[the worked brief](test-fixtures/native-change/brief.json). The live run
+controls are Pi-only; in Claude Code an approved plan runs through `/ideation:autopilot`
+on the same engine. In Pi, the skills below also run as `/skill:<name>`:
+`/skill:ideation`, `/skill:autopilot` and so on.
 
 ## Skills
 
-The arc runs **chart → whether → how → shipped**: chart finds the route when an effort is too big for one session and the route itself is unknown, brainstorm decides whether the idea is worth building, ideation plans how, and the execution commands below ship it.
+### ideation — one entry point, four depths
 
-### chart
+`/ideation` (in Pi: `/ideation`, `/ideation plan` or `/skill:ideation`) is the single
+planning entry point. It picks a depth, says why in one line, and switches when you
+overrule it in a word: "just do it", "short plan", "interview" or "map".
 
-For efforts too big for one agent session and wrapped in fog — the way from here to the destination isn't visible yet, so a single ideation contract is the wrong shape. Chart lays out a **shared local map** of **decision tickets** (markdown files under `docs/chart/{slug}/`), then works them one at a time — one per session, except research — until the route is clear. Each ticket resolves a *decision*, not a slice of a build; the map is done when nothing is left to decide before someone goes and does the thing.
+| Depth | When | What you get |
+| --- | --- | --- |
+| *should we?* (the opening) | You're still deciding whether to build it | A conclusion in chat. It writes no files. |
+| `just do it` | One clear, low-risk change | A one-unit plan, its checks, one terminal confirmation, then the run |
+| `short plan` | Buildable, with 2–5 real forks | A plan page to answer the forks on, then approval |
+| `interview` | The problem, goals or scope aren't settled | The evidence-gated interview, the four plan critics, then the page |
+| `map` | Too big or foggy for one session | Open questions worked one per session until the route is clear, then the interview |
 
-```
-/ideation:chart
+Every depth writes plan data to `docs/ideation/<slug>/plan.json` (earlier versions kept
+as `plan.v<n>.json`). A page never approves: approval is always the terminal confirmation,
+and it hands the frozen run contract to the engine (the change workflow in Pi;
+`/ideation:autopilot` or `/ideation:execute-spec` in Claude Code). A 0.x folder with
+`contract-data.json` converts to `plan.json` the first time it's read.
 
-[a loose, too-big idea where you can't yet see the route]
-```
-
-**The model:** a map (`map.md`) is the canonical index — Destination, Notes, Decisions so far, Not yet specified (the fog of war), Out of scope. Tickets are files in `tickets/` with a `Type` (research / prototype / grilling / task), `Status`, `Claimed by`, and `Blocked by`. The frontier is the open, unblocked, unclaimed tickets. Research tickets resolve via an `Explore` subagent (AFK, parallel in the charting session); prototype tickets raise a cheap concrete artifact to react to; grilling tickets are one-question-at-a-time conversation (the same interview-engine sections brainstorm uses); task tickets are manual work that unblocks a decision. Resolving a ticket clears the fog ahead of it, graduating newly-specifiable questions into fresh tickets until the frontier is empty.
-
-**Plan, don't do** is the default — chart produces decisions, not deliverables. When the destination is a build, it hands off to `/ideation:ideation` with the route walked as the intake evidence (destination, route/decisions, rejected alternatives, out-of-scope), so ideation's interview starts at the open questions. Already can see the route? Skip to ideation. Still weighing whether to build at all? Use brainstorm.
-
-Full behavior lives in [skills/chart/SKILL.md](skills/chart/SKILL.md).
-
-### brainstorm
-
-Pressure-test whether an idea is worth building at all — "should I do X," "which of these approaches," "am I overthinking this." Runs entirely in conversation: no files, no gates, no spec. When the answer is "yes, build it," it hands off to the ideation interview with what you settled as the starting point.
-
-**How to invoke:**
-
-```
-/ideation:brainstorm
-
-[the idea or decision you're weighing]
-```
-
-Full behavior lives in [skills/brainstorm/SKILL.md](skills/brainstorm/SKILL.md). Already decided to build? Skip straight to ideation. Too big to see the route? Start with chart.
-
-### ideation
-
-Transforms raw, unstructured brain dumps (dictated freestyle) into actionable implementation artifacts through an evidence-gated workflow.
-
-Use this before building any new feature, planning a migration, designing a system, or turning scattered ideas into a plan. Covers small single-spec projects through multi-phase initiatives. It starts only when you ask for it by command; ordinary feature requests do not start it.
-
-**How to invoke:**
-
-```
-/ideation:ideation        # Claude Code (or /ideation when unambiguous)
-/skill:ideation           # Pi
-
-[provide your brain dump - messy dictation, scattered thoughts, half-formed ideas]
-```
-
-Or simply start with your brain dump and mention you want to turn it into specs:
-
-```
-I want to build something. Here's what I'm thinking...
-
-[your raw, unstructured thoughts]
-
-...can you help me turn this into a spec?
-```
-
-**The workflow:**
-
-1. **Intake** - Accept your messy, unstructured input without judgment. Take a position upfront — what's strong, what's weak. On an existing codebase, fire a parallel exploration sweep so the first question is already informed.
-2. **Interview loop** - One question at a time, each with a recommended answer. Explores the codebase inline — if it can look something up instead of asking, it does. Challenges vague demand, undefined terms, and hypothetical users. Loops until all 5 evidence gates are `ready`.
-3. **Contract** - When all 5 gates are `ready`, four plan critics stress-test the plan in parallel; then generate `contract.html` via the contract-gen CLI. A flight strip of the deciding measurements, the gate readiness board, nested scope tiers (MVP / Full / Stretch), an interactive phase graph, the run model, and copyable execution commands. Pick your scope tier in the terminal. Includes revision lineage tracking via `Supersedes` link.
-4. **HTML visualizations** - During interview and phasing, decisions default to inline `AskUserQuestion` previews; ephemeral HTML pages (comparisons, mockups, architecture options) are reserved for decisions that need real visual rendering. Deleted after you choose.
-5. **Phasing & specs** - Determine phases, generate Markdown specs with feedback loops and failure mode catalogs
-6. **Feedback quality check** - Self-review specs for feedback loop coverage before presenting
-7. **Execution handoff** - Phase track in contract, copy-to-clipboard ideation commands
-
-**Output artifacts:**
-
-All artifacts are written to `./docs/ideation/{project-name}/`:
-
-```
-_comparison.html               # Ephemeral decision aid (deleted after choice is made)
-contract-data.json             # Machine-readable contract (source of truth; consumed by autopilot)
-contract.html                  # the contract (for review)
-contract.md                    # Plain contract (autopilot fallback when contract-data.json is absent)
-contract-{date}.html / .md     # Superseded revisions (lineage chain)
-prd-phase-1.md                 # Phase 1 requirements (only if PRDs chosen)
-spec-phase-1.md                # Implementation spec (for execute-spec)
-spec-template-{pattern}.md     # Shared template for repeatable phases (if applicable)
-spec-phase-N.md                # Per-phase delta or full spec
-context-map.md                 # Scout's codebase map (written during execution)
-implementation-notes-phase-1.html  # Decisions made during execution (per-phase)
-run-{date}.json                # Machine-readable run record — one per engine run
-run-{date}.html                # Self-contained run report; warnings lead
-```
-
-Autopilot writes the `run-{date}.json` / `.html` pair as soon as the engine returns — before its failure gate, so a halted or walked-away run still leaves its review findings behind — and re-renders it once `scripts/verify.mjs` has run.
-
-HTML artifacts (contract, implementation notes, run reports, ephemeral visualizations) are self-contained single files with all CSS/JS inlined — no external dependencies. They open in your browser automatically. Features include:
-
-- **Field-guide layout** — one scrolling document: masthead, flight strip, banded sections, and a running head that carries the run command once you scroll past it (no tabs, no framework, no CDN)
-- **Readiness gate checklist** — a ✓/✗ per dimension with its one-sentence evidence citation in the hero (no score; readiness is binary)
-- **Success criteria with checks** — each criterion carries a typed check: `{cmd, expect}` renders the verifying command with its expected outcome, `{judgment}` renders a visible "judgment call" tag naming who looks at what. `scripts/verify.mjs <contract-data.json>` executes every `cmd` and prints a machine-readable `VERIFY {slug}: commits=A/B pass=N fail=M judgment=K` line (exit 0 = the contract's completion predicate; it verifies one contract's acceptance checks, never repo health)
-- **Decision log** — a "Decisions considered and rejected" panel recording interview rejections and critic-blocker fixes; carried into every spec so executors and reviewers can catch rejected approaches re-proposed as deviations
-- **Nested scope tiers** showing MVP / Full / Stretch commitment levels
-- **Horizontal phase track** with risk coloring and gate support
-- **Draft/Approved lifecycle** — a Draft contract shows the phase track as a plan preview with an "awaiting approval" note; run commands appear only once the contract is Approved (Phase 5)
-- **Copy-to-clipboard buttons** on `/ideation:autopilot` and per-phase commands (Approved contracts)
-- **Dark-first theming** with a co-equal light theme — auto/light/dark toggle persisted in `localStorage`; auto follows system preference
-
-Specs and PRDs are Markdown — readable as-is and consumed directly by `/ideation:execute-spec`.
-
-**Bundled references:**
-
-Shared (`references/`):
-
-- `interview-engine.md` - Shared interview engine (Phases 1-2), including the intake exploration sweep
-- `confidence-rubric.md` - Evidence-gate criteria for readiness assessment and spec feedback quality
-- `feedback-loop-guide.md` - Component-type mapping and design criteria for feedback loops
-- `harness-compat.md` - Claude Code / pi harness translation matrix
-- `learning-filter.md` - The learnings.md lifecycle: classify, generalize, dedupe, retire
-
-Skill-specific:
-
-- `html-guide.md` - components and constraints for ephemeral comparison/visualization artifacts (`contract.html` is rendered only by `scripts/contract-gen.ts`)
-- `prd-template.md` - PRD template
-- `spec-template.md` - Implementation spec template (includes feedback loops and failure modes)
-
-### express
-
-One-pass ideation for well-understood work: `/ideation:express` runs the identical evidence-gated interview, then collapses the four post-interview approval gates (contract approval, PRDs-vs-specs, spec approval, run-mode choice) into a single informed confirmation and goes straight to execution.
-
-```
-/ideation:express
-
-[provide your brain dump]
-```
-
-**What stays from the full flow:** the entire interview (no question limit, same gates), the four plan critics, and every artifact — `contract-data.json`, `contract.html`, `contract.md`, and specs are all still generated for post-hoc review.
-
-**What changes:**
-
-- **Two hard preconditions**, checked when the interview ends: all 5 gates `ready` (an early-stopped interview falls back to the standard flow) and a majority of success criteria carrying `cmd` checks — read from the generator's printed `{N} criteria ({M} cmd, {K} judgment)` count, since unattended execution can only trust what `verify.mjs` checks mechanically. Failing either routes to the standard ideation flow — never a silent downgrade.
-- **One confirmation**, led by the success-criteria check commands (approve what "done" means, not the essay), plus scope-tier contents and the critic digest. Answering it is the approval.
-- **Isolation branch.** Execution commits to `ideation/{slug}`; review moves to the branch diff. A bad run is a deleted branch, not a revert (autopilot's git-log skip pre-pass would treat reverted phase commits as complete).
-- **Fail-closed execution.** `approvalMode: "express"` → engine `strict: true` → `/ideation:execute-spec --headless --strict`.
-
-Not for exploratory or unfamiliar territory — the full flow's review gates earn their keep there.
+From 0.x: `/ideation:brainstorm` is the "should we?" opening, `/ideation:chart` is the
+`map` depth, `/ideation:express` is `just do it` or an approved plan's run, and Pi's
+change skill is `just do it` plus the approval hand-off. Full behavior lives in
+[skills/ideation/SKILL.md](skills/ideation/SKILL.md).
 
 ## Interview Loop
 
@@ -615,7 +498,7 @@ Those two tools — [`@nicknisi/pi-subagents`](https://github.com/nicknisi/pi-ex
 Both runtimes are full citizens: **Claude Code** (the tools are built in) and **pi** (the change workflow needs only the plugin; the planning path uses the two user-level tool installs named above). Two caveats for a fresh setup:
 
 - **`${CLAUDE_PLUGIN_ROOT}` resolution.** Skill bodies reference it; in pi it resolves via a user-level `claude-plugin-root` extension — the one piece of Nick's own setup not bundled. The caveat and its fallback (resolve relative to the skill directory) are owned by [`references/harness-compat.md`](references/harness-compat.md#what-does-not-differ).
-- **A Workflow engine** for `/ideation:autopilot`, `/ideation:express`, and `/ideation:get-goal-prompt`. Without one, the fallback is [Manual Cross-Session Execution](#manual-cross-session-execution): run `/ideation:execute-spec` per phase, in dependency order.
+- **A Workflow engine** for `/ideation:autopilot` and `/ideation:get-goal-prompt`. Without one, the fallback is [Manual Cross-Session Execution](#manual-cross-session-execution): run `/ideation:execute-spec` per phase, in dependency order.
 
 ## Harness support
 

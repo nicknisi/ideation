@@ -9,9 +9,15 @@
  * `joinCommands` is the guard. If a skill ships without an entry here, or an
  * entry here names a skill that no longer ships, the build fails.
  */
-import { commandFor, readSkills, type SkillFacts } from '../lib/skills';
+import { commandFor, readDepths, readSkills, type SkillFacts } from '../lib/skills';
 
-export type Stage = 'route' | 'whether' | 'plan' | 'execute';
+export type Stage = 'plan' | 'execute';
+
+/** One planning depth of /ideation, in the skill's own words (its "Pick the depth" table). */
+export interface Depth {
+  name: string;
+  when: string;
+}
 
 export interface CommandDoc {
   slug: string;
@@ -24,87 +30,47 @@ export interface CommandDoc {
   produces: string;
   /** The thing people get wrong about it. Optional. */
   caveat?: string;
+  /** The depths a command picks between, when it has them. */
+  depths?: Depth[];
 }
 
 export const STAGES: Record<Stage, { label: string; blurb: string }> = {
-  route: {
-    label: 'Charting the route',
-    blurb:
-      'Too big for one session and the way is not yet visible? Map the decisions first — as many sessions as it takes.',
-  },
-  whether: {
-    label: 'Deciding whether',
-    blurb: 'Is this worth building at all? No files are written at this stage.',
-  },
   plan: {
-    label: 'Planning how',
+    label: 'Planning',
     blurb:
-      'The interview, the critics, the contract, the specs. This is where a plan becomes something you can approve.',
+      'One entry point. It picks how much planning the work needs, says why in one line, and switches when you overrule it in a word.',
   },
   execute: {
     label: 'Executing',
     blurb:
-      'Turning approved specs into reviewed commits. Every one of these needs a contract that already exists.',
+      'Turning an approved plan into reviewed commits. /ideation hands off to these itself; you reach for them to resume or to run one piece by hand.',
   },
 };
 
 /** Presentation order. Roughly the order you would meet them. */
 export const COMMANDS: CommandDoc[] = [
   {
-    slug: 'chart',
-    stage: 'route',
-    headline: 'Map an effort too big for one session, one decision at a time.',
-    when: 'The work is huge and the route is fog — you cannot yet see the way from here to done, so a single interview cannot hold it. “We need a map before we plan.”',
-    produces:
-      'A map and its decision tickets under docs/chart/<slug>/, worked one per session. When nothing is left to decide, the route hands off to the interview as its starting evidence.',
-    caveat:
-      'It plans, and only plans — a ticket resolves a decision, never a build. If the fog lifts on first look, it says so and sends you straight to the interview.',
-  },
-  {
-    slug: 'brainstorm',
-    stage: 'whether',
-    headline: 'Pressure-test an idea before committing to it.',
-    when: 'You are weighing options, or you suspect the idea might be wrong. “Should I do X?” “Which of these approaches?” “Am I over-engineering this?”',
-    produces:
-      'A conclusion in chat, in four parts, and nothing on disk. A “yes” hands off to the interview with its rejected alternatives already recorded.',
-    caveat:
-      'It is for a question, not a dump. Anything shaped like “I want to build…” belongs to the interview, however settled it sounds.',
-  },
-  {
     slug: 'ideation',
     stage: 'plan',
-    headline: 'The planning door: an evidence-gated interview to a contract you approve.',
-    when: 'You have something to build and you want a plan you can hold — from a one-spec change up to a multi-phase initiative.',
+    headline: 'One entry point, at the right depth.',
+    when: 'Anything from a one-line fix to an effort whose route you cannot see yet, or the question of whether to build it at all. In Pi, /ideation (or /ideation plan) starts it.',
     produces:
-      'contract.html to decide on, contract.md and numbered spec files to execute against, and a run-mode recommendation.',
+      'Plan data in docs/ideation/<slug>/plan.json, a page to answer its decisions on, and, once you approve in the terminal, a run on the engine with reviewed commits.',
     caveat:
-      'It will not proceed on enthusiasm. All five evidence gates have to read ready first, and it reads your codebase rather than asking you about it.',
-  },
-  {
-    slug: 'express',
-    stage: 'plan',
-    headline: 'The same interview with the routing pre-answered.',
-    when: 'The work is well understood and you would rather not review each artifact. You want planning that flows straight into execution.',
-    produces:
-      'The same artifacts, one consolidated confirmation instead of per-artifact gates, and execution on an isolation branch.',
-    caveat:
-      'Because no human reviewed the specs, execution runs fail-closed: a scout HOLD or a crashed reviewer stops the phase rather than committing anyway.',
-  },
-  {
-    slug: 'change',
-    stage: 'plan',
-    headline: 'Agree on one compact change, approve it once, then walk away.',
-    when: 'The change is clear enough to state as before/after, invariants and checks, and you want it built without babysitting. Open it with /ideation in Pi.',
-    produces:
-      'A live contract page that goes from approval to running to a receipt of source-bound evidence, and reviewed local commits in an isolated worktree.',
-    caveat:
-      'Approval is the only permission. Comments on the contract are feedback, never authorization; it never pushes, merges or deploys, and ready-for-review is not accepted.',
+      'A page never approves; only your terminal confirmation does. The "should we?" opening writes no files. The interview will not proceed on enthusiasm: every evidence gate must read ready, or the plan says why it stopped early.',
+    depths: [
+      { name: 'should we?', when: 'You are still deciding whether to build it. A conversation that ends in a decision and writes nothing.' },
+      { name: 'just do it', when: 'One clear, low-risk change. No page: a compact plan, its checks, one confirmation, then the run.' },
+      { name: 'short plan', when: 'Buildable now, with two to five real forks. You answer them on the page, then approve.' },
+      { name: 'interview', when: 'The problem, goals or scope are not settled. The evidence-gated interview, the four critics, then the page.' },
+      { name: 'map', when: 'Too big or foggy for one session. Open questions worked one per session until the route is clear, then the interview.' },
+    ],
   },
   {
     slug: 'autopilot',
     stage: 'execute',
-    headline: 'Run every phase of an approved contract on the workflow engine.',
-    when: 'The contract is approved and you want to walk away. Independent phases run in parallel waves; dependent ones wait.',
+    headline: 'Run every unit of an approved plan on the workflow engine.',
+    when: 'A plan was approved (its run-contract.json), or a 0.x contract has specs. Independent units run in parallel waves; dependent ones wait.',
     produces:
       'One commit per phase, each naming its spec path, and a VERIFY line stating whether the contract’s own checks pass.',
     caveat:
@@ -155,6 +121,15 @@ export function joinCommands(): Command[] {
     throw new Error(
       `the guide documents skills that no longer ship: ${phantom.join(', ')}. ` +
         'Remove the entry from src/data/commands.ts.',
+    );
+  }
+
+  const depths = readDepths();
+  const authoredDepths = COMMANDS.find(c => c.slug === 'ideation')?.depths?.map(d => d.name) ?? [];
+  if ([...depths].sort().join('|') !== [...authoredDepths].sort().join('|')) {
+    throw new Error(
+      `the guide's /ideation depths (${authoredDepths.join(', ')}) disagree with skills/ideation/SKILL.md (${depths.join(', ')}). ` +
+        'Update the depths in src/data/commands.ts.',
     );
   }
 

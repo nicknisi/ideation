@@ -92,3 +92,24 @@ export function readSkills(): SkillFacts[] {
  */
 export const commandFor = (slug: string): string =>
   slug === 'ideation' ? '/ideation' : `/ideation:${slug}`;
+
+/**
+ * The depth names /ideation picks between: the backticked first column of the
+ * table under "## Pick the depth" in skills/ideation/SKILL.md, in order. The
+ * guide's authored depth list is checked against these, so a renamed or added
+ * depth fails the build instead of going stale.
+ */
+export function readDepths(): string[] {
+  const src = readFileSync(join(SKILLS_DIR, 'ideation', 'SKILL.md'), 'utf8');
+  const section = src.split(/^## /m).find(s => s.startsWith('Pick the depth\n'));
+  if (!section) throw new Error('skills/ideation/SKILL.md: no "## Pick the depth" section');
+  const names = section
+    .split('\n')
+    .filter(l => l.startsWith('|'))
+    .slice(2)
+    .map(l => l.split('|')[1].trim().match(/^`([^`]+)`$/)?.[1]);
+  if (!names.length || names.some(n => !n)) {
+    throw new Error('skills/ideation/SKILL.md: every depth-table row must start with a backticked name');
+  }
+  return names as string[];
+}
