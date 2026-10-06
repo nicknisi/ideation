@@ -17,8 +17,8 @@ Transform unstructured brain dumps into implementation artifacts through a conve
 ```
 INTAKE → INTERVIEW LOOP → CONTRACT.HTML → PHASING → SPEC.MD GENERATION → HANDOFF
               ↓                  ↓             ↓             ↓                ↓
-         Accept the mess    One question    Mission       Repeatable?      Phase track
-                            at a time,      Brief with      ↓              + copy buttons
+         Accept the mess    One question    Contract      Repeatable?      Phase track
+                            at a time,      with            ↓              + copy buttons
                             explore code    gates +      Template +        in contract
                             + show HTML     scope        per-phase
                             examples        tiers        deltas
