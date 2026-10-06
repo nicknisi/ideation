@@ -1,15 +1,18 @@
 # Native Pi change workflow
 
-The legacy Claude Code contract/autopilot and Pi engine behavior remain supported; in
-Pi, that planning path runs as `/skill:ideation`, `/skill:autopilot` and so on. The
-change workflow's front door is `/ideation`. Native workers require Pi SDK 0.87.1 or newer;
+This is how an approved plan runs in Pi. Planning is `/ideation` at a depth (see the
+README); in Pi, `/ideation` and `/ideation plan` start it, and the execution skills also
+run as `/skill:autopilot` and so on. Native workers require Pi SDK 0.87.1 or newer;
 older local peer dependencies can reject newer Anthropic models even when the main
 Pi application is current.
 
 1. Open **`/ideation`**. With no existing change, planning starts from the current
-   conversation—no redundant one-option menu or JSON form. The agent inspects the
-   code and asks only unresolved questions. `/ideation plan <idea>` is also supported.
-2. The agent prepares a compact brief and **opens its contract automatically**.
+   conversation—no redundant one-option menu or JSON form. The agent picks a depth and
+   says why, inspects the code and asks only unresolved questions. `/ideation plan
+   <idea>` is also supported. A plan with open decisions is answered first with
+   `/ideation respond <plan-folder>`; each confirmed answer is a new plan version.
+2. The agent prepares the plan (the host derives a compact brief from `plan.json`) and
+   **opens its contract automatically**.
    The contract uses the existing `DESIGN.md` field-guide theme, before/after views,
    dependency SVGs and deliverable → check → evidence maps. Revisions update the same
    draft page. A persistent link stays visible in Pi.
@@ -41,7 +44,7 @@ Pi application is current.
    deployment or external publication happens automatically.
 
 The explicit `plan`, `approve`, `status`, `review`, `pause`, `resume`, `stop`,
-`accept`, `exit` and `motion` subcommands remain available; run controls take an
+`accept`, `exit`, `motion` and `respond` subcommands remain available; run controls take an
 optional run ID. `/ideation <tab>` completes subcommands, then `motion on|off` and
 run IDs. An explicit brief path remains supported for
 power users. Pause waits for a safe boundary; stop waits for owned processes to
@@ -123,8 +126,8 @@ or dependency change is silently authorized, and the worker cannot patch depende
 internals to make its checks pass. Other environment setup may need explicit work.
 
 The documents are yours to keep. Each change gets `docs/ideation/<change-id>/` in the
-checkout (or `<change-id>-change/` when a planning-path project already uses that
-folder):
+checkout, the same folder as its `plan.json` (or `<change-id>-change/` when a 0.x
+project with `contract-data.json` already uses that folder):
 
 - `brief.json` — the agreement, rewritten on each revision;
 - `contract.html` — the self-contained contract page, refreshed when the run changes
