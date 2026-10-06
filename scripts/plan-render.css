@@ -1,0 +1,85 @@
+/* Plan pages wear the ideation field guide (DESIGN.md) over html-plan's own
+   palette. This file only maps tokens: each html-plan token takes the value of
+   the field-guide token named in its comment, as contract-gen.css declares it,
+   light here and dark in the two dark blocks (design-tokens.test.mjs holds them
+   equal). htmlplan.css itself is unmodified.
+
+   The three blocks repeat htmlplan.css's own selectors and come after it, so
+   each wins its theme state. The values are plain hex rather than light-dark():
+   a mock renders in a shadow root that resets color-scheme, where light-dark()
+   would always pick the light value. */
+:root {
+  --paper: #f7f7f3; /* --bg */
+  --card: #fcfcfa; /* --surface-1 */
+  --sunk: #ebebe4; /* --wash */
+  --line: #dededf; /* --line */
+  --line-2: #dededf; /* --line */
+  --ink: #191b1d; /* --ink */
+  --ink-2: #50555a; /* --muted */
+  --ink-3: #75797d; /* --faint */
+  --accent: #2b46c7; /* --accent */
+  --accent-soft: #e6eafb; /* --accent-tint */
+  --green: #187a48; /* --go */
+  --green-soft: #e0f0e7; /* --go-tint */
+  --amber: #94660a; /* --caution */
+  --amber-soft: #f5ecd2; /* --caution-tint */
+  --red: #bb3a2c; /* --danger */
+  --red-soft: #f8e2de; /* --danger-tint */
+  /* One accent: html-plan's blue and purple fold into it and into muted ink. */
+  --blue: #2b46c7; /* --accent */
+  --blue-soft: #e6eafb; /* --accent-tint */
+  --purple: #50555a; /* --muted */
+  --purple-soft: #ebebe4; /* --wash */
+  --serif: 'Iowan Old Style', 'Palatino Nova', Palatino, 'Book Antiqua', Georgia, 'Times New Roman', serif; /* --font-serif */
+  --sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; /* --font-sans */
+  --mono: 'Berkeley Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, Consolas, monospace; /* --font-mono */
+  --r: 4px; /* --radius-lg */
+  --r-sm: 3px; /* --radius */
+  --float: 3px 3px 0 0 var(--line); /* --press */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #131417;
+    --card: #1a1c20;
+    --sunk: #0c0d0f;
+    --line: #2d3036;
+    --line-2: #2d3036;
+    --ink: #e9e9e4;
+    --ink-2: #a8aaa6;
+    --ink-3: #82858a;
+    --accent: #93a7ff;
+    --accent-soft: #1e2542;
+    --green: #63bf8d;
+    --green-soft: #15291e;
+    --amber: #d2ad55;
+    --amber-soft: #2b2513;
+    --red: #e0796e;
+    --red-soft: #331714;
+    --blue: #93a7ff;
+    --blue-soft: #1e2542;
+    --purple: #a8aaa6;
+    --purple-soft: #0c0d0f;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #131417;
+  --card: #1a1c20;
+  --sunk: #0c0d0f;
+  --line: #2d3036;
+  --line-2: #2d3036;
+  --ink: #e9e9e4;
+  --ink-2: #a8aaa6;
+  --ink-3: #82858a;
+  --accent: #93a7ff;
+  --accent-soft: #1e2542;
+  --green: #63bf8d;
+  --green-soft: #15291e;
+  --amber: #d2ad55;
+  --amber-soft: #2b2513;
+  --red: #e0796e;
+  --red-soft: #331714;
+  --blue: #93a7ff;
+  --blue-soft: #1e2542;
+  --purple: #a8aaa6;
+  --purple-soft: #0c0d0f;
+}
