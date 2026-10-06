@@ -2,8 +2,23 @@
 // (the change brief) from an approved plan. Validation follows
 // workflows/change-brief.mjs: hand-written checks that throw a TypeError
 // naming the JSON path, no validator framework.
-import { readFileSync } from 'node:fs';
-import { briefFingerprint, validateBrief } from '../workflows/change-brief.mjs';
+//
+// Usage:
+//   node scripts/plan-data.ts critic-view <plan-folder>
+//   node scripts/plan-data.ts run-contract <plan-folder>
+//
+// critic-view prints what the plan critics review (criticView). run-contract
+// is the Claude Code hand-off after approval: it writes run-contract.json
+// (toRunContract) and one work packet per unit (unit-<id>.md, change-brief's
+// workPacket) beside plan.json, for autopilot or execute-spec to run. Running
+// it is not approval: skills/ideation runs it only after the user approved the
+// plan in a terminal confirmation, and toRunContract still refuses a plan with
+// an unanswered required decision or a gate that isn't ready.
+import { spawnSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { briefFingerprint, validateBrief, workPacket } from '../workflows/change-brief.mjs';
+import { isEntryPoint } from './verify.mjs';
 import {
   DECISION_STATES, EXHIBIT_KINDS, GATE_KEYS, MAX_CLAIMS, MAX_DEPTH, QUESTION_TYPES, RISKS, SCOPE_TIERS,
   type Claim, type Decision, type Plan, type RunContract,
@@ -264,3 +279,46 @@ export function toRunContract(plan: Plan): RunContract {
   });
   return { brief, fingerprint: briefFingerprint(brief), plan: versionFile(plan.version) };
 }
+
+/** The packet's Implementation Details. Claude Code has no planner stage: the engine's scout and builder plan from current source. */
+export const PACKET_PLAN = 'No plan was written ahead of this unit. Read the current source, then implement the goal above within the file changes below, and prove it with the validation commands.';
+
+/** The packet file for a unit, beside plan.json; also the spec path its commit body names. */
+export const packetFile = (unitId: string) => `unit-${unitId}.md`;
+
+/**
+ * Claude Code's hand-off after approval: writes run-contract.json and one
+ * packet per unit beside plan.json. The packets come first, so a
+ * run-contract.json on disk always has its packets. Throws (writing nothing)
+ * when the plan is not approvable.
+ */
+export function writeRunContract(folder: string, sourceRevision: string) {
+  const contract = toRunContract(load(join(folder, 'plan.json')));
+  const packets = (contract.brief.units as { id: string }[]).map(u => {
+    const path = join(folder, packetFile(u.id));
+    writeFileSync(path, workPacket(contract.brief, u.id, { plan: PACKET_PLAN, sourceRevision }));
+    return path;
+  });
+  const path = join(folder, 'run-contract.json');
+  writeFileSync(path, JSON.stringify(contract, null, 2) + '\n');
+  return { contract, path, packets };
+}
+
+const USAGE = `Usage:
+  node scripts/plan-data.ts critic-view <plan-folder>    print what the plan critics review
+  node scripts/plan-data.ts run-contract <plan-folder>   write run-contract.json and unit packets
+run-contract is not approval: run it only after the user approves the plan in the terminal.`;
+
+function main(argv: string[]): number {
+  const [command, folder, ...rest] = argv;
+  if (!folder || rest.length || !['critic-view', 'run-contract'].includes(command)) { console.error(USAGE); return 2; }
+  try {
+    if (command === 'critic-view') { process.stdout.write(JSON.stringify(criticView(load(join(folder, 'plan.json'))), null, 2) + '\n'); return 0; }
+    const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: folder, encoding: 'utf8' });
+    const { contract, path, packets } = writeRunContract(folder, head.status === 0 ? head.stdout.trim() : 'unknown (not a git checkout)');
+    console.log(`run contract: ${path} (${contract.brief.id} v${contract.brief.revision}, ${contract.fingerprint.slice(0, 12)})`);
+    for (const p of packets) console.log(`packet: ${p}`);
+    return 0;
+  } catch (e) { console.error(`plan-data: ${(e as Error).message}`); return 1; }
+}
+if (isEntryPoint(import.meta.url)) process.exitCode = main(process.argv.slice(2));

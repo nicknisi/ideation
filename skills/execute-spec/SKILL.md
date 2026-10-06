@@ -39,7 +39,7 @@ Example: `/ideation:execute-spec --parallel` or `/ideation:execute-spec --headle
 
 Resolve the spec in this order:
 
-1. **Argument given** — read it directly.
+1. **Argument given** — read it directly. A unit packet (`unit-<id>.md`, written beside `plan.json` by `${CLAUDE_PLUGIN_ROOT}/scripts/plan-data.ts` `run-contract` once the user approved the plan) is a spec: its sections carry the names Step 3 parses, and its File Changes and Validation Commands are the approved authority, never to be widened. (`TODO(4.2)`: the rest of this skill still reads 0.x contract data — `approvalMode`, `spec-phase-*.md` discovery.)
 2. **No argument** — auto-detect from `TaskList`: a task with `status: pending`, empty `blockedBy`, and a subject starting with "Phase" or metadata containing `specFile`. Read its `specFile` (via `TaskGet`).
 3. **No tasks** — glob `./docs/ideation/*/spec-phase-*.md` **and** `./docs/ideation/*/spec.md` (single-spec projects emit a bare `spec.md`). Multiple matches → `AskUserQuestion` to pick (headless: first unblocked).
 

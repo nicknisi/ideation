@@ -291,11 +291,16 @@ function resolveInput(path) {
  * the criteria (normalizeCriterion reads { id, criterion, check } as is) and its
  * units the phases. Returns the notes to print alongside.
  *
- * TODO(4.1): native plans need a real commit reference. Until then a unit has
- * no specPath, so it is outside the commit denominator, exactly like a 0.x
- * phase without one. A plan converted from 0.x borrows each unit's specPath and
- * kind from the contract-data.json beside it, matched by the slug plan-migrate
- * made the unit id with, so its commits= means what the 0.x line meant.
+ * Only a plan converted from 0.x has a commit reference: it borrows each unit's
+ * specPath and kind from the contract-data.json beside it, matched by the slug
+ * plan-migrate made the unit id with, so its commits= means what the 0.x line
+ * meant. This path stays for migrated folders only; a plan the 1.0 skill wrote
+ * never supersedes contract-data.json.
+ *
+ * TODO(4.2): native plans need a real commit reference (Claude Code commits name
+ * a unit-<id>.md packet beside plan.json; Pi commits name the run's own packet).
+ * Until then a native unit has no specPath, so it is outside the commit
+ * denominator, exactly like a 0.x phase without one.
  */
 function planAsContract(plan, planPath) {
   const notes = [];

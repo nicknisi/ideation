@@ -26,7 +26,9 @@ drives the engine, which runs execute-spec per phase.)
    a `contract.md` path means its sibling `contract-data.json`. No argument: glob
    `./docs/ideation/*/contract-data.json` and take the most recently modified. If the
    project has no `contract-data.json`, stop and say so — `--print-goal` consumes it,
-   so the fix is re-running ideation, not hand-writing a goal.
+   so the fix is re-running ideation, not hand-writing a goal. (`TODO(4.2)`: a 1.0 plan
+   folder, with `plan.json` and no `contract-data.json`, has no `/goal` yet. Say so, and
+   point to running its `run-contract.json` with `/ideation:autopilot`.)
 2. **Already complete?** Run `node ${CLAUDE_PLUGIN_ROOT}/scripts/verify.mjs <contract-data.json>`.
    Exit 0 → quote its final `VERIFY {slug}: …` line, tell the user the project is
    complete, and stop.
