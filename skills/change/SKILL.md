@@ -1,10 +1,12 @@
 ---
 name: ideation-change
-description: "Explicitly requested Pi-native ideation workflow: agree on a compact change brief, approve once, then generate working plans just in time and return source-bound evidence. Use when the user invokes /ideation plan or explicitly requests the native change workflow. Does not replace or automatically invoke the legacy ideation workflow."
+description: "Pi only. Explicitly requested Pi-native ideation workflow: agree on a compact change brief, approve once, then generate working plans just in time and return source-bound evidence. Use when the user invokes /ideation plan in Pi or explicitly requests the native change workflow. Outside Pi (for example in Claude Code) it only explains that and points to /ideation:ideation. Does not replace or automatically invoke the legacy ideation workflow."
 disable-model-invocation: true
 ---
 
 # Native change workflow
+
+**Pi only.** This workflow needs Pi's `ideation_change` tool and `/ideation` commands. If the `ideation_change` tool is not available to you (for example in Claude Code), do nothing else from this skill: say in one or two sentences that the change workflow runs in Pi (`pi install git:github.com/nicknisi/ideation`, then `/ideation`), and offer the planning interview here instead (`/ideation:ideation`), which the user starts themselves.
 
 Shape the change, not an implementation recipe. Use this workflow only when explicitly requested. The `ideation_change` tool prepares and inspects; only the user's answer to Pi's approval confirmation grants execution permission, whether it was opened by `/ideation approve`, the `/ideation` menu or the page's **Approve in Pi** button. Never manufacture approval, run the trusted controller directly to avoid confirmation, or treat an artifact comment as permission.
 
