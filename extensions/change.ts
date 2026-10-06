@@ -4,7 +4,6 @@ import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
-import { createSubagentRuntime } from '@nicknisi/pi-shared';
 import { Type } from 'typebox';
 import { createChangeRunner } from '../workflows/change-run.mjs';
 import { validateBrief, briefFingerprint, briefSchema } from '../workflows/change-brief.mjs';
@@ -37,12 +36,23 @@ const SUBCOMMANDS: [string, string, boolean][] = [
   ['motion', 'Turn the widget animation on or off', true],
 ];
 const RUN_ARGUMENT = new Set(['status', 'review', 'pause', 'resume', 'stop', 'accept', 'exit']);
+// Loaded on the first spawn, not at startup or session start: from this repo's
+// tree @nicknisi/pi-shared value-imports a second Pi bundle that Pi's module
+// alias does not intercept, which costs seconds through jiti. One cached
+// promise; a failed import surfaces as that spawn's error.
+let shared: Promise<typeof import('@nicknisi/pi-shared')> | undefined;
+export function loadPiShared() {
+  shared ??= import('@nicknisi/pi-shared').catch((error: unknown) => {
+    throw new Error(`ideation: could not load @nicknisi/pi-shared: ${error instanceof Error ? error.message : String(error)}`);
+  });
+  return shared;
+}
 
 // Dependency injection keeps command authorization and lifecycle testable without paid calls.
 export function registerChange(pi: ExtensionAPI, deps: any = {}) {
   let current: any, initializing: any, generation = 0;
   const runnerFactory = deps.createChangeRunner ?? createChangeRunner;
-  const runtimeFactory = deps.createSubagentRuntime ?? createSubagentRuntime;
+  const runtimeFactory = deps.createSubagentRuntime ?? (async (options: any) => (await loadPiShared()).createSubagentRuntime(options));
   const loadTui = deps.loadTui ?? (() => import('@earendil-works/pi-tui'));
   const notify = (s: any, message: string, level = 'info') => {
     if (!s?.live) return;
@@ -80,7 +90,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
       const tui = ctx.mode === 'tui' ? await loadTui() : undefined;
       if (epoch !== generation) throw new Error('Session changed during initialization');
       const s: any = { ctx, cwd: ctx.cwd, repoRoot, ownerId, stateDir, live: true, shown: new Map(), drafts: new Map(), docsPublished: new Map(), left: new Set(), tui };
-      const runtime = runtimeFactory({ namespace: 'ideation-change', artifactsDir: join(stateDir, 'children') });
+      let runtime: any; // Created on the first spawn; see loadPiShared.
       // Model tool path: RECORD to the run inbox only. Never emit a self-directed follow-up,
       // which would loop the coordinator's own feedback straight back into itself.
       const recordFeedback = async (id: string, f: any) => {
@@ -182,7 +192,8 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
       s.runner = runnerFactory({ repoRoot, pluginRoot, ownerId,
         spawn: async (opts: any) => {
           if (!s.activeModel) throw new Error('No approved model bound');
-          return runtime.spawn({ ...opts, model: s.activeModel });
+          runtime ??= Promise.resolve(runtimeFactory({ namespace: 'ideation-change', artifactsDir: join(stateDir, 'children') }));
+          return (await runtime).spawn({ ...opts, model: s.activeModel });
         },
         onEvent: (event: any) => {
           if (!s.live) return;
