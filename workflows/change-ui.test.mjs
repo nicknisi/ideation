@@ -9,7 +9,7 @@ import { validateBrief, briefFingerprint } from './change-brief.mjs';
 const brief = validateBrief({schemaVersion:1,id:'demo',title:'Demo',revision:1,why:'why',change:{before:'before',after:'after'},mustHold:['invariant'],acceptance:[{id:'a',criterion:'works',check:{cmd:'node --test'}}],units:[{id:'u',title:'unit',goal:'goal',risk:'low',needs:[],acceptanceIds:['a']}],authority:{paths:['src/'],commands:['node --test']}});
 test('safe contract links and compact authority summaries', () => {
   for(const url of ['javascript:alert(1)','http://a/\x1b','http://a/\n']) assert.throws(()=>safeUrl(url));
-  const text=approvalText(brief); for(const x of ['Change: Demo','1 path(s)','1 exact command(s)','200,000 tokens','200 tool calls','not an OS sandbox']) assert.ok(text.includes(x), x);
+  const text=approvalText(brief); for(const x of ['Change: Demo','1 path(s)','1 exact command(s)','No time or token limit','not an OS sandbox']) assert.ok(text.includes(x), x);
 });
 test('approval summary stays bounded for a real-world brief instead of dumping its contents', () => {
   const large = structuredClone(brief);
@@ -55,7 +55,7 @@ test('mock Pi: model cannot approve, headless denied, confirmation cancellation 
   const pi={on:(n,f)=>handlers[n]=f,registerCommand:(n,v)=>commands[n]=v,registerTool:v=>tools[v.name]=v,events:{emit(){}},appendEntry(){},sendUserMessage:(...x)=>sent.push(x),exec:async (_cmd,args)=>({code:0,stdout:args.includes('--show-toplevel')?root:join(root,'.git'),stderr:''})};
   const runner={status:async()=>[],dispose:async()=>calls.push('dispose'),approve:async()=>{calls.push('approve');throw new Error('dirty checkout');}};
   registerChange(pi,{createChangeRunner:opts=>{assert.equal(opts.ownerId,'owner');assert.equal(opts.repoRoot,root);return runner;},createSubagentRuntime:()=>({spawn:async()=>{throw new Error('no calls');}})});
-  const ctx={cwd:root,hasUI:false,model:{provider:'p',id:'m'},sessionManager:{getSessionId:()=> 'owner'},ui:{notify:m=>notifications.push(m),setStatus(){},setWidget(){},confirm:async(_title,text)=>{assert.match(text,/tokens/);return confirmation;}}};
+  const ctx={cwd:root,hasUI:false,model:{provider:'p',id:'m'},sessionManager:{getSessionId:()=> 'owner'},ui:{notify:m=>notifications.push(m),setStatus(){},setWidget(){},confirm:async(_title,text)=>{assert.match(text,/No time or token limit/);return confirmation;}}};
   await assert.rejects(commands.ideation.handler('approve b.json',ctx),/headless/);
   await assert.rejects(tools.ideation_change.execute('',{action:'approve'},null,null,ctx)); assert.equal(calls.includes('approve'),false);
   await writeFile(join(root,'b.json'),JSON.stringify(brief)); ctx.hasUI=true;

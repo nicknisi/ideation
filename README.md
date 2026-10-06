@@ -20,8 +20,9 @@ plans just in time rather than requiring every implementation recipe upfront:
 # Or use /ideation again for review, revision, progress and run controls.
 ```
 
-One explicit approval binds the change, exact command/path authority, model and
-budgets. Work runs in an isolated Git worktree, using the existing engine and
+One explicit approval binds the change, exact command/path authority and model. There
+are no time or token budgets: work runs until it is verified, you pause or stop it, or
+it stops to ask because it is stuck. Work runs in an isolated Git worktree, using the existing engine and
 independent review. A compact, theme-aware Pi component shows the current stage,
 real progress, and a persistent **contract/receipt link**. Contracts retain
 ideation's paper/graphite-and-cobalt field-guide design, with before/after views,

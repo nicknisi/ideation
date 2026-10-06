@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { validateBrief, briefFingerprint, workPacket } from './change-brief.mjs';
+import { validateBrief, briefFingerprint, briefSchema, workPacket } from './change-brief.mjs';
 const fixture = JSON.parse(readFileSync(new URL('../test-fixtures/native-change/brief.json', import.meta.url), 'utf8'));
 const fresh = () => structuredClone(fixture);
 
@@ -12,13 +12,8 @@ test('normalizes defaults into an independent clone; preserves exact command str
   assert.equal(b.executionMode, 'strict');
   assert.deepEqual(b.units[0].needs, []);
   assert.deepEqual(b.decisions, []);
-  assert.equal(b.authority.maxDurationMs, 1800000);
-  assert.equal(b.authority.maxStageMs, 300000);
-  assert.equal(b.authority.maxTokens, 200000);
-  assert.equal(b.authority.maxAttempts, 2);
-  assert.equal(b.authority.maxReviewCycles, 3);
-  assert.equal(b.authority.maxTurns, 40);
-  assert.equal(b.authority.maxToolCalls, 200);
+  for (const limit of ['maxDurationMs', 'maxStageMs', 'maxTokens', 'maxAttempts', 'maxReviewCycles', 'maxTurns', 'maxToolCalls'])
+    assert.equal(limit in b.authority, false, `${limit}: runs have no budgets, so none is filled in`);
   assert.equal(b.authority.allowLocalCommit, true);
   b.mustHold.push('changed'); assert.equal(raw.mustHold.length, 2);
   raw.acceptance[0].check.cmd = ' node --test scripts/change-render.test.mjs ';
@@ -67,18 +62,11 @@ const invalid = [
   ['null needs', b => { b.units[0].needs = null; }],
   ['authority unknown', b => { b.authority.push = true; }],
   ['commit boolean', b => { b.authority.allowLocalCommit = 'true'; }],
-  ['duration minimum', b => { b.authority.maxDurationMs = 999; }],
-  ['duration maximum', b => { b.authority.maxDurationMs = 86400001; }],
-  ['stage exceeds duration', b => { b.authority.maxStageMs = 1800001; }],
-  ['zero stage', b => { b.authority.maxStageMs = 0; }],
-  ['negative tokens', b => { b.authority.maxTokens = -1; }],
-  ['fractional attempts', b => { b.authority.maxAttempts = 1.5; }],
-  ['too many attempts', b => { b.authority.maxAttempts = 4; }],
-  ['too many reviews', b => { b.authority.maxReviewCycles = 4; }],
-  ['too many turns', b => { b.authority.maxTurns = 101; }],
-  ['too many tools', b => { b.authority.maxToolCalls = 1001; }],
-  ['unsafe integer', b => { b.authority.maxTokens = Infinity; }],
-  ['null budget', b => { b.authority.maxTokens = null; }],
+  ['zero legacy limit', b => { b.authority.maxStageMs = 0; }],
+  ['negative legacy limit', b => { b.authority.maxTokens = -1; }],
+  ['fractional legacy limit', b => { b.authority.maxAttempts = 1.5; }],
+  ['unsafe legacy limit', b => { b.authority.maxTokens = Infinity; }],
+  ['null legacy limit', b => { b.authority.maxTokens = null; }],
 ];
 for (const [name, mutate] of invalid) test(`rejects ${name}`, () => { const b = fresh(); mutate(b); assert.throws(() => validateBrief(b), TypeError); });
 for (const p of ['../src/', '/tmp/a', 'C:/tmp/a', 'C:\\tmp\\a', './src/', 'src/../a', 'src//a', 'src\\a', 'src/./a', '.git/config', '.pi/', '.ideation-policy.mjs', 'docs/ideation/.native/run/', 'package.json', 'sub/pnpm-lock.yaml', 'src/\nfile']) {
@@ -132,4 +120,13 @@ test('shell syntax results are cached: invalid commands still fail every time, v
   const start = performance.now();
   for (let i = 0; i < 50; i++) briefFingerprint(b);
   assert.ok(performance.now() - start < 1000, 'repeat fingerprints do not spawn a shell per command');
+});
+
+test('briefs written with the old budget fields still validate unchanged, so their approvals hold', () => {
+  const legacy = fresh();
+  Object.assign(legacy.authority, { maxDurationMs: 1800000, maxStageMs: 300000, maxTokens: 90000, maxAttempts: 2, maxReviewCycles: 3, maxTurns: 40, maxToolCalls: 200 });
+  const b = validateBrief(legacy);
+  assert.equal(b.authority.maxTokens, 90000);
+  assert.equal(briefFingerprint(b), briefFingerprint(validateBrief(b)));
+  assert.equal(Object.keys(briefSchema.properties.authority.properties).some(k => k.startsWith('max')), false, 'the model is never offered a budget to set');
 });

@@ -14,9 +14,14 @@ Pi application is current.
    draft page. A persistent link stays visible in Pi.
 3. Open `/ideation` to review, revise or approve. **`/ideation approve` remembers the
    prepared brief**, including after reload; there is no file path to copy. Its short
-   confirmation summarizes boundaries and budgets—the complete agreement and exact
+   confirmation summarizes the boundaries—the complete agreement and exact
    commands stay in the browser. Confirmation starts background work immediately.
    That already-reviewed page becomes the run's live page, retaining its annotations.
+   With `@nicknisi/pi-artifacts` 1.6.0 or newer, the live draft page also shows
+   **Approve in Pi**. It asks the owning Pi session to open that same confirmation;
+   the terminal answer is still the approval. The button appears only while that
+   session is listening, never on a saved file, and a request while a confirmation
+   is already open, or for a change that is already running, is refused.
 4. During execution, `/ideation` offers the relevant controls. Pi's theme-aware widget
    shows the current stage, reviewed deliverables during implementation, and current
    objective evidence during final verification. Elapsed time is not a completion
@@ -36,11 +41,16 @@ Pi application is current.
 The explicit `status`, `pause`, `resume`, `stop`, and `review` commands remain
 available, with an optional run ID. An explicit brief path remains supported for
 power users. Pause waits for a safe boundary; stop waits for owned processes to
-settle. Blocked runs can be set aside without deleting their work. Budgets remain
-enforced; the menu does not offer an exhausted run as if it could simply continue.
-For a blocked or interrupted run, **Start fresh (new approval)** reuses the agreement
-in a new revision and asks for explicit approval of fresh budgets. Only after that
-approval is the prior run set aside; its worktree and work are retained.
+settle. Blocked runs can be set aside without deleting their work.
+
+There are no time, token or attempt budgets. A run keeps going until it is ready for
+review, until you pause or stop it, or until it is stuck and stops to ask: the same
+check failing twice, a review that still fails after the engine's review/fix rounds,
+or the model provider still failing after a few spaced retries. **Resume** always
+continues the same run in the same worktree. **Start fresh (new approval)** reuses the
+agreement as a new revision in a new worktree; only after that approval is the prior
+run set aside, and its worktree and work are retained. Token and cost usage are
+recorded in the run for information and never stop it.
 
 The model tool accepts `action: "prepare", brief: { ... }` as a typed object, not a
 JSON-encoded string. The host stores an immutable canonical copy in the Git directory
@@ -99,11 +109,9 @@ Git common directory's `ideation/` and remain available after execution. Session
 reload or switch disposes feedback subscriptions and interrupts owned work. There is
 no auto-restart daemon: inspect status and explicitly resume after reconciliation.
 A previously approved run may be resumed in a headless host: the command waits for
-settlement rather than detaching and letting the process exit. Budgets and attempt
-limits survive restart; an exhausted budget requires a new explicit decision, not
-an automatic reset. Token usage is accounted between workers, so a running worker
-can overshoot the remaining token budget; time, turn and tool-call limits still
-bound that worker. Status detects changed source on completed runs and shows stale
+settlement rather than detaching and letting the process exit. Briefs written before
+budgets were removed still carry their old limit fields; they are accepted unchanged,
+so existing approvals hold, and ignored. Status detects changed source on completed runs and shows stale
 evidence; acceptance always rechecks the actual source.
 
 ## Optional live artifacts

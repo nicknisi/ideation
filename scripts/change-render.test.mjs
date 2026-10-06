@@ -22,7 +22,10 @@ test('brief is change-first, self-contained, responsive and read-only', () => {
   assert.ok(html.includes('<details><summary>Execution boundaries'));
   assert.ok(!/<details[^>]*\bopen\b/.test(html));
   assert.equal((html.match(/<script>/g) ?? []).length, 2, 'only trusted theme/print scripts');
-  assert.equal((html.match(/<button\b/g) ?? []).length, 1, 'only theme control');
+  const buttons = html.match(/<button\b[^>]*>/g) ?? [];
+  assert.equal(buttons.length, 2, 'only the theme control and the inert approval request');
+  assert.ok(buttons.some(b => b.includes('data-artifact-action="approve"') && /\shidden[\s>]/.test(b)), 'the approval request ships hidden and inert');
+  assert.ok(!/\son[a-z]+=/i.test(html), 'no inline handlers');
   assert.ok(!/<(?:form|iframe|img)\b/.test(html));
   assert.ok(!/\bsrc\s*=/.test(html));
   assert.ok([...html.matchAll(/href="([^"]*)"/g)].every(m => m[1].startsWith('#')));
@@ -284,4 +287,17 @@ test('run provenance says when uncommitted work was part of the starting point',
   const included = renderBrief(b, { run: { ...runFor(b, 'running'), approvedHead: 'head-abc', includedChanges: ['a.js', 'b.md'] } });
   assert.ok(included.includes('<dd>head-abc + 2 uncommitted file(s)</dd>'));
   assert.ok(!renderBrief(b, { run: runFor(b, 'running') }).includes('Started from'), 'older runs render unchanged');
+});
+
+test('only a draft can ask Pi to approve; run pages and receipts never offer it', () => {
+  const b = fresh();
+  assert.ok(renderBrief(b).includes('data-artifact-action="approve"'));
+  for (const state of ['ready', 'running', 'ready-for-review', 'accepted']) {
+    assert.ok(!renderBrief(b, { run: runFor(b, state) }).includes('data-artifact-action'), state);
+    assert.ok(!renderReceipt(b, runFor(b, state)).includes('data-artifact-action'), state);
+  }
+});
+
+test('the stamp entrance can never scroll a narrow page sideways', () => {
+  assert.match(renderBrief(fresh()), /body\.native-document \{ overflow-x: clip; \}/);
 });

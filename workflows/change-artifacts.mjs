@@ -31,7 +31,9 @@ export function loopbackUrl(value) {
   return href;
 }
 /** One queue per durable view. Only HTML and our metadata are written, never annotation sidecars. */
-export function createArtifactConsumer({ events, stateDir, onFeedback, warn = () => {} }) {
+/** actions/onRequest: page requests this consumer accepts (e.g. 'approve'). A
+ * request only reaches onRequest(viewId, action); it never grants anything. */
+export function createArtifactConsumer({ events, stateDir, onFeedback, actions = [], onRequest, warn = () => {} }) {
   const views = new Map(); let disposed = false;
   function view(id) {
     if (!views.has(id)) {
@@ -73,10 +75,14 @@ export function createArtifactConsumer({ events, stateDir, onFeedback, warn = ()
       if (!v.unsubscribe && onFeedback && !disposed) {
         const token = {};
         v.subToken = token;
+        const requests = onRequest && actions.length ? { actions: [...actions], onRequest: async r => {
+          if (disposed || v.subToken !== token || r?.slug !== result.slug || !actions.includes(r.action)) return false;
+          return onRequest(v.id, r.action);
+        } } : {};
         const unsubscribe = await api.subscribe({ slug: result.slug, onFeedback: async f => {
           if (disposed || v.subToken !== token || f?.slug !== result.slug || typeof f.markdown !== 'string' || !Array.isArray(f.annotationIds) || !f.annotationIds.every(x => typeof x === 'string')) return false;
           return onFeedback(v.id, f);
-        } });
+        }, ...requests });
         if (typeof unsubscribe !== 'function') throw new Error('Invalid subscription');
         if (disposed || v.subToken !== token) unsubscribe(); else v.unsubscribe = unsubscribe;
       }

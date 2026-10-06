@@ -6,9 +6,10 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { resolve, relative, join, isAbsolute, dirname } from 'node:path';
 
 const gitControls = new AsyncLocalStorage();
+/** timeoutMs: Infinity means no deadline; the signal still cancels. */
 export function withGitControl({ signal, timeoutMs = 30000 }, action) {
   signal?.throwIfAborted();
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error('Git operation budget exhausted');
+  if (Number.isNaN(timeoutMs) || timeoutMs <= 0) throw new Error('Git operation budget exhausted');
   return gitControls.run({ signal, deadline: Date.now() + timeoutMs }, action);
 }
 export async function gitText(cwd, args, { literal = true, env = {} } = {}) {
@@ -206,7 +207,8 @@ async function runProcess(workspace, executable, args, { signal, timeoutMs, env,
     };
     const cancel = why => { if (reason) return; reason = why; kill('SIGTERM'); escalation = setTimeout(() => kill('SIGKILL'), 75); };
     const abort = () => cancel('Cancelled');
-    const timer = setTimeout(() => cancel('Timed out'), timeoutMs);
+    // No deadline unless one is given (setTimeout would fire at once for Infinity).
+    const timer = Number.isFinite(timeoutMs) && timeoutMs > 0 ? setTimeout(() => cancel('Timed out'), timeoutMs) : undefined;
     signal?.addEventListener('abort', abort, { once: true });
     if (signal?.aborted) abort();
     const collect = chunk => { bytes += chunk.length; output = Buffer.concat([output, chunk]).subarray(-maxOutput); if (maxOutput > 8192 && bytes > maxOutput) cancel('Output limit exceeded'); };
@@ -231,8 +233,9 @@ async function runProcess(workspace, executable, args, { signal, timeoutMs, env,
 
 const command = (workspace, cmd, options) => runProcess(workspace, '/bin/sh', ['-c', cmd], options);
 
-export async function runChecks(workspace, criteria, { signal, timeoutMs = 300000 } = {}) {
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error('Invalid check timeout');
+/** Checks run until they finish or the run is stopped: there is no time limit by default. */
+export async function runChecks(workspace, criteria, { signal, timeoutMs = Infinity } = {}) {
+  if (Number.isNaN(timeoutMs) || timeoutMs <= 0) throw new Error('Invalid check timeout');
   const revision = await sourceRevision(workspace), evidence = [];
   let mutated = false;
   for (const c of criteria) {
@@ -261,11 +264,12 @@ async function prepareReviewControlled(workspace, paths) {
 }
 
 export function commitWorkspace(workspace, paths, options = {}) {
-  return withGitControl({ timeoutMs: 300000, ...options }, () => commitWorkspaceControlled(workspace, paths, options));
+  // Commit hooks may run a whole test suite; there is no deadline, only the stop signal.
+  return withGitControl({ timeoutMs: Infinity, ...options }, () => commitWorkspaceControlled(workspace, paths, options));
 }
-async function commitWorkspaceControlled(workspace, paths, { message, specPath, sourceRevision: expected, signal, timeoutMs = 300000 } = {}) {
+async function commitWorkspaceControlled(workspace, paths, { message, specPath, sourceRevision: expected, signal, timeoutMs = Infinity } = {}) {
   signal?.throwIfAborted();
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error('Invalid commit timeout');
+  if (Number.isNaN(timeoutMs) || timeoutMs <= 0) throw new Error('Invalid commit timeout');
   if (!expected || expected !== await sourceRevision(workspace)) throw new Error('Stale source revision');
   await assertScope(workspace, paths);
   const files = await changedFiles(workspace);

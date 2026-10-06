@@ -163,7 +163,7 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
     return snapshot;
   }
   async function boundary(ctx) {
-    const { r } = ctx, a = r.brief.authority;
+    const { r } = ctx;
     if (ctx.abort.signal.aborted) throw new Error('Run aborted');
     if (ctx.pause) {
       if (r.workspace) {
@@ -182,25 +182,14 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
       if (ctx.abort.signal.aborted) throw new Error('Run aborted');
       r.state = 'running'; await save(r);
     }
-    if (now() - r.startedAt >= a.maxDurationMs || r.usage.totalTokens >= a.maxTokens) throw new Error('Approved budget exhausted');
   }
-  async function invoke(ctx, options) {
-    try { return await spawn(options); }
-    catch (e) {
-      // A thrown backend error supplies no trustworthy usage. Do not purchase
-      // another attempt on an invented zero-token receipt.
-      ctx.r.usage.totalTokens = ctx.r.brief.authority.maxTokens;
-      await save(ctx.r);
-      throw e;
-    }
-  }
+  // There are no budgets: a run ends when it is done, when you pause or stop it,
+  // or when it cannot make its checks pass. Usage is recorded for information only.
+  const invoke = (ctx, options) => spawn(options);
   async function account(ctx, result) {
-    const tokens = result?.usage?.totalTokens;
-    if (!Number.isFinite(tokens) || tokens < 0) {
-      ctx.r.usage.totalTokens = ctx.r.brief.authority.maxTokens;
-      await save(ctx.r); throw new Error('Missing trustworthy token usage; budget blocked');
-    }
-    ctx.r.usage.totalTokens += tokens;
+    const usage = result?.usage ?? {}, u = ctx.r.usage;
+    for (const key of ['totalTokens', 'inputTokens', 'outputTokens', 'cost'])
+      if (Number.isFinite(usage[key]) && usage[key] >= 0) u[key] = (u[key] ?? 0) + usage[key];
     await save(ctx.r);
     await boundary(ctx);
   }
@@ -208,7 +197,7 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
     await boundary(ctx);
     const r = ctx.r;
     await w.assertScope(r.workspace, r.brief.authority.paths);
-    const evidence = await w.runChecks(r.workspace, criteria, { signal: ctx.abort.signal, timeoutMs: Math.min(r.brief.authority.maxStageMs, r.brief.authority.maxDurationMs - (now() - r.startedAt)) });
+    const evidence = await w.runChecks(r.workspace, criteria, { signal: ctx.abort.signal });
     const revision = await w.sourceRevision(r.workspace);
     r.evidence = evidence; r.sourceRevision = revision; await save(r);
     for (const c of criteria) {
@@ -243,9 +232,9 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
       }
       const policy = await w.writePolicy(await dir(r.id), r.workspace, r.brief.authority, pluginRoot);
       const a = r.brief.authority;
-      const options = () => ({ spawn, pluginRoot, cwd: r.workspace, signal: ctx.abort.signal,
-        timeoutMs: Math.min(a.maxStageMs, a.maxDurationMs - (now() - r.startedAt)), maxTurns: a.maxTurns,
-        maxToolCalls: a.maxToolCalls, extensionPaths: [policy], systemPrompt: 'Only the approved authority applies. Host alone checks, stages and commits. Never modify host packets.' });
+      // timeoutMs 0: no time limit on a worker (the runtime's own default would impose one).
+      const options = () => ({ spawn, pluginRoot, cwd: r.workspace, signal: ctx.abort.signal, timeoutMs: 0,
+        extensionPaths: [policy], systemPrompt: 'Only the approved authority applies. Host alone checks, stages and commits. Never modify host packets.' });
       const order = computeWaves(r.brief.units.map(u => ({ title: u.id, prereqs: u.needs }))).flat();
       for (const id of order) {
         const unit = r.brief.units.find(u => u.id === id), receipt = r.units.find(u => u.id === id);
@@ -253,8 +242,11 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
           if (receipt.reviewStatus !== 'passed') throw new Error('Completed receipt lacks independent review');
           continue; // final integrated checks below always rerun, including on resume
         }
-        let done = false;
-        while (receipt.attempts < a.maxAttempts && !done) {
+        // Not an allowance: a unit keeps going until it is reviewed and verified,
+        // and stops to ask you only when it is stuck (the same check failing twice,
+        // or the provider still failing after a few spaced retries).
+        let done = false, providerRetries = 0;
+        while (!done) {
           await boundary(ctx); receipt.attempts++; receipt.state = 'running'; r.activeStage = 'plan'; await save(r);
           let reviewedRevision = null, reviewInputRevision = null, committed = false, stagePermit = false;
           try {
@@ -269,7 +261,7 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
             await writeFile(specPath, b.workPacket(r.brief, unit, { plan: planned.data.plan, sourceRevision: await w.sourceRevision(r.workspace) }));
             const criteria = r.brief.acceptance.filter(c => unit.acceptanceIds.includes(c.id));
             const summary = await engine({ projectName: r.brief.title, slug: r.id, projectDir: packetDir, strict: true, native: true,
-              executionMode: r.brief.executionMode, maxReviewCycles: a.maxReviewCycles,
+              executionMode: r.brief.executionMode,
               phases: [{ title: unit.title, specPath, prereqs: [], risk: unit.risk, files: [] }] }, {
               ...options(),
               // Old hosts without correctness hooks must not execute even one child.
@@ -284,12 +276,12 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
                 if (!['scout', 'build', 'review', 'fix', 'commit'].includes(info.stage)) throw new Error('Unknown engine stage');
                 r.activeStage = info.stage; r.state = info.stage === 'review' ? 'verifying' : 'running'; await save(r);
                 stagePermit = info.stage !== 'commit';
-                if (info.stage === 'review') { await w.prepareReview(r.workspace, a.paths, { signal: ctx.abort.signal, timeoutMs: Math.min(a.maxStageMs, a.maxDurationMs - (now() - r.startedAt)) }); reviewInputRevision = await checks(ctx, criteria, w); }
+                if (info.stage === 'review') { await w.prepareReview(r.workspace, a.paths, { signal: ctx.abort.signal, timeoutMs: Infinity }); reviewInputRevision = await checks(ctx, criteria, w); }
                 if (info.stage === 'build' || info.stage === 'fix') reviewedRevision = null;
                 if (info.stage === 'commit') {
                   if (!reviewedRevision || reviewedRevision !== await w.sourceRevision(r.workspace)) throw new Error('Independent current-source review required');
                   const revision = await checks(ctx, criteria, w);
-                  const hash = a.allowLocalCommit ? await w.commitWorkspace(r.workspace, a.paths, { message: `${r.brief.title}: ${unit.title}`, specPath, sourceRevision: revision, signal: ctx.abort.signal, timeoutMs: Math.min(a.maxStageMs, a.maxDurationMs - (now() - r.startedAt)) }) : null;
+                  const hash = a.allowLocalCommit ? await w.commitWorkspace(r.workspace, a.paths, { message: `${r.brief.title}: ${unit.title}`, specPath, sourceRevision: revision, signal: ctx.abort.signal }) : null;
                   receipt.commitHash = hash; committed = true;
                   r.sourceRevision = await w.sourceRevision(r.workspace); await save(r);
                   const empty = (await w.changedFiles(r.workspace)).length === 0;
@@ -322,27 +314,27 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
             await save(r);
             const retryableTransport = transient(signature);
             if ((!retryableTransport && repeated) || (!retryableTransport && !signature.includes('CHECK_FAILED'))) throw e;
-            if (retryableTransport && receipt.attempts < a.maxAttempts) {
-              // The spawn result does not expose response headers: bounded backoff,
-              // not an invented Retry-After value. The global timer still applies.
+            if (retryableTransport) {
+              if (++providerRetries > 3) throw e;
+              // The spawn result does not expose response headers: spaced backoff,
+              // not an invented Retry-After value.
               await new Promise(resolve => {
                 const finish = () => { clearTimeout(timer); ctx.abort.signal.removeEventListener('abort', finish); resolve(); };
-                const timer = setTimeout(finish, Math.min(1000 * 2 ** (receipt.attempts - 1), 4000));
+                const timer = setTimeout(finish, Math.min(1000 * 2 ** (providerRetries - 1), 8000));
                 ctx.abort.signal.addEventListener('abort', finish, { once: true });
                 if (ctx.abort.signal.aborted) finish();
               });
             }
           }
         }
-        if (!done) throw new Error(`Attempts exhausted for ${id}; approval does not authorize reset`);
       }
       r.state = 'verifying'; r.activeStage = 'acceptance'; await save(r);
       await checks(ctx, r.brief.acceptance, w);
       const judgments = r.brief.acceptance.filter(c => c.check.judgment).length;
       r.state = 'ready-for-review'; r.attention = { reason: 'acceptance', message: `Objective verification complete. Explicit acceptance required${judgments ? `; ${judgments} human judgment(s) pending` : ''}.` };
     } catch (e) {
-      r.state = ctx.shutdown ? 'interrupted' : ctx.budgetExpired ? 'needs-decision' : ctx.abort.signal.aborted ? 'cancelled' : ctx.pause ? 'paused' : 'needs-decision';
-      r.attention = ctx.budgetExpired ? { reason: 'budget', message: 'The approved time budget was exhausted. Work has stopped; no budget was automatically extended.' } : failureAttention(e);
+      r.state = ctx.shutdown ? 'interrupted' : ctx.abort.signal.aborted ? 'cancelled' : ctx.pause ? 'paused' : 'needs-decision';
+      r.attention = failureAttention(e);
     } finally {
       if (r.workspace) {
         const { workspace: w } = await modules();
@@ -371,10 +363,8 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
       const ctx = { r, abort: new AbortController(), pause: false, shutdown: false };
       active = ctx; r.ownerId = ownerId; r.hostPid = process.pid;
       r.state = 'running';
-      const remaining = r.brief.authority.maxDurationMs - (r.startedAt === null ? 0 : now() - r.startedAt);
-      const timer = setTimeout(() => { ctx.budgetExpired = true; ctx.abort.abort(); }, Math.max(1, remaining));
       ctx.promise = (async () => { await save(r); return execute(ctx, resume); })();
-      try { return await ctx.promise; } finally { clearTimeout(timer); active = null; }
+      try { return await ctx.promise; } finally { active = null; }
     } finally { await release(); }
   }
   async function pause(id) {
@@ -389,7 +379,7 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
       return ctx.promise;
     }
     // A blocked/interrupted run has no live child to abort, but users must still
-    // be able to set it aside. Keep its branch, worktree, evidence and budgets.
+    // be able to set it aside. Keep its branch, worktree and evidence.
     const release = await lease(true);
     try {
       const r = await load(id);

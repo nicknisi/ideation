@@ -31,3 +31,32 @@ test('approval adopts the already-open contract: same URL, comments route to run
   assert.equal(restored.url, draft.url); assert.equal(restored.localUrl, draft.localUrl);
   await consumer.dispose();
 });
+
+test('page requests carry only accepted actions and address the view that owns them now', async t => {
+  const stateDir = await mkdtemp(join(tmpdir(), 'ideation-requests-'));
+  t.after(() => rm(stateDir, { recursive: true, force: true }));
+  const subscriptions = new Map(), requests = [];
+  const api = {
+    async publish({ title }) { return { slug: title, url: `http://127.0.0.1:9999/${title}.html`, absPath: `/project/.pi/artifacts/${title}.html` }; },
+    async subscribe(input) { subscriptions.set(input.slug, input); return () => subscriptions.delete(input.slug); },
+    async answer() { return { ok: true }; },
+  };
+  const events = { emit(name, request) { if (name === DISCOVER) request.offer({ id: 'nicknisi.artifacts', apiMajor: 1, api }); } };
+  const consumer = createArtifactConsumer({ stateDir, events, onFeedback: () => true, actions: ['approve'], onRequest: (id, action) => { requests.push([id, action]); return true; } });
+  t.after(() => consumer.dispose());
+  const draft = await consumer.update('preview:one', '<h1>Draft</h1>', { sequence: Date.now() });
+  const sub = subscriptions.get(draft.slug);
+  assert.deepEqual(sub.actions, ['approve']);
+  assert.equal(await sub.onRequest({ slug: draft.slug, action: 'approve' }), true);
+  assert.equal(await sub.onRequest({ slug: draft.slug, action: 'merge' }), false, 'unlisted actions never reach the session');
+  assert.equal(await sub.onRequest({ slug: 'someone-else', action: 'approve' }), false);
+  await consumer.adopt('run-one', 'preview:one');
+  await sub.onRequest({ slug: draft.slug, action: 'approve' });
+  assert.deepEqual(requests, [['preview:one', 'approve'], ['run-one', 'approve']]);
+
+  // Consumers that accept no requests subscribe exactly as before.
+  const plain = createArtifactConsumer({ stateDir: join(stateDir, 'plain'), events, onFeedback: () => true });
+  t.after(() => plain.dispose());
+  const page = await plain.update('preview:two', '<h1>Plain</h1>', { sequence: Date.now() });
+  assert.equal('actions' in subscriptions.get(page.slug), false);
+});

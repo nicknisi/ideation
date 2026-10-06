@@ -134,8 +134,9 @@ test('approval shows/opens the full contract with hash before confirm; backgroun
   await h.commands.ideation.handler('approve b.json', h.ctx);
   // The rendered contract was published (open) before confirmation and the prompt carries the hash + authority.
   assert.ok(publishes.some(p => p.open));
-  assert.ok(confirmText.includes(hash.slice(0, 12)) && confirmText.includes('tokens') && confirmText.includes('http://localhost:7/stable'));
-  assert.ok(publishes.some(p => p.html.includes(hash) && p.html.includes('maxTokens') && p.html.includes('node --test')), 'complete authority and fingerprint remain in the contract');
+  assert.ok(confirmText.includes(hash.slice(0, 12)) && confirmText.includes('No time or token limit') && confirmText.includes('http://localhost:7/stable'));
+  assert.ok(/Starting point: .*\nApprove those boundaries/.test(confirmText), 'the question comes last');
+  assert.ok(publishes.some(p => p.html.includes(hash) && p.html.includes('src/') && p.html.includes('node --test')), 'complete authority and fingerprint remain in the contract');
   const visible = confirmText.replace(/\x1b\]8;;[^\x1b]*\x1b\\/g, '');
   assert.ok(visible.split('\n').reduce((n, line) => n + Math.max(1, Math.ceil(line.length / 72)), 0) <= 16, 'confirmation must leave space for buttons');
   // Background start was requested but the run has NOT settled: the command already returned.
@@ -229,9 +230,9 @@ test('resume of a paused live run unpauses the existing background instead of la
   assert.equal(calls.filter(c => c === 'resume').length, 1);
 });
 
-test('starting fresh copies the agreement but cannot reset budgets or discard prior work without new approval', async t => {
+test('starting fresh copies the agreement into a new run, only with a new approval, keeping prior work', async t => {
   let root, created, approvals = 0, starts = 0, stops = 0;
-  const old = makeRun('needs-decision', { id: 'older', units: [{ id: 'u', state: 'failed', attempts: 2 }], attention: { reason: 'budget', message: 'Budget exhausted' } });
+  const old = makeRun('needs-decision', { id: 'older', units: [{ id: 'u', state: 'failed', attempts: 2 }], attention: { reason: 'execution', message: 'Check failed twice' } });
   const runner = {
     status: async id => id ? id === 'older' ? old : created : [old, ...(created ? [created] : [])],
     approve: async path => {
@@ -244,7 +245,7 @@ test('starting fresh copies the agreement but cannot reset budgets or discard pr
     dispose: async () => {},
   };
   const h = await harness(t, { runner }); root = h.root; old.repoRoot = root;
-  h.ctx.ui.confirm = async (_title, text) => { assert.match(text, /Fresh budgets require this new approval/); return false; };
+  h.ctx.ui.confirm = async (title, text) => { assert.equal(title, 'Start a fresh run?'); assert.match(text, /starts over in a new worktree\. Previous work is kept/); return false; };
   await h.commands.ideation.handler('fresh older', h.ctx);
   assert.equal(approvals, 0); assert.equal(stops, 0); assert.equal(starts, 0);
   assert.equal(old.units[0].attempts, 2);
@@ -508,4 +509,47 @@ test('a planning-path project with the same slug is never written into', async t
   assert.equal(await readFile(join(h.root, 'docs', 'ideation', 'demo', 'contract-data.json'), 'utf8'), '{"planning":true}');
   await assert.rejects(readFile(join(h.root, 'docs', 'ideation', 'demo', 'contract.html')), /ENOENT/);
   assert.ok(await readFile(join(h.root, 'docs', 'ideation', 'demo-change', 'contract.html'), 'utf8'));
+});
+
+test('"Approve in Pi" on the draft page opens the terminal confirmation; the page never approves', async t => {
+  let subscription, confirmations = 0, answer = false;
+  const approvals = [];
+  const service = { publish: async () => ({ slug: 'draft-slug', url: 'http://localhost:7/draft-slug', absPath: '/tmp/draft' }),
+    subscribe: async input => { subscription = input; return () => {}; }, answer: async () => ({ ok: true }) };
+  const runner = { status: async () => [], uncommitted: async () => ({ head: 'abc1234', paths: [] }),
+    approve: async (path, options) => { approvals.push(options); await mkdir(join(root, '.git', 'ideation', 'runs', 'r'), { recursive: true }); return makeRun('ready', { repoRoot: root }); },
+    start: async () => new Promise(() => {}), dispose: async () => {} };
+  const h = await harness(t, { runner, service }); const root = h.root;
+  h.ctx.ui.confirm = async () => { confirmations++; return answer; };
+  await h.tools.ideation_change.execute('', { action: 'prepare', brief: rawBrief }, null, null, h.ctx);
+  await until(() => subscription);
+  assert.deepEqual(subscription.actions, ['approve']);
+  const ask = action => subscription.onRequest({ slug: 'draft-slug', action });
+
+  assert.equal(await ask('accept'), false, 'only approve is accepted');
+  assert.equal(await ask('approve'), true, 'delivered to the owning session');
+  await until(() => confirmations === 1);
+  assert.equal(approvals.length, 0, 'a declined confirmation approves nothing');
+
+  // One confirmation at a time: a second request while the dialog is open is refused.
+  let release; answer = new Promise(r => release = r);
+  assert.equal(await ask('approve'), true);
+  await until(() => confirmations === 2);
+  assert.equal(await ask('approve'), false, 'no stacked dialogs');
+  release(true);
+  await until(() => approvals.length === 1);
+  assert.deepEqual(approvals[0], { includeUncommitted: false, exclude: ['docs/ideation/demo/'] });
+  // The draft became a run; approving it again from the page is refused.
+  assert.equal(await ask('approve'), false);
+});
+
+test('page approval requests are refused without an interactive terminal', async t => {
+  let subscription;
+  const service = { publish: async () => ({ slug: 's', url: 'http://localhost:7/s', absPath: '/tmp/s' }),
+    subscribe: async input => { subscription = input; return () => {}; }, answer: async () => ({ ok: true }) };
+  const runner = { status: async () => [], approve: async () => { throw new Error('must not approve'); }, dispose: async () => {} };
+  const h = await harness(t, { runner, service, hasUI: false });
+  await h.tools.ideation_change.execute('', { action: 'prepare', brief: rawBrief }, null, null, h.ctx);
+  await until(() => subscription);
+  assert.equal(await subscription.onRequest({ slug: 's', action: 'approve' }), false);
 });

@@ -30,7 +30,6 @@ export function summaryText(value, limit = 64) {
   for (const part of parts) { if (used + cells(part) > limit - 2) break; output += part; used += cells(part); }
   return limit >= 2 ? `${output}…` : '';
 }
-const duration = ms => ms % 3600000 === 0 ? `${ms / 3600000}h` : ms % 60000 === 0 ? `${ms / 60000}m` : ms % 1000 === 0 ? `${ms / 1000}s` : `${ms}ms`;
 export function approvalText(b) {
   const a = b.authority, commands = b.acceptance.filter(c => c.check.cmd).length;
   // The full, escaped agreement is already open in the browser. This is a
@@ -40,9 +39,7 @@ export function approvalText(b) {
     `Scope: ${a.paths.length} path(s), ${a.commands.length} exact command(s).`,
     `Checks: ${commands} command + ${b.acceptance.length - commands} human; ${b.units.length} unit(s), ${b.executionMode}.`,
     `Local commit: ${a.allowLocalCommit ? 'yes' : 'no'}. No push, merge, deploy or new dependencies.`,
-    `Limits: ${duration(a.maxDurationMs)} total / ${duration(a.maxStageMs)} stage / ${a.maxTokens.toLocaleString('en-US')} tokens.`,
-    `Recovery: ${a.maxAttempts} attempt(s)/unit; ${a.maxReviewCycles} review cycle(s).`,
-    `Per stage: ${a.maxTurns} turns, ${a.maxToolCalls} tool calls.`,
+    'No time or token limit: it runs until verified, paused or stopped.',
     'Exact scope & commands: review the opened contract.',
     'Trusted project scripts; this is not an OS sandbox.',
     'Approve those boundaries and start in an isolated checkout?',
