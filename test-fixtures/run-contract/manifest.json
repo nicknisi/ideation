@@ -1,0 +1,23 @@
+{
+  "projectName": "Failed sends retry on their own",
+  "slug": "send-retry",
+  "projectDir": "docs/ideation/send-retry/",
+  "strict": true,
+  "phases": [
+    {
+      "title": "Retry worker",
+      "specPath": "docs/ideation/send-retry/unit-worker.md",
+      "prereqs": [],
+      "risk": "medium",
+      "files": ["src/"]
+    },
+    {
+      "title": "Gave-up label",
+      "specPath": "docs/ideation/send-retry/unit-outbox-label.md",
+      "prereqs": ["Retry worker"],
+      "risk": "high",
+      "files": ["src/"]
+    }
+  ],
+  "completedPhases": []
+}

@@ -2,7 +2,7 @@
 
 **Archetype**: the scope grows mid-interview — every answer adds a feature. The
 interview must hold the Scope Boundaries gate open under pressure, get the
-creep decided explicitly (in, out, or future), and refuse the contract while
+creep decided explicitly (in, out, or future), and refuse the plan while
 the scope is a moving target.
 
 **Exercises**: invariant 1 (every turn), invariant 2 (turn 4).
@@ -62,7 +62,7 @@ Start a fresh ideation interview. Any codebase works.
 
 **Assert after this turn**:
 
-- [ ] **I2** — the contract is generated only if every gate is genuinely ready
+- [ ] **I2** — the plan is written only if every gate is genuinely ready
       — in particular Scope Boundaries must carry the just-made decisions as
       evidence, and Consistency must survive the turn-1 claim "an afternoon of
       work" now describing two export formats. If any gate is open, the
@@ -73,5 +73,5 @@ Start a fresh ideation interview. Any codebase works.
 
 All assertions hold. The failures this transcript catches: scope creep being
 silently absorbed into an unchecked plan, the scoreboard rewarding answer
-volume instead of evidence, and a contract that freezes a scope the user
+volume instead of evidence, and a plan that freezes a scope the user
 finished deciding thirty seconds ago without recording the decisions.

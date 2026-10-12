@@ -24,7 +24,7 @@ const FRAME_MS = 100;
 // `/ideation <tab>`: every subcommand, then `on|off` for motion and run IDs for
 // run controls. [name, what it does, whether a value must follow].
 const SUBCOMMANDS: [string, string, boolean][] = [
-  ['plan', 'Shape a new change from an idea', true],
+  ['plan', 'Start ideation at the right depth from an idea', true],
   ['approve', 'Approve the prepared change and start', false],
   ['status', 'Where every change stands', false],
   ['review', 'Open the contract', false],
@@ -441,7 +441,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
     return;
   }
   pi.registerCommand('ideation', {
-    description: 'Open ideation: review or approve your prepared change, follow progress, or control a run. Also: plan <idea>, approve [path], status, review, pause, resume, stop, accept, exit, motion [on|off], respond <plan-folder>.',
+    description: 'Open ideation: plan at the right depth, review or approve your prepared change, follow progress, or control a run. Also: plan <idea>, approve [path], status, review, pause, resume, stop, accept, exit, motion [on|off], respond <plan-folder>.',
     getArgumentCompletions: async (prefix: string) => {
       const [head = '', ...rest] = prefix.split(' ');
       const tail = rest.join(' ');
@@ -521,11 +521,14 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
         }
         if (action === 'revise') {
           if (!prepared || !arg) throw new Error('Open /ideation to choose the change to revise.');
-          pi.sendUserMessage(`Use the ideation-change skill at ${join(pluginRoot, 'skills/change/SKILL.md')} to revise the prepared brief at ${prepared.briefPath}. Preserve its id, increment its revision, and prepare the updated contract. Do not approve or execute it. Requested revision:\n${arg}`, { deliverAs: 'followUp' });
+          const what = prepared.plan
+            ? `the prepared change from its plan at ${prepared.plan}. Write the plan's next version, then prepare it again with plan`
+            : `the prepared brief at ${prepared.briefPath}. Preserve its id, increment its revision, and prepare the updated contract`;
+          pi.sendUserMessage(`Use the ideation skill at ${join(pluginRoot, 'skills/ideation/SKILL.md')} to revise ${what}. Do not approve or execute it. Requested revision:\n${arg}`, { deliverAs: 'followUp' });
           return;
         }
         if (action === 'plan') {
-          pi.sendUserMessage(`Use the explicitly requested ideation-change skill at ${join(pluginRoot, 'skills/change/SKILL.md')}. Shape and prepare a compact brief; do not approve or execute it. ${arg ? `Requested change:\n${arg}` : 'Start from this conversation and carry forward settled decisions. If the intended change is not known yet, ask naturally what the user wants to change.'}`, { deliverAs: 'followUp' });
+          pi.sendUserMessage(`Use the explicitly requested ideation skill at ${join(pluginRoot, 'skills/ideation/SKILL.md')}. Pick the depth and say why in one line; do not approve or execute anything. ${arg ? `Requested change:\n${arg}` : 'Start from this conversation and carry forward settled decisions. If the intended change is not known yet, ask naturally what the user wants to change.'}`, { deliverAs: 'followUp' });
           return;
         }
         if (action === 'fresh') {
@@ -591,19 +594,24 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
     name: 'ideation_change', label: 'Ideation change',
     renderCall: (args, theme) => createChangeToolCall(args, theme, current?.tui),
     renderResult: (result, options, theme) => createChangeToolResult(result, options, theme, current?.tui),
-    description: 'Prepare a brief preview, read status/receipt, record feedback, answer an artifact question, or exit: leave ideation when the user asks to (stops the run, brings its work into the checkout unless apply is false, and clears ideation from the session). For prepare, pass brief as an object (not a JSON string), or path to an existing JSON file. Inline briefs are stored by the host; do not create a temporary file just to prepare one. Never grants approval. Output limited to 40KB.',
-    parameters: Type.Object({ action: Type.String({ enum: ['prepare','status','receipt','feedback','answer','exit'] }), apply: Type.Optional(Type.Boolean()), path: Type.Optional(Type.String()), brief: Type.Optional(Type.Unsafe(briefSchema)), runId: Type.Optional(Type.String()), markdown: Type.Optional(Type.String()), annotationId: Type.Optional(Type.String()), content: Type.Optional(Type.String()) }),
+    description: 'Prepare a brief preview, read status/receipt, record feedback, answer an artifact question, or exit: leave ideation when the user asks to (stops the run, brings its work into the checkout unless apply is false, and clears ideation from the session). For prepare, pass exactly one of: plan, a plan folder (docs/ideation/<slug>; the host derives the run contract from its plan.json with toRunContract); brief as an object (not a JSON string); or path to an existing JSON brief. Inline briefs are stored by the host; do not create a temporary file just to prepare one. Never grants approval. Output limited to 40KB.',
+    parameters: Type.Object({ action: Type.String({ enum: ['prepare','status','receipt','feedback','answer','exit'] }), apply: Type.Optional(Type.Boolean()), path: Type.Optional(Type.String()), plan: Type.Optional(Type.String()), brief: Type.Optional(Type.Unsafe(briefSchema)), runId: Type.Optional(Type.String()), markdown: Type.Optional(Type.String()), annotationId: Type.Optional(Type.String()), content: Type.Optional(Type.String()) }),
     async execute(_id, p, _signal, _update, ctx) {
       if (!['prepare','status','receipt','feedback','answer','exit'].includes(p.action)) throw new Error('Unsupported model action');
       const s = await ensure(ctx); let result: any;
       if (p.action === 'prepare') {
-        if ((p.path && p.brief !== undefined) || (!p.path && p.brief === undefined)) throw new Error('Provide exactly one of path or brief');
+        if ([p.path, p.brief, p.plan].filter(x => x !== undefined && x !== '').length !== 1) throw new Error('Provide exactly one of plan, path or brief');
         let b: any, briefPath: string;
-        if (p.brief !== undefined) {
-          // Inline brief: validate, then persist the canonical snapshot under the git common
-          // dir (gitignored) so approval never needs a dirty checkout and the fingerprint the
-          // approval binds to stays stable and independently re-checkable for later edits.
-          b = validateBrief(p.brief);
+        if (p.brief !== undefined || p.plan) {
+          // Inline brief, or the run contract derived from a plan folder: validate, then persist
+          // the canonical snapshot under the git common dir (gitignored) so approval never needs
+          // a dirty checkout and the fingerprint the approval binds to stays stable and
+          // independently re-checkable for later edits. A plan goes through toRunContract,
+          // which refuses one that is not approvable; preparing it still approves nothing.
+          if (p.plan) {
+            const { load, toRunContract } = await import('../scripts/plan-data.ts');
+            b = toRunContract(load(join(resolve(s.cwd, p.plan), 'plan.json'))).brief;
+          } else b = validateBrief(p.brief);
           const briefsDir = join(s.stateDir, 'briefs'); await mkdir(briefsDir, { recursive: true });
           briefPath = join(briefsDir, `${briefFingerprint(b)}.json`);
           await writeFile(briefPath, JSON.stringify(b));
@@ -619,7 +627,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
         result = await s.bridge.update(previewId, html, { sequence: Date.now(), open });
         await publishDocs(s, b, html);
         if (open) await openLocal(s, result);
-        result = { ...result, title: b.title, briefId: b.id, previewId, briefPath, briefHash: briefFingerprint(b), repoRoot: s.repoRoot, approved: false };
+        result = { ...result, title: b.title, briefId: b.id, previewId, briefPath, briefHash: briefFingerprint(b), repoRoot: s.repoRoot, approved: false, ...(p.plan ? { plan: p.plan } : {}) };
         s.prepared = result; s.drafts.set(b.id, { previewId, brief: b, previous });
         s.paint({ state: 'draft', brief: b }, result);
         pi.appendEntry('ideation:preview', result);

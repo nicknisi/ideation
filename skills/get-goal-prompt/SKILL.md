@@ -18,15 +18,17 @@ Emit the `/goal` that drives `/ideation:autopilot` to completion unattended. The
 string has exactly one owner — `buildGoal()` in `${CLAUDE_PLUGIN_ROOT}/scripts/contract-gen.ts`,
 printed by `--print-goal` — so this skill only resolves the project, prints, and copies.
 **Never hand-author or template the /goal**; a second copy of that string is drift.
-(The layered model — goal wrapper → autopilot → engine → execute-spec — is owned by
-ideation SKILL.md § 5.4.)
+(The layered model: the `/goal` is a durability wrapper that drives autopilot, which
+drives the engine, which runs execute-spec per phase.)
 
 1. **Resolve `contract-data.json` first** — it is the source of truth; `contract.md` is
    only a legacy fallback. Argument given: a `contract-data.json` path is used directly;
    a `contract.md` path means its sibling `contract-data.json`. No argument: glob
    `./docs/ideation/*/contract-data.json` and take the most recently modified. If the
    project has no `contract-data.json`, stop and say so — `--print-goal` consumes it,
-   so the fix is re-running ideation, not hand-writing a goal.
+   so the fix is re-running ideation, not hand-writing a goal. (`TODO(4.2)`: a 1.0 plan
+   folder, with `plan.json` and no `contract-data.json`, has no `/goal` yet. Say so, and
+   point to running its `run-contract.json` with `/ideation:autopilot`.)
 2. **Already complete?** Run `node ${CLAUDE_PLUGIN_ROOT}/scripts/verify.mjs <contract-data.json>`.
    Exit 0 → quote its final `VERIFY {slug}: …` line, tell the user the project is
    complete, and stop.

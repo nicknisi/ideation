@@ -1,6 +1,6 @@
 {
   "name": "ideation",
-  "description": "Single-plugin marketplace for the ideation plugin — from pressure-testing whether an idea is worth building, through evidence-gated planning interviews, to contracts, implementation specs, and executed phases.",
+  "description": "Single-plugin marketplace for the ideation plugin — one /ideation entry point that plans at the right depth, from pressure-testing whether an idea is worth building to evidence-gated interviews, and runs the approved plan.",
   "owner": {
     "name": "Nick Nisi",
     "email": "nick@nisi.org"
@@ -9,7 +9,7 @@
     {
       "name": "ideation",
       "source": "./",
-      "description": "Whether, then how, then shipped. /ideation:brainstorm pressure-tests ideas in conversation; the evidence-gated interview, stress-tested by adversarial plan critics, turns a yes into an interactive HTML contract and Markdown specs; /ideation:autopilot runs all phases on a deterministic workflow engine. Watched runs teach the next interview.",
+      "description": "One entry point, at the right depth. /ideation picks just do it, short plan, an evidence-gated interview stress-tested by adversarial plan critics, or a map for foggy multi-session work, and opens with a no-files 'should we?' conversation when the question is whether to build at all. Plans are data you answer on a page or in the terminal; a terminal approval hands the run contract to a deterministic workflow engine. Watched runs teach the next interview.",
       "author": {
         "name": "Nick Nisi",
         "email": "nick@nisi.org"

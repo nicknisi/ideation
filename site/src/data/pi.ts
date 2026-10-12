@@ -10,7 +10,7 @@ import { readPi } from '../lib/pi';
 
 /** Short labels for the overview; the guide shows the full entries below. */
 export const SHORT: Record<string, string> = {
-  plan: 'shape a new change',
+  plan: 'start at the right depth',
   approve: 'confirm once and start',
   status: 'where everything stands',
   review: 'open the contract',
@@ -24,7 +24,7 @@ export const SHORT: Record<string, string> = {
 };
 
 const SUBCOMMANDS: Record<string, string> = {
-  plan: 'Start shaping a change from an idea. The agent reads the code, asks only what the code cannot answer, and prepares a compact brief. Bare /ideation does the same when nothing is in flight.',
+  plan: 'Start ideation from an idea. The agent picks a depth (just do it, short plan, interview or map), says why in one line, and takes a one-word overrule. Bare /ideation does the same when nothing is in flight.',
   approve:
     'Open the full contract and ask for one short confirmation of its paths and commands. With uncommitted files, it first asks whether to start from the last commit or include them. Yes starts work in an isolated worktree immediately. Remembers the prepared brief; a path is only for power users.',
   status: 'Show where every change stands, and refresh the widget and contract link.',
@@ -41,7 +41,7 @@ const SUBCOMMANDS: Record<string, string> = {
 };
 
 const TOOL_ACTIONS: Record<string, string> = {
-  prepare: 'Validate a brief and open its contract. Never approves.',
+  prepare: 'Derive the run contract from a plan folder (or take a brief) and open its contract. Never approves.',
   status: 'Read a run’s state without restarting anything.',
   receipt: 'Read the source-bound record of what was verified.',
   feedback: 'File a note to the run’s inbox. Feedback is never permission.',

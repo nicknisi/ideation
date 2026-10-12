@@ -26,17 +26,22 @@ parse `RESULT:` text yourself — the engine returns a structured summary.**
 
 **Parse arguments:**
 
-- Optional: path to `contract.md` (e.g., `docs/ideation/my-project/contract.md`)
-- If omitted, auto-detect by globbing `./docs/ideation/*/contract.md`
+- Optional: path to `contract.md` (e.g., `docs/ideation/my-project/contract.md`), or to a `run-contract.json` (an approved plan, frozen by `node ${CLAUDE_PLUGIN_ROOT}/scripts/plan-data.ts run-contract` after the user's terminal approval — see Step 1's run-contract input)
+- If omitted, auto-detect by globbing `./docs/ideation/*/contract.md` and `./docs/ideation/*/run-contract.json`
 - If multiple contracts found, use `AskUserQuestion` to select one
 
 ## Step 1: Locate & Parse the Contract
 
 1. Resolve the contract path (argument or glob). Derive the **project directory** from it — for `docs/ideation/my-project/contract.md`, that's `docs/ideation/my-project/`.
 2. Read the sibling **`contract-data.json`** in that directory. Its `execution.phases` array already holds each phase's `title`, `specPath`, `prereqs`, and `risk` — this is the manifest. Also read `projectName`, `slug`, `approvalMode` (`"express"` = single-confirmation approval, no per-artifact human review — drives `strict` in Step 3), and `branch`.
-3. **If `branch` is set, re-assert the checkout before anything else touches git:** `git branch --show-current` — if it differs, `git switch <branch>` (create with `git switch -c` if missing). This must happen **before** the Step 2 pre-pass: both the skip detection and the phase commits belong on the isolation branch, on every entry, including fresh-session re-runs where the user has since switched away. (Isolation-branch *semantics* — creation, resume-vs-fresh, delete-not-revert — are owned by ideation's Express finish path; this step only re-asserts the checkout.)
+3. **If `branch` is set, re-assert the checkout before anything else touches git:** `git branch --show-current` — if it differs, `git switch <branch>` (create with `git switch -c` if missing). This must happen **before** the Step 2 pre-pass: both the skip detection and the phase commits belong on the isolation branch, on every entry, including fresh-session re-runs where the user has since switched away. (This step only re-asserts the checkout. A bad run on the branch is deleted, not reverted: Step 2's pre-pass matches commit messages, so reverted phase commits would still read as complete.)
 4. **Validate** each `specPath` exists. If any are missing, report which and ask the user whether to continue without them or abort.
-5. **Fallback if `contract-data.json` is absent** (older projects with only `contract.md`): parse the `## Execution Plan` section of `contract.md` — phase titles, spec paths from the `/ideation:execute-spec <path>` lines, and blocking relationships from the dependency graph — and build the same phase list. Also read the header's `**Approval**` line: `Express` → treat as `approvalMode: "express"` (set `strict` in Step 3). If you cannot parse it, abort with guidance to re-run ideation.
+5. **Run-contract input** (`TODO(4.2)`: autopilot reads plan data and unit packets directly). When the argument is a `run-contract.json`, it replaces items 2, 4 and 6: read it and build the manifest from its `brief`. `${CLAUDE_PLUGIN_ROOT}/test-fixtures/run-contract/manifest.json` is a worked example of this mapping.
+   - `projectName` and `slug` are the brief's `title` and `id`. The project directory is the folder holding `run-contract.json`. `branch` is `ideation/<id>`: re-assert it as in item 3, before Step 2.
+   - One phase per `brief.units` entry, in order: `title` is the unit's title, `specPath` its packet `<project directory>unit-<id>.md` (written beside `run-contract.json`; if one is missing, stop and tell the user to re-run `run-contract`, never write it yourself), `prereqs` the **titles** of the units in its `needs`, and `risk` unchanged.
+   - Step 3's `strict` is always `true`: the plan was approved, but no human reviewed the packets. `files` come from each packet's File Changes list, as for a spec.
+   - Step 2's pre-pass and the commit bodies use the packet path, so resume works the same way. The run record's `branch` is `ideation/<id>`.
+6. **Fallback if `contract-data.json` is absent** (older projects with only `contract.md`): parse the `## Execution Plan` section of `contract.md` — phase titles, spec paths from the `/ideation:execute-spec <path>` lines, and blocking relationships from the dependency graph — and build the same phase list. Also read the header's `**Approval**` line: `Express` → treat as `approvalMode: "express"` (set `strict` in Step 3). If you cannot parse it, abort with guidance to re-run ideation.
 
 ## Step 2: Git Skip Pre-Pass
 
@@ -72,7 +77,7 @@ Assemble the manifest exactly per `${CLAUDE_PLUGIN_ROOT}/workflows/README.md`:
 ```
 
 - `prereqs` are **phase titles** — pass `contract-data.json`'s values straight through; do not remap to indices.
-- `strict: true` (express contracts only) makes the engine run each phase fail-closed, because no human reviewed the specs. The decision-point semantics live in **the gate-behavior table** (`${CLAUDE_PLUGIN_ROOT}/workflows/README.md`) — do not restate them here. Omit or set `false` for interactively approved contracts.
+- `strict: true` (run contracts and 0.x express contracts) makes the engine run each phase fail-closed, because no human reviewed the specs. The decision-point semantics live in **the gate-behavior table** (`${CLAUDE_PLUGIN_ROOT}/workflows/README.md`) — do not restate them here. Omit or set `false` for interactively approved contracts.
 - Before invoking, sanity-check that every `prereqs` entry matches some phase `title` (or a `completedPhases` entry), and that no two phases share a `title`. If a title doesn't resolve or appears twice, it's a manifest bug — report it rather than dispatching a broken graph (the engine will otherwise throw "Unknown prereq" or "Duplicate phase title(s)").
 - **`agentNames` (Claude Code only — omit in pi):** the engine dispatches scout/reviewer/builder stages by `agentType`, and Claude Code plugin-scopes those as `ideation:scout` / `ideation:reviewer` / `general-purpose` — these are the engine's defaults, so a CC manifest omits `agentNames` entirely. In pi, omit the field too, for a different reason: the pi engine host (`extensions/engine.ts`) doesn't use a name registry at all — it reads `agents/*.md` directly and passes each stage's tools and system prompt per spawn.
 
@@ -102,7 +107,7 @@ repo use consistent relative paths; no resolution or normalization).
 2. Tell the user before it starts: how many phases, how many already skipped, and that you'll pause only if a phase fails.
 3. **Claude Code only: capture the returned `runId`** — you need it for same-session resume. In pi, resume is the git skip pre-pass (Step 2) plus re-invoking the tool.
 
-**If the engine is unavailable** (the `Workflow` feature not enabled in this Claude Code, or the pi plugin's engine extension failed to load): degrade gracefully — tell the user, then walk the phases yourself in dependency order using `/ideation:execute-spec <specPath>` per phase (the contract's per-phase commands), committing each before the next. For express contracts, carry the `--strict` semantics into this path too (per the gate-behavior table in `${CLAUDE_PLUGIN_ROOT}/workflows/README.md`). This is the legacy manual path.
+**If the engine is unavailable** (the `Workflow` feature not enabled in this Claude Code, or the pi plugin's engine extension failed to load): degrade gracefully — tell the user, then walk the phases yourself in dependency order using `/ideation:execute-spec <specPath>` per phase (the contract's per-phase commands), committing each before the next. For run contracts and express contracts, carry the `--strict` semantics into this path too (per the gate-behavior table in `${CLAUDE_PLUGIN_ROOT}/workflows/README.md`). This is the legacy manual path.
 
 ## Step 5: Handle the Summary
 
@@ -198,7 +203,7 @@ After the engine finishes (or execution stops), present a summary. **Warnings co
 {N} of {M} phases completed successfully ({K} no-ops need no further work).
 ```
 
-**Then verify the contract** (when `contract-data.json` exists): run `node ${CLAUDE_PLUGIN_ROOT}/scripts/verify.mjs {projectDir}/contract-data.json` and quote its final line — `VERIFY {slug}: commits=A/B pass=N fail=M judgment=K` — verbatim in the report. Exit 0 (fail=0 and commits=B/B) is the completion predicate; if the script cannot run, say "verification not run", never "Complete" on the engine summary alone. Scope caveat: it checks this one contract's acceptance criteria, not repo health.
+**Then verify the contract** (when `contract-data.json` exists; for a run-contract input, verify the project directory itself, which reads its `plan.json`): run `node ${CLAUDE_PLUGIN_ROOT}/scripts/verify.mjs {projectDir}/contract-data.json` and quote its final line — `VERIFY {slug}: commits=A/B pass=N fail=M judgment=K` — verbatim in the report. Exit 0 (fail=0 and commits=B/B) is the completion predicate; if the script cannot run, say "verification not run", never "Complete" on the engine summary alone. Scope caveat: it checks this one contract's acceptance criteria, not repo health.
 
 **Then enrich the run record** written in Step 5 — set its `verify` to `{ "line": "<the VERIFY line verbatim>", "exitCode": <the command's exit status> }`, using the integer status of that Bash call rather than a status inferred from the line's counts, and re-render the **same** stem with the same command:
 

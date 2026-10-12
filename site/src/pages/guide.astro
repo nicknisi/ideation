@@ -8,10 +8,8 @@ import { readGates } from '../lib/gates';
 import { readCompatTable, readHarnesses, cellByHeader } from '../lib/harness';
 
 // All of these throw at build time rather than rendering a stale claim.
-const all = joinCommands();
-// The Pi change workflow has its own section; the rest is the planning path.
-const change = all.find(c => c.slug === 'change')!;
-const commands = all.filter(c => c.slug !== 'change');
+const commands = joinCommands();
+const ideation = commands.find(c => c.slug === 'ideation')!;
 const pi = joinPi();
 const install = readInstall();
 const words = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
@@ -23,30 +21,30 @@ const agentCompat = readCompatTable('Agent \\(subagent\\) names');
 const depCompat = readCompatTable('Pi tool prerequisites');
 const harnesses = readHarnesses();
 
-const stages: Stage[] = ['route', 'whether', 'plan', 'execute'];
+const stages: Stage[] = ['plan', 'execute'];
 const byStage = (s: Stage) => commands.filter(c => c.stage === s);
 
 /** What a project leaves on disk. Convention, so it is authored — but every
     path here appears in a real project directory, not an idealised one. */
 const artifacts = [
   {
-    path: 'contract-data.json',
-    note: 'The source of truth. Every other artifact is rendered from it, and execution reads this rather than the HTML.',
+    path: 'plan.json',
+    note: 'The source of truth: claims, decisions, checks, units, authority and gate evidence. Every page is rendered from it, and approval freezes it into the run contract.',
     kept: true,
   },
   {
-    path: 'contract.html',
-    note: 'The artifact you review and approve: gate evidence, scope tiers, the phase graph, the run model, and the decision log.',
+    path: 'plan.v1.json …',
+    note: 'Every earlier version, kept. Each answer you send from the page becomes the next version.',
     kept: true,
   },
   {
-    path: 'contract.md',
-    note: 'The same contract as text. This is the path you hand to autopilot.',
+    path: 'plan.html',
+    note: 'The page you answer decisions on. It never approves anything.',
     kept: true,
   },
   {
-    path: 'spec-phase-1.md …',
-    note: 'One implementation spec per phase, numbered. Each carries the File Changes tables execution reads to work out which phases collide.',
+    path: 'run-contract.json, unit-<id>.md',
+    note: 'Claude Code, after you approve: the frozen run contract and one work packet per unit, which autopilot and execute-spec run. In Pi the change workflow writes brief.json, contract.html and receipt.json instead.',
     kept: true,
   },
   {
@@ -76,10 +74,10 @@ const artifacts = [
       </p>
       <h1 class="mt-3 text-[clamp(2.1rem,6vw,3.1rem)]">Which command, and what you get</h1>
       <p class="mt-5 max-w-[64ch] text-muted">
-        Two front doors. In Pi, <code class="code">/ideation</code> runs the change workflow:
-        one compact contract, one approval, a live page. The planning path's{' '}
-        {say(commands.length)} commands run in Claude Code, and in Pi as{' '}
-        <code class="code">/skill:&lt;name&gt;</code>; {say(claudeCanStart)} of them Claude can
+        One entry point. <code class="code">/ideation</code> picks how much planning the work
+        needs, says why, and switches when you overrule it in a word. In Pi the same command also
+        approves and controls runs. All {say(commands.length)} commands run in Claude Code, and in
+        Pi as <code class="code">/skill:&lt;name&gt;</code>; {say(claudeCanStart)} of them Claude can
         reach for on its own. This page is the
         reference. The walkthroughs are{' '}
         <a class="link" href="/walkthrough/pi/">one change in Pi</a> and{' '}
@@ -96,10 +94,11 @@ const artifacts = [
     <section id="pi" aria-labelledby="pi-h" class="rule-double scroll-mt-20 pt-11">
       <h2 id="pi-h" class="text-[clamp(1.6rem,4vw,2.1rem)]">In Pi: <code class="font-mono text-[0.85em]">/ideation</code></h2>
       <p class="mt-4 max-w-[64ch] text-muted">
-        {change.headline} The agent shapes the change with the{' '}
-        <code class="code">{change.name}</code> skill, which{' '}
-        {change.modelInvocable ? 'Claude may also start on its own' : 'only ever starts when you ask'};
-        everything that grants permission is a command you type.
+        Bare <code class="code">/ideation</code> or <code class="code">/ideation plan</code> starts the{' '}
+        <code class="code">{ideation.name}</code> skill, which{' '}
+        {ideation.modelInvocable ? 'the agent may also start on its own' : 'only ever starts when you ask'}.
+        An approved plan runs here as one change: one approval, a live page, reviewed commits.
+        Everything that grants permission is a command you type.
       </p>
 
       <h3 class="label-mono mt-9 text-accent">bare /ideation</h3>
@@ -173,10 +172,10 @@ const artifacts = [
 
     <!-- ══════════ which door ══════════ -->
     <section aria-labelledby="doors" class="rule-double mt-16 pt-11">
-      <h2 id="doors" class="text-[clamp(1.6rem,4vw,2.1rem)]">The planning path: pick a door</h2>
+      <h2 id="doors" class="text-[clamp(1.6rem,4vw,2.1rem)]">The commands</h2>
       <p class="mt-4 max-w-[64ch] text-muted">
-        In the order you would meet them. Only the charting stage writes files before a
-        contract exists — and all it writes is a map of decisions, never a plan.
+        In the order you would meet them. You start with <code class="code">/ideation</code>; it
+        hands off to the execution commands itself once you approve.
       </p>
 
       {
@@ -238,6 +237,17 @@ const artifacts = [
                 </div>
 
                 <p class="mt-2 max-w-[64ch] text-[1.0625rem]">{c.headline}</p>
+
+                {c.depths && (
+                  <dl class="mt-4 grid grid-cols-[7rem_minmax(0,1fr)] gap-x-4 gap-y-2 max-sm:grid-cols-1 max-sm:gap-y-0.5">
+                    {c.depths.map(d => (
+                      <>
+                        <dt class="pt-[0.15em] font-mono text-[0.875rem] font-semibold text-ink max-sm:pt-2">{d.name}</dt>
+                        <dd class="m-0 max-w-[62ch] text-[0.9375rem] text-muted">{d.when}</dd>
+                      </>
+                    ))}
+                  </dl>
+                )}
 
                 <dl class="mt-3 grid grid-cols-[5.2rem_minmax(0,1fr)] gap-x-4 gap-y-2 max-sm:grid-cols-1 max-sm:gap-y-0.5">
                   <dt class="label-mono pt-[0.3em] text-faint max-sm:pt-2">reach for it</dt>
@@ -305,15 +315,16 @@ const artifacts = [
     >
       <h2 id="disk" class="text-[clamp(1.6rem,4vw,2.1rem)]">What lands on disk</h2>
       <p class="mt-4 max-w-[64ch] text-muted">
-        Everything for one project lives in <code
+        Everything for one plan lives in <code
           class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]"
           >docs/ideation/&lt;slug&gt;/</code
-        >. Charting is the exception: a route map lives in <code
+        >, a map included. A 0.x folder with <code
           class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]"
-          >docs/chart/&lt;slug&gt;/</code
-        >, one Markdown file per decision ticket, and exists precisely because no project
-        slug has been earned yet. Planning artifacts are HTML because they exist to be
-        decided on; specs and tickets are Markdown because they exist to be executed.
+          >contract-data.json</code
+        > gets a <code
+          class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]"
+          >plan.json</code
+        > beside it the first time it is read, and its old files are kept.
       </p>
 
       <dl class="mt-9 space-y-5">
@@ -344,18 +355,6 @@ const artifacts = [
         this the next project reads.
       </p>
 
-      <p
-        class="mt-4 max-w-[64ch] rounded-r-(--radius-guide) border-l border-accent bg-surface-1 py-3 pr-4 pl-4 text-[0.9375rem]"
-      >
-        <span class="label-mono mr-2 text-accent">a second exception</span>
-        <code class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]"
-          >docs/chart/&lt;slug&gt;/</code
-        > holds an open route map — <code
-          class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]"
-          >map.md</code
-        > plus one file per ticket — across as many sessions as the fog takes. When the route
-        clears, the map hands off to the interview and its tickets become contract evidence.
-      </p>
     </section>
 
     <!-- ══════════ where it runs ══════════ -->
@@ -424,7 +423,7 @@ const artifacts = [
 
       <h3 class="label-mono mt-9 text-accent">pi installation</h3>
       <p class="mt-4 max-w-[64ch] text-muted">
-        The Pi change workflow needs only the plugin. The planning path also calls two tools, which
+        Approving and running a plan in Pi needs only the plugin. Planning also calls two tools, which
         are deliberately not bundled: pi allows one owner per tool name, so a bundled copy would
         fatally conflict with the same tool installed at the user level. Your installs are the ones
         the skills call. The contract engine needs no external tool; the plugin bundles it. Claude

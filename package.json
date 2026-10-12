@@ -2,7 +2,7 @@
   "name": "ideation",
   "version": "0.26.1",
   "private": true,
-  "description": "Whether, then how, then shipped — an evidence-gated interview turns a brain dump into an interactive HTML contract and Markdown specs, and a deterministic workflow engine executes them.",
+  "description": "One /ideation entry point at the right depth — just do it, short plan, an evidence-gated interview, or a map — writes plan data you answer on a page, and a deterministic workflow engine runs what you approve.",
   "repository": "github:nicknisi/ideation",
   "license": "MIT",
   "author": {

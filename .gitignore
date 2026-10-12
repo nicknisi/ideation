@@ -21,8 +21,6 @@ docs/ideation/*
 # The ux-dejank dogfood run is published history — a real run, kept unedited —
 # linked from the README's Example section and the site walkthrough.
 !docs/ideation/ux-dejank/
-# Plan data derived for the plan critics on every run (skills/ideation step 4); never committed.
-docs/ideation/*/.plan-review.json
 # The pride-report run's artifacts stay local, except the two force-added
 # files (context-map.md, implementation-notes-phase-5.html) — already tracked,
 # so this rule does not touch them.

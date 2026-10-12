@@ -15,7 +15,7 @@ const gates = readGates();
 const pi = joinPi();
 const wt = await walkthrough();
 const fp = wt.fingerprint.slice(0, 8).toUpperCase();
-const planning = joinCommands().filter(c => c.slug !== 'change');
+const planning = joinCommands();
 
 const PI_STEPS = [
   {
@@ -47,8 +47,8 @@ const PI_STEPS = [
 
 const STAGES = [
   {
-    title: 'Brainstorm',
-    body: 'A position on whether the idea is worth building at all. Conversation only — it writes no files, enforced by its tool list.',
+    title: 'Should we?',
+    body: 'A position on whether the idea is worth building at all. Conversation only: it writes no files, a hard rule of the opening.',
     stops: 'it concludes no — and writes nothing either way.',
   },
   {

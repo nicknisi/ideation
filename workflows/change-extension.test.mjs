@@ -363,6 +363,29 @@ test('prepare accepts an inline brief, stores a canonical git-common snapshot, a
   assert.equal(briefFingerprint(stored), hash);
 });
 
+test('prepare with a plan folder prepares exactly the toRunContract brief, and is exclusive with brief and path', async t => {
+  const runner = { status: async () => [], dispose: async () => {} };
+  const h = await harness(t, { runner });
+  const plan = JSON.parse(await readFile(new URL('../test-fixtures/plan/plan.json', import.meta.url), 'utf8'));
+  await mkdir(join(h.root, 'docs/ideation/send-retry'), { recursive: true });
+  await writeFile(join(h.root, 'docs/ideation/send-retry/plan.json'), JSON.stringify(plan));
+  const { toRunContract } = await import('../scripts/plan-data.ts');
+  const expected = toRunContract(plan);
+  await assert.rejects(h.tools.ideation_change.execute('', { action: 'prepare', plan: 'docs/ideation/send-retry', brief: rawBrief }, null, null, h.ctx), /exactly one/);
+  await assert.rejects(h.tools.ideation_change.execute('', { action: 'prepare', plan: 'docs/ideation/send-retry', path: 'b.json' }, null, null, h.ctx), /exactly one/);
+  const res = await h.tools.ideation_change.execute('', { action: 'prepare', plan: 'docs/ideation/send-retry' }, null, null, h.ctx);
+  assert.equal(res.details.briefHash, expected.fingerprint);
+  assert.equal(res.details.plan, 'docs/ideation/send-retry');
+  assert.equal(res.details.approved, false);
+  assert.deepEqual(JSON.parse(await readFile(res.details.briefPath, 'utf8')), expected.brief);
+  // Preparing never approves: the runner was not asked to start anything.
+  assert.equal(runner.approve, undefined);
+  // A plan toRunContract refuses is refused here too, before anything is prepared.
+  plan.claims[2].decision.required = true;
+  await writeFile(join(h.root, 'docs/ideation/send-retry/plan.json'), JSON.stringify(plan));
+  await assert.rejects(h.tools.ideation_change.execute('', { action: 'prepare', plan: 'docs/ideation/send-retry' }, null, null, h.ctx), /not approvable: required decisions not answered: setting-home/);
+});
+
 test('bare approve uses the last prepared brief, including after session reload, but never approves automatically', async t => {
   let approvals = 0, confirmations = 0;
   const runner = { status: async () => [], approve: async () => { approvals++; throw new Error('must not approve a declined dialog'); }, dispose: async () => {} };

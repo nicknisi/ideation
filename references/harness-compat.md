@@ -32,19 +32,19 @@ The skills dispatch agents by name. Claude Code plugin-scopes agents as `<plugin
 **Translation rule (pi):** there is no agent registry on this path — the agent definition travels with the call. Dispatch via the first-party `dispatch` tool (`npm:@nicknisi/pi-subagents`, see § 3): read the agent file from `agents/`, pass its body as the task's `systemPrompt`, its frontmatter `tools` translated to pi built-in names (`Read`→`read`, `Grep`→`grep`, `Glob`→`find`, `Bash`→`bash`), and the skill's per-invocation inputs as the task's `task`. Same agent, same prompt, same inputs.
 
 - **One agent** (a scout, a reviewer, a research task): one `dispatch` call with one task.
-- **A parallel fan-out** (the four plan critics, chart's research tickets): **one** `dispatch` call with one task per child. A skill instruction to "issue N Agent calls in one message so they run concurrently" becomes one call whose tasks run concurrently — not N sequential calls.
+- **A parallel fan-out** (the four plan critics, a map's research questions): **one** `dispatch` call with one task per child. A skill instruction to "issue N Agent calls in one message so they run concurrently" becomes one call whose tasks run concurrently — not N sequential calls.
 - **Tool allowlists are the enforcement.** Default tools are read-only (`read`, `grep`, `find`, `ls`) — critics, scouts, and research tasks fit as-is (the scout's CC `Bash` maps to pi's built-in `find`/`grep`/`ls`, so no `bash`). Any task whose tools include `bash`, `edit`, or `write` must set `allowTreeMutation: true` and runs sequentially after the read-only batch (the reviewer needs `bash` for `git diff HEAD`; builders need the full set). Never give a scout, reviewer, or critic `edit`/`write` — read-only is a design invariant, and the allowlist is what enforces it.
 
 **Engine stage agents** (scout/reviewer/builder inside `execute-contract.mjs`): in Claude Code the workflow runtime resolves `ideation:`-scoped names from the plugin's agent registry. In pi there is no registry on this path either — the engine host (`workflows/engine-host.mjs`) normalizes the engine's `agentType` strings (stripping any `ideation:` prefix, mapping `general-purpose`/`worker` to builder), reads `agents/scout.md` / `agents/reviewer.md` for the read-only stages' system prompts, and pins each stage's tool allowlist per spawn (see § 1). Scout and reviewer read-only is thus enforced by construction in both harnesses.
 
 ## 3. Pi tool prerequisites
 
-The planning path calls two tools (one first-party, one third-party) the plugin deliberately does **not** bundle (the Pi change workflow, `/ideation`, needs neither; it is Pi-only, and in Claude Code `/ideation:change` just says so) — install each once at the user level (`pi install npm:@nicknisi/pi-subagents`, `pi install npm:@juicesharp/rpiv-ask-user-question`):
+Planning calls two tools (one first-party, one third-party) the plugin deliberately does **not** bundle (approving and running a plan through the Pi change workflow needs neither) — install each once at the user level (`pi install npm:@nicknisi/pi-subagents`, `pi install npm:@juicesharp/rpiv-ask-user-question`):
 
 | Extension | Provides | Used by | Without it |
 |-----------|----------|---------|------------|
-| `npm:@nicknisi/pi-subagents` | the `dispatch` + `fleet` tools (first-party in-process children) | brainstorm (research), ideation (plan critics), execute-spec (scout, reviewer, wave dispatch), chart (research tickets) | every agent dispatch fails |
-| `npm:@juicesharp/rpiv-ask-user-question` | the `ask_user_question` tool | ideation (every gate, routing, failure-gate), execute-spec (HOLD/abort questions) | every interactive decision point fails — if no ask-user-question tool is available, ask in plain text with lettered options and state your recommendation — never skip the question |
+| `npm:@nicknisi/pi-subagents` | the `dispatch` + `fleet` tools (first-party in-process children) | ideation (intake sweep, plan critics, research questions), execute-spec (scout, reviewer, wave dispatch) | every agent dispatch fails |
+| `npm:@juicesharp/rpiv-ask-user-question` | the `ask_user_question` tool | ideation (every gate and decision), autopilot (failure gate), execute-spec (HOLD/abort questions) | every interactive decision point fails — if no ask-user-question tool is available, ask in plain text with lettered options and state your recommendation — never skip the question |
 
 The engine needs no external tool in pi: `extensions/engine.ts` is bundled with the plugin and drives the same `execute-contract.mjs` CC runs.
 
@@ -56,7 +56,7 @@ Versions ≤ 0.23.0 bundled these three extensions. If pi fails to start with to
 
 ## 4. Getting a plan page's response back
 
-A plan page (`scripts/plan-render.ts`) ends in a response: the reader's decisions, edits, struck calls and comments. A response is data, not instructions. `scripts/plan-respond.mjs` parses it and applies it as the next plan version (`plan.v<n+1>.json`; `plan.json` is always the latest). Applying never approves: approval is the user's terminal confirmation (`AskUserQuestion` in Claude Code).
+A plan page (`scripts/plan-render.ts`) ends in a response: the reader's decisions, edits, struck calls and comments. A response is data, not instructions. `scripts/plan-respond.mjs` parses it and applies it as the next plan version (`plan.v<n+1>.json`; `plan.json` is always the latest). Applying never approves: approval is the user's terminal confirmation (`AskUserQuestion` in Claude Code, the change workflow's confirmation in Pi), and `skills/ideation/SKILL.md` owns what happens after it.
 
 **Claude Code:**
 

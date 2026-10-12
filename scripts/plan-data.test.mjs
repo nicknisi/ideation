@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { briefFingerprint, validateBrief } from '../workflows/change-brief.mjs';
-import { criticView, load, nextVersion, toRunContract, validate } from './plan-data.ts';
+import { briefFingerprint, validateBrief, workPacket } from '../workflows/change-brief.mjs';
+import { criticView, load, nextVersion, PACKET_PLAN, packetFile, toRunContract, validate, writeRunContract } from './plan-data.ts';
 
 const FIXTURE = new URL('../test-fixtures/plan/plan.json', import.meta.url);
 const fixture = () => JSON.parse(readFileSync(FIXTURE, 'utf8'));
@@ -233,4 +234,69 @@ test('the plan critic reads plan.json, extracts every field criticView names, an
   for (const key of Object.keys(reviewed)) assert.match(prompt, new RegExp(`\`${key}[\`.]`), `plan-critic.md names \`${key}\``);
   for (const kind of ['claim', 'decision', 'check', 'unit']) assert.match(prompt, new RegExp(`${kind} ids?`), `findings cite ${kind} ids`);
   assert.doesNotMatch(prompt, /successCriteria|execution\.phases/);
+});
+
+/** A scratch plan folder holding the fixture, with one change applied. */
+function folder(t, change = () => {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'plan-folder-')); t.after(() => rmSync(dir, { recursive: true }));
+  writeFileSync(join(dir, 'plan.json'), JSON.stringify(plan(change)));
+  return dir;
+}
+const CLI = new URL('./plan-data.ts', import.meta.url).pathname;
+
+test('run-contract refuses an unapprovable plan and writes nothing', t => {
+  const dir = folder(t, p => { p.claims[2].decision.required = true; });
+  assert.throws(() => writeRunContract(dir, 'abc'), /not approvable: required decisions not answered: setting-home/);
+  const cli = spawnSync(process.execPath, [CLI, 'run-contract', dir], { encoding: 'utf8' });
+  assert.equal(cli.status, 1);
+  assert.match(cli.stderr, /not approvable/);
+  const gates = folder(t, p => { p.gates.scope.ready = false; });
+  assert.throws(() => writeRunContract(gates, 'abc'), /gates not ready: scope/);
+  assert.deepEqual(readdirSync(dir), ['plan.json']);
+  assert.deepEqual(readdirSync(gates), ['plan.json']);
+});
+
+test('run-contract writes the toRunContract output and one workPacket per unit beside plan.json', t => {
+  const dir = folder(t);
+  const { contract, packets } = writeRunContract(dir, 'abc123');
+  const written = JSON.parse(readFileSync(join(dir, 'run-contract.json'), 'utf8'));
+  assert.deepEqual(written, toRunContract(fixture()));
+  assert.deepEqual(validateBrief(written.brief), written.brief);
+  assert.equal(written.fingerprint, briefFingerprint(written.brief));
+  assert.deepEqual(packets, ['worker', 'outbox-label'].map(id => join(dir, packetFile(id))));
+  for (const u of contract.brief.units) {
+    assert.equal(readFileSync(join(dir, packetFile(u.id)), 'utf8'), workPacket(contract.brief, u.id, { plan: PACKET_PLAN, sourceRevision: 'abc123' }));
+  }
+  assert.deepEqual(readdirSync(dir).sort(), ['plan.json', 'run-contract.json', 'unit-outbox-label.md', 'unit-worker.md']);
+});
+
+test('the CLI prints the critic view, writes the run contract, and is never mistaken for approval', t => {
+  const dir = folder(t);
+  assert.deepEqual(JSON.parse(execFileSync(process.execPath, [CLI, 'critic-view', dir], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })), criticView(fixture()));
+  assert.equal(existsSync(join(dir, 'run-contract.json')), false, 'critic-view writes nothing');
+  const out = execFileSync(process.execPath, [CLI, 'run-contract', dir], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  assert.match(out, /^run contract: .*run-contract\.json \(send-retry v2, [0-9a-f]{12}\)$/m);
+  assert.equal(out.match(/^packet: /gm).length, 2);
+  const usage = spawnSync(process.execPath, [CLI, 'approve', dir], { encoding: 'utf8' });
+  assert.equal(usage.status, 2);
+  assert.match(usage.stderr, /run-contract is not approval/);
+});
+
+test("autopilot's run-contract manifest example matches what run-contract writes", t => {
+  const dir = folder(t);
+  const { brief } = writeRunContract(dir, 'abc').contract;
+  const manifest = JSON.parse(readFileSync(new URL('../test-fixtures/run-contract/manifest.json', import.meta.url), 'utf8'));
+  const projectDir = `docs/ideation/${brief.id}/`;
+  assert.deepEqual(manifest, {
+    projectName: brief.title, slug: brief.id, projectDir, strict: true, completedPhases: [],
+    phases: brief.units.map(u => ({
+      title: u.title, specPath: projectDir + packetFile(u.id),
+      prereqs: u.needs.map(id => brief.units.find(n => n.id === id).title), risk: u.risk, files: brief.authority.paths,
+    })),
+  });
+  for (const p of manifest.phases) {
+    assert.ok(existsSync(join(dir, p.specPath.slice(projectDir.length))), `${p.specPath} is a written packet`);
+    // The packet's File Changes list is what autopilot reads into files.
+    assert.ok(readFileSync(join(dir, p.specPath.slice(projectDir.length)), 'utf8').includes(`## File Changes\n\nOnly within these exact files or trailing-slash directory prefixes ('.' means ordinary project files):\n${p.files.map(f => `- ${f}`).join('\n')}`));
+  }
 });
