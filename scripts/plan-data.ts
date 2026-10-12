@@ -167,6 +167,33 @@ export function validate(plan: any): Plan {
   return p;
 }
 
+/**
+ * What the plan critics (agents/plan-critic.md) review: every id a finding
+ * cites, without exhibits. goals are the level-1 claims' ids; claims are the
+ * whole tree, depth first. Deterministic: same plan, same view.
+ */
+export function criticView(plan: Plan) {
+  validate(plan);
+  const claims = [...walk(plan.claims)];
+  const label = (d: Decision, value: string) => d.options.find(o => o.value === value)!.label;
+  return {
+    id: plan.id, title: plan.title, version: plan.version,
+    why: plan.why.map(w => w.quote),
+    goals: plan.claims.map(c => c.id),
+    claims: claims.map(c => ({ id: c.id, text: c.text })),
+    decisions: claims.flatMap(({ id: claim, decision: d }) => d ? [{
+      id: d.id, claim, ...(d.question === undefined ? {} : { question: d.question }), state: d.state,
+      options: d.options.map(o => o.label), recommended: label(d, d.recommended),
+      ...(d.answer === undefined ? {} : { answer: label(d, d.answer) }),
+    }] : []),
+    checks: plan.checks,
+    units: plan.units.map(({ id, title, risk, needs, checkIds, claimIds }) => ({ id, title, risk, needs, checkIds, claimIds })),
+    scope: plan.scope,
+    gates: plan.gates,
+    openQuestions: plan.openQuestions,
+  };
+}
+
 /** Reads and validates a plan file. */
 export function load(path: string): Plan {
   let raw;

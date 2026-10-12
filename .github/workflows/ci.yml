@@ -26,10 +26,11 @@ jobs:
           node-version: 24
 
       # No install step needed for tests. The root package.json declares
-      # pi-extension dependencies (pi-subagents, pi-dynamic-workflows,
-      # rpiv-ask-user-question) for pi runtime, but the test suite exercises
-      # the engine and scripts directly with `node --test`, never loading the
-      # extensions. `node --run test` is Node's own script runner, so this
+      # @nicknisi/pi-shared, plus the Pi packages and typebox as peers, for the
+      # pi runtime. The tests do load the extensions (change.ts, engine.ts,
+      # preflight.ts), but those import Pi and pi-shared lazily, and the tests
+      # stub them and typebox with module hooks, so nothing resolves from
+      # node_modules. `node --run test` is Node's own script runner, so this
       # needs no package manager at all. Using the script rather than
       # repeating the command keeps CI and a local `pnpm test` from drifting.
       - name: Run tests

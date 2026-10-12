@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // verify.mjs — the completion predicate for ONE ideation contract.
 //
-// Usage: node scripts/verify.mjs <path/to/contract-data.json> [--list]
+// Usage: node scripts/verify.mjs <contract-data.json | plan.json | folder> [--list|--advise]
+//
+// A plan's checks are its criteria and its units its phases (planAsContract);
+// a folder verifies its plan.json when it has one, else its contract-data.json.
 //
 // SCOPE, and this is load-bearing: this verifies the acceptance checks of the
 // contract you point it at. It is NOT a repo health check. Contract checks are
@@ -21,8 +24,8 @@
 // executor can never disagree about a criterion's kind.
 
 import { spawnSync } from 'node:child_process';
-import { readFileSync, realpathSync } from 'node:fs';
-import { relative, resolve } from 'node:path';
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const TIMEOUT_MS = 120_000;
@@ -271,6 +274,52 @@ export function committablePhases(data) {
   );
 }
 
+/** A 0.x phase title as the unit id plan-migrate makes of it; planAsContract matches units back to phases with it. */
+export const slug = s => String(s).normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+/** A folder verifies its plan.json when it has one, else its contract-data.json. */
+function resolveInput(path) {
+  if (!existsSync(path) || !statSync(path).isDirectory()) return { path, note: null };
+  const plan = join(path, 'plan.json');
+  const legacy = join(path, 'contract-data.json');
+  if (!existsSync(plan)) return { path: legacy, note: 'using contract-data.json' };
+  return { path: plan, note: `using plan.json${existsSync(legacy) ? ' (contract-data.json also present)' : ''}` };
+}
+
+/**
+ * A plan read as the contract shape this file checks: its checks are
+ * the criteria (normalizeCriterion reads { id, criterion, check } as is) and its
+ * units the phases. Returns the notes to print alongside.
+ *
+ * TODO(4.1): native plans need a real commit reference. Until then a unit has
+ * no specPath, so it is outside the commit denominator, exactly like a 0.x
+ * phase without one. A plan converted from 0.x borrows each unit's specPath and
+ * kind from the contract-data.json beside it, matched by the slug plan-migrate
+ * made the unit id with, so its commits= means what the 0.x line meant.
+ */
+function planAsContract(plan, planPath) {
+  const notes = [];
+  let legacy = null;
+  if (plan.supersedes === 'contract-data.json') {
+    try {
+      legacy = JSON.parse(readFileSync(join(dirname(planPath), 'contract-data.json'), 'utf8')).execution?.phases ?? [];
+    } catch {
+      notes.push('plan supersedes contract-data.json, but none is readable beside it; no unit commit is counted');
+    }
+  }
+  const phases = (plan.units ?? []).map(u => {
+    const unit = { title: u.title, risk: u.risk };
+    if (!legacy) return unit;
+    const p = legacy.find(p => slug(p.title) === u.id);
+    if (!p) notes.push(`unit "${u.id}" matches no phase in contract-data.json; its commit is not counted`);
+    return p ? { ...unit, specPath: p.specPath, kind: p.kind } : unit;
+  });
+  return {
+    data: { projectName: plan.title, slug: plan.id, version: plan.version, successCriteria: plan.checks, execution: { phases } },
+    notes,
+  };
+}
+
 function commitBodies(root) {
   const r = spawnSync('git', ['log', '--format=%H%x1f%B%x1e'], {
     cwd: root,
@@ -293,7 +342,9 @@ function header(data, dataPath, root) {
   return [
     `VERIFYING ONE CONTRACT — ${data.projectName} (${data.slug})`,
     `  source   ${rel}`,
-    `  dated    ${data.date} · status ${data.status}`,
+    data.version === undefined
+      ? `  dated    ${data.date} · status ${data.status}`
+      : `  version  ${data.version} (plan data has no date or status)`,
     `  scope    this contract's acceptance checks only, not a repo health check.`,
     `           Checks are acceptance-time predicates and rot as the repo moves on;`,
     `           a red run means these checks no longer hold, not that the repo is broken.`,
@@ -311,12 +362,11 @@ function main(argv) {
   const args = argv.filter(a => !FLAGS.includes(a));
   const listOnly = argv.includes('--list');
   const adviseOnly = argv.includes('--advise');
-  const dataPath = args[0];
-
-  if (!dataPath) {
+  if (!args[0]) {
     console.error(
-      'Usage: node scripts/verify.mjs <path/to/contract-data.json> [--list|--advise]\n' +
+      'Usage: node scripts/verify.mjs <contract-data.json | plan.json | folder> [--list|--advise]\n' +
         "  Verifies ONE contract's acceptance checks. Not a repo health check.\n" +
+        '  A folder uses its plan.json when present, else its contract-data.json.\n' +
         '  --list    enumerate the criteria and their kind; run nothing\n' +
         '  --advise  print the run-mode recommendation and why; run nothing',
     );
@@ -324,6 +374,8 @@ function main(argv) {
   }
 
   const root = repoRoot();
+  const input = resolveInput(args[0]);
+  const dataPath = input.path;
   let data;
   try {
     data = JSON.parse(readFileSync(dataPath, 'utf8'));
@@ -331,6 +383,14 @@ function main(argv) {
     console.error(`verify: cannot read ${dataPath} — ${err.message}`);
     return 1;
   }
+  const notes = input.note ? [input.note] : [];
+  // contract-data.json has successCriteria and brief.json acceptance; only a plan has checks.
+  if (Array.isArray(data.checks)) {
+    const read = planAsContract(data, dataPath);
+    data = read.data;
+    notes.push(...read.notes);
+  }
+  for (const note of notes) console.log(`verify: ${note}`);
 
   // Crash cleanly on malformed criteria: a malformed entry silently normalized
   // to a judgment criterion (printed, never counted) can hand /goal a false

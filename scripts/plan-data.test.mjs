@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { briefFingerprint, validateBrief } from '../workflows/change-brief.mjs';
-import { load, nextVersion, toRunContract, validate } from './plan-data.ts';
+import { criticView, load, nextVersion, toRunContract, validate } from './plan-data.ts';
 
 const FIXTURE = new URL('../test-fixtures/plan/plan.json', import.meta.url);
 const fixture = () => JSON.parse(readFileSync(FIXTURE, 'utf8'));
@@ -189,4 +189,37 @@ test('a run-changed event built from the run contract is one Riker can read', ()
     ],
   });
   assert.throws(() => rikerReads({ ...event, run: { ...event.run, id: 'has space' } }), /run\.id/);
+});
+
+test('criticView: every id a critic cites, without exhibits, deterministically', () => {
+  const view = criticView(fixture());
+  assert.deepEqual(view, criticView(fixture()));
+  assert.equal(JSON.stringify(view).includes('exhibit'), false);
+  assert.deepEqual(view.why, ['When a send fails I only find out hours later.', 'Nobody should have to press send twice.']);
+  assert.deepEqual(view.goals, ['1', '2', '3']);
+  assert.deepEqual(view.claims.map(c => c.id), ['1', '1.1', '1.1.1', '2', '3']);
+  assert.deepEqual(view.decisions[1], {
+    id: 'give-up-label', claim: '2', question: 'What does a given-up send say?', state: 'answered',
+    options: ['Gave up after 3 tries', 'Not sent'], recommended: 'Not sent', answer: 'Gave up after 3 tries',
+  });
+  assert.deepEqual(view.decisions.map(d => [d.id, d.state]), [['retries', 'kept'], ['give-up-label', 'answered'], ['setting-home', 'not-opened']]);
+  assert.deepEqual(view.checks.map(c => c.id), ['retry-tests', 'gave-up-readable']);
+  assert.deepEqual(view.units, [
+    { id: 'worker', title: 'Retry worker', risk: 'medium', needs: [], checkIds: ['retry-tests'], claimIds: ['1', '1.1', '1.1.1', '3'] },
+    { id: 'outbox-label', title: 'Gave-up label', risk: 'high', needs: ['worker'], checkIds: ['gave-up-readable'], claimIds: ['2'] },
+  ]);
+  assert.deepEqual(view.scope, fixture().scope);
+  assert.deepEqual(view.gates, fixture().gates);
+  assert.deepEqual(view.openQuestions, fixture().openQuestions);
+  assert.throws(() => criticView(plan(p => { p.units[0].needs = ['nope']; })), /units\[0\]\.needs\[0\]: unknown unit "nope"/);
+});
+
+test('the plan critic reads plan.json, extracts every field criticView names, and cites ids', () => {
+  const prompt = readFileSync(new URL('../agents/plan-critic.md', import.meta.url), 'utf8');
+  assert.match(prompt, /^description: .*plan data/m);
+  assert.match(prompt, /`plan\.json`/);
+  const { id, title, version, ...reviewed } = criticView(fixture());
+  for (const key of Object.keys(reviewed)) assert.match(prompt, new RegExp(`\`${key}[\`.]`), `plan-critic.md names \`${key}\``);
+  for (const kind of ['claim', 'decision', 'check', 'unit']) assert.match(prompt, new RegExp(`${kind} ids?`), `findings cite ${kind} ids`);
+  assert.doesNotMatch(prompt, /successCriteria|execution\.phases/);
 });
