@@ -42,7 +42,7 @@ Fog only gathers *toward* the destination. Work beyond it is out of scope: it go
 
 ## Two invocations
 
-Never resolve more than one non-research question per session. Research questions may run in parallel in any session.
+Resolve one non-research question per session, so each decision gets a fresh look. When the user asks to keep going, take the next frontier question in the same session, and keep taking them until they stop or nothing in the frontier can be resolved now. Research questions may run in parallel in any session.
 
 **Chart the map** (a loose idea):
 
@@ -61,6 +61,7 @@ Never resolve more than one non-research question per session. Research question
 4. Record the answer by removing the question, updating the gate's evidence, and adding a decision if one was chosen. Write it as a new plan version (the skill's versions rule).
 5. Add newly phrasable questions, clear the fog they came from, rule out of scope whatever has turned out to be beyond the destination, and update or remove questions the answer has made wrong.
 6. Open the page on the new version, as in charting.
+7. If the user asked to keep going, return to step 2.
 
 ## Hand-off
 

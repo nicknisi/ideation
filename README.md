@@ -42,7 +42,7 @@ Depth: short plan. Two real forks (where retries live, what a given-up send says
 | `just do it` | One clear change: before → after and its checks can be stated now, and nothing about it is risky | A one-unit plan with no page, shown in the terminal, then the confirmation and the run |
 | `short plan` | Buildable now, with 2–5 real forks a person should decide | A plan with those decisions (each with a recommended answer), a plan page, then approval |
 | `interview` | The problem, goals, success criteria or scope aren't settled | The evidence-gated interview, the four plan critics, a plan page, then approval |
-| `map` | Too big or foggy for one session: the route to a plan is itself unknown | A plan whose `openQuestions` are the map, read on a plan page and worked one non-research question per session, then the interview |
+| `map` | Too big or foggy for one session: the route to a plan is itself unknown | A plan whose `openQuestions` are the map, read on a plan page and worked one non-research question per session (more when you say to keep going), then the interview |
 
 **The overrule.** Say "just do it", "short plan", "interview" or "map" at any point and
 it switches at once, says so in one line, and carries everything already settled.
@@ -373,7 +373,7 @@ simply gone, and this table says where its work went.
 | 0.x | In 1.0 |
 | --- | --- |
 | `/ideation:brainstorm` | `/ideation`'s `should we?` opening: still a conversation that writes no files, ending in a decision and, if it's "build it", a depth |
-| `/ideation:chart` | `/ideation` at the `map` depth: the map's tickets are `openQuestions` in `plan.json`, still one non-research question per session |
+| `/ideation:chart` | `/ideation` at the `map` depth: the map's tickets are `openQuestions` in `plan.json`, still one non-research question per session unless you say to keep going |
 | `/ideation:express` | `/ideation` at `just do it` for one clear change; at any depth, the terminal approval hands the plan straight to the engine |
 | `/ideation:change`, `/skill:ideation-change` | `/ideation` (in Pi, also `/ideation plan`): it picks the depth, a clear change lands on `just do it`, and Pi's approval runs it through the same change workflow |
 
