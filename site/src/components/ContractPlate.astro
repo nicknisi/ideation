@@ -1,14 +1,14 @@
 ---
 /**
- * Fig. 1 — a miniature of the contract the interview generates.
+ * A miniature of the contract the planning interview generates.
  *
- * The design called for a screenshot of a real contract.html here. Drawing it
- * instead keeps the page self-contained (no image request, no asset to go
- * stale when the artifact's layout changes) and lets it re-theme with the
- * rest of the page. It shows the bookmark-garden run — the same invented
- * feature the walkthrough follows, so the two pages describe one example
- * rather than two.
+ * Drawn rather than captured: it re-themes with the page, costs no image
+ * request, and cannot go stale as a screenshot would when contract.html's
+ * layout moves. It shows the bookmark-garden run, the same invented feature
+ * the planning walkthrough follows, so the two pages describe one example.
  */
+import Stamp from './Stamp.astro';
+
 const gates = [
   { name: 'problem', evidence: 'the visit log that already exists' },
   { name: 'goals', evidence: 'save → revisit → grow, one loop' },
@@ -24,69 +24,63 @@ const tiers = [
 ];
 ---
 
-<div class="grid gap-6 p-6 max-[560px]:p-4">
-  <div class="flex items-baseline justify-between gap-4 border-b border-line pb-3">
-    <span class="font-heading text-[15px] font-semibold tracking-[0.04em]">BOOKMARK GARDEN</span>
-    <span class="font-mono text-[10px] text-accent-700">express recommended</span>
+<div class="grid gap-5 p-6 max-[560px]:p-4">
+  <div class="flex items-center justify-between gap-4 border-b border-line pb-3">
+    <div>
+      <p class="flex items-center gap-2 font-sans text-[0.8125rem] text-accent">
+        <span class="diamond text-[0.6rem]" aria-hidden="true"></span>Ideation / Contract
+      </p>
+      <p class="mt-1 text-[1.5rem] leading-tight font-bold">Bookmark garden</p>
+      <p class="font-sans text-[0.8125rem] text-muted">express recommended</p>
+    </div>
+    <Stamp label="Awaiting approval" tone="faint" press class="is-sm mr-1 flex-none" />
   </div>
 
   <div class="grid gap-6 max-[560px]:gap-4 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-    <div class="grid content-start gap-2">
-      <div class="plate-label text-[10px] text-neutral-700">Gates 5/5</div>
+    <div class="grid content-start gap-1.5">
+      <p class="font-sans text-[0.8125rem] font-semibold text-muted">Evidence gates · 5 of 5</p>
       {
         gates.map(gate => (
-          <div class="flex items-baseline gap-2 text-[11px] leading-[1.5]">
-            <span class="font-mono text-accent-700">✓</span>
-            <span class="w-[68px] flex-none font-mono">{gate.name}</span>
-            <span class="min-w-0 truncate text-neutral-700">{gate.evidence}</span>
-          </div>
+          <p class="flex items-baseline gap-2 text-[0.875rem] leading-[1.5]">
+            <span class="font-mono text-go" aria-label="ready">✓</span>
+            <span class="w-[6.2rem] flex-none font-mono text-[0.8125rem]">{gate.name}</span>
+            <span class="min-w-0 truncate text-muted">{gate.evidence}</span>
+          </p>
         ))
       }
     </div>
 
-    <div class="grid content-start gap-2 max-[560px]:hidden">
-      <div class="plate-label text-[10px] text-neutral-700">Scope</div>
+    <div class="grid content-start gap-1.5 max-[560px]:hidden">
+      <p class="font-sans text-[0.8125rem] font-semibold text-muted">Scope tiers</p>
       {
         tiers.map(tier => (
-          <div class:list={['text-[11px] leading-[1.5]', tier.dim && 'text-neutral-700']}>
-            <span
-              class:list={[
-                'plate-label pr-2 text-[10px]',
-                tier.dim ? 'text-neutral-700' : 'text-accent-700',
-              ]}
-            >
+          <p class:list={['text-[0.875rem] leading-[1.5]', tier.dim && 'text-muted']}>
+            <span class:list={['mr-2 font-sans text-[0.8125rem] font-semibold', tier.dim ? 'text-muted' : 'text-accent']}>
               {tier.tier}
             </span>
             {tier.items}
-          </div>
+          </p>
         ))
       }
     </div>
   </div>
 
   {/* The phase graph: wave 2 runs its two phases in parallel. */}
-  <div class="grid gap-3 border-t border-line pt-4">
-    <div class="plate-label text-[10px] text-neutral-700">Phases · 3 waves</div>
-    <div class="flex items-center gap-2 font-mono text-[10px]">
-      <span class="grid size-[26px] flex-none place-items-center border border-accent text-accent-700">
-        01
-      </span>
-      <span class="h-px w-4 flex-none bg-line"></span>
+  <div class="grid gap-2 border-t border-line pt-4">
+    <p class="font-sans text-[0.8125rem] font-semibold text-muted">Phases · 3 waves</p>
+    <div class="flex items-center gap-2 font-mono text-[0.75rem]">
+      <span class="grid size-8 flex-none place-items-center rounded-(--radius-guide) border border-accent text-accent">01</span>
+      <svg class="h-2 w-5 flex-none" viewBox="0 0 20 8" aria-hidden="true" data-ink><path pathLength="1" d="M0 4H20" stroke="var(--line-strong)" stroke-width="1.5" fill="none"></path></svg>
       <span class="grid flex-none gap-1">
-        <span class="grid size-[26px] place-items-center border border-accent text-accent-700">
-          02
-        </span>
-        <span class="grid size-[26px] place-items-center border border-accent text-accent-700">
-          03
-        </span>
+        <span class="grid size-8 place-items-center rounded-(--radius-guide) border border-accent text-accent">02</span>
+        <span class="grid size-8 place-items-center rounded-(--radius-guide) border border-accent text-accent">03</span>
       </span>
-      <span class="h-px w-4 flex-none bg-line"></span>
-      <span class="grid size-[26px] flex-none place-items-center border border-accent text-accent-700">
-        04
-      </span>
-      <span class="ml-auto truncate text-neutral-700 max-[560px]:hidden">
+      <svg class="h-2 w-5 flex-none" viewBox="0 0 20 8" aria-hidden="true" data-ink><path pathLength="1" d="M0 4H20" stroke="var(--line-strong)" stroke-width="1.5" fill="none"></path></svg>
+      <span class="grid size-8 flex-none place-items-center rounded-(--radius-guide) border border-accent text-accent">04</span>
+      <span class="ml-auto truncate font-sans text-[0.8125rem] text-muted max-[560px]:hidden">
         node verify.mjs — 6 checks
       </span>
     </div>
   </div>
+
 </div>

@@ -1,20 +1,27 @@
 # Cloudflare reads this from the build output root. Both Pages and Workers
 # static assets honour it.
 #
-# The site loads nothing from anywhere else — no CDNs, no images, no analytics,
-# and the only fonts are self-hosted under /fonts — so the CSP can be almost
-# entirely `self` and stay that way. `default-src 'self'` is what covers those
-# font requests; there is deliberately no separate font-src.
+# The site loads nothing from anywhere else — no CDNs, no web fonts, no
+# analytics — so the CSP can be almost entirely `self` and stay that way.
+# `default-src 'self'` also covers the launch video under /media and the
+# walkthrough's framed contracts.
 # `unsafe-inline` is required for style-src and script-src because every page
 # here deliberately inlines its CSS and its handful of scripts; that is the
-# same property that makes the pages self-contained.
+# same property that makes the pages (and the generated contracts) self-contained.
+# Framing is same-origin rather than none: the Pi walkthrough frames the real
+# contract pages it renders under /walkthrough/pi/contract/. The site has no
+# forms, sessions or state-changing actions to clickjack.
 /*
   Referrer-Policy: strict-origin-when-cross-origin
   X-Content-Type-Options: nosniff
-  X-Frame-Options: DENY
-  Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'
   Permissions-Policy: geolocation=(), camera=(), microphone=()
 
 # Hashed build assets are immutable; the HTML must not be.
 /_assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# The launch video and its poster change only with a new render.
+/media/*
+  Cache-Control: public, max-age=604800

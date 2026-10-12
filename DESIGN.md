@@ -8,7 +8,7 @@ dark "command deck" world, and that mismatch was the single biggest reason a
 generated contract did not read as part of this product.
 
 The canonical token declarations are `scripts/contract-gen.css` (inlined into
-every generated contract) and `site/src/styles/global.css` (worn by `/guide`).
+every generated contract) and `site/src/styles/global.css` (worn by the whole site).
 This document owns the values; those files declare them; every other surface
 inherits.
 
@@ -18,22 +18,28 @@ An **editorial field guide**: paper ground, ink, hairline rules, one cobalt
 accent, letterpress depth. Print sensibility on screen. It is deliberately not
 an instrument panel, a dashboard, or a terminal.
 
-## Two worlds
+## One world
 
-The product ships two visual worlds, deliberately, and they never meet in one
-document.
+Every surface wears this world: generated contracts and receipts, the live contract
+page, ephemeral comparison artifacts, implementation notes, and all of
+ideation.engineering — the overview, both walkthroughs and the guide.
 
-- **Field guide** (this document): generated contracts, `/guide`, ephemeral
-  comparison artifacts, implementation notes. The world of product artifacts —
-  documents a machine produces and a person reads, signs, or decides from.
-- **Industry** (`site/src/styles/industry.css`): `/` and `/walkthrough`. A
-  drafting table — slate-blue `#5980a6`, Barlow, square corners, registration
-  marks. The marketing surface, explaining the product from the outside.
+The site used to wear a second, "Industry" world (slate blue, Barlow, square
+corners). It was retired because a visitor met one look on the site and another on
+their first contract, and because the product's own artifacts — the stamped
+contract, the live page, the widget — are its best explanation. The site now shows
+real contract pages the renderer produced, framed, beside prose in the same tokens.
 
-Two worlds coexist because a marketing surface and a product artifact answer
-different questions. What is not allowed is a third world, or an artifact that
-invents its own tokens: a new surface joins one of these two, or argues for a
-change here first.
+A new surface joins this world or argues for a change here first. An artifact that
+invents its own tokens, or a second world, is not allowed.
+
+**One sanctioned exception: the graphite deck.** Where the site depicts a Pi
+terminal, it uses a fixed graphite plate (`#1a1c20`, the dark deck's surface) in
+both themes, and colours text with Pi's own dark-theme roles (accent `#8abeb7`,
+border accent `#00d7ff`, success `#b5bd68`, error lifted to `#e07a7a`), with muted
+and dim lifted to `#9a9a9a` and `#878787` so every role meets WCAG AA. It depicts
+another program's UI; it is not a surface of this world, and nothing else may borrow
+those colours.
 
 ## Tokens
 
@@ -86,13 +92,30 @@ section is grammar nobody chose.
 - Structure is carried by 1px rules and shared borders, not by gaps between
   floating cards. Prefer one bordered strip of cells over N separate cards.
 
-## Motion
+## Motion — ink & press
 
-One authored moment per surface, on entry, then stillness. Exponential ease-out
-(`--ease: cubic-bezier(.16,1,.3,1)`), from an already-visible default — content
-never depends on animation to be readable. State changes stay under ~180ms.
-Everything collapses correctly under `prefers-reduced-motion`, and the
-reduced-motion path must still deliver the *information* the motion carried.
+Motion is allowed anywhere, tastefully, as long as it uses this world's
+vocabulary: ink and the press, never glow, neon, or bounce.
+
+- **Ink draws.** Rules, arrows, and diagram edges draw themselves in on first
+  view, like a pen stroke (stroke-dashoffset, ~600–900ms).
+- **The press lands.** Approval and receipts arrive as a rubber stamp. It
+  thunks in slightly off-register and rotated (−4°), then holds still.
+- **Ink dries.** A passing check is inked on (✓ stroke draws, tint settles).
+  Pending human judgment breathes very slowly (≥2.4s period, low amplitude).
+- **Tokens travel.** A cobalt token may run along dependency edges while work
+  is live. It only marks actual state: the current step, never fake progress.
+- **Paper, not screen.** A small hover lift (press offset grows 1px). Sections
+  settle in with a short rise as they enter view. There is no parallax,
+  scroll-jacking, or continuous looping on idle documents beyond the pending pulse.
+
+Exponential ease-out (`--ease: cubic-bezier(.16,1,.3,1)`), always from an
+already-visible default: content never depends on animation to be readable,
+and nothing hides until JavaScript runs. Interactive state changes stay under
+~180ms. Animation never implies progress that evidence does not support.
+Under `prefers-reduced-motion`, everything is still and final, and the
+reduced-motion path still delivers the *information* the motion carried
+(stamp present, checks marked, current step highlighted). Print is always still.
 
 ## Non-negotiables for any new surface
 

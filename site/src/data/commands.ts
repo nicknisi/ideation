@@ -73,7 +73,7 @@ export const COMMANDS: CommandDoc[] = [
   {
     slug: 'ideation',
     stage: 'plan',
-    headline: 'The one door. An evidence-gated interview to a contract you approve.',
+    headline: 'The planning door: an evidence-gated interview to a contract you approve.',
     when: 'You have something to build and you want a plan you can hold — from a one-spec change up to a multi-phase initiative.',
     produces:
       'contract.html to decide on, contract.md and numbered spec files to execute against, and a run-mode recommendation.',
@@ -89,6 +89,16 @@ export const COMMANDS: CommandDoc[] = [
       'The same artifacts, one consolidated confirmation instead of per-artifact gates, and execution on an isolation branch.',
     caveat:
       'Because no human reviewed the specs, execution runs fail-closed: a scout HOLD or a crashed reviewer stops the phase rather than committing anyway.',
+  },
+  {
+    slug: 'change',
+    stage: 'plan',
+    headline: 'Agree on one compact change, approve it once, then walk away.',
+    when: 'The change is clear enough to state as before/after, invariants and checks, and you want it built without babysitting. Open it with /ideation in Pi.',
+    produces:
+      'A live contract page that goes from approval to running to a receipt of source-bound evidence, and reviewed local commits in an isolated worktree.',
+    caveat:
+      'Approval is the only permission. Comments on the contract are feedback, never authorization; it never pushes, merges or deploys, and ready-for-review is not accepted.',
   },
   {
     slug: 'autopilot',

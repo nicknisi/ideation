@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "id": "offline-drafts",
+  "title": "Offline drafts for Field Notes",
+  "revision": 2,
+  "why": "Losing signal on a trail loses the note you were writing.",
+  "change": {
+    "before": "Field Notes needs a connection to save. Drop signal mid-sentence and the draft is gone.",
+    "after": "Notes save on the device first, sync when signal returns, and flag conflicts instead of overwriting."
+  },
+  "mustHold": [
+    "Online behavior is unchanged.",
+    "Nothing is ever silently overwritten."
+  ],
+  "acceptance": [
+    {
+      "id": "draft-store",
+      "criterion": "Drafts persist across a restart with no network",
+      "check": {
+        "cmd": "pnpm test src/drafts"
+      }
+    },
+    {
+      "id": "sync-queue",
+      "criterion": "Queued edits sync in order when signal returns",
+      "check": {
+        "cmd": "pnpm test src/sync"
+      }
+    },
+    {
+      "id": "conflicts",
+      "criterion": "A conflicting edit keeps both versions and shows a banner",
+      "check": {
+        "cmd": "pnpm test src/conflicts"
+      }
+    },
+    {
+      "id": "status",
+      "criterion": "The offline indicator reflects real connectivity",
+      "check": {
+        "cmd": "pnpm test src/status"
+      }
+    },
+    {
+      "id": "full-suite",
+      "criterion": "The whole test suite passes",
+      "check": {
+        "cmd": "pnpm test"
+      }
+    },
+    {
+      "id": "typecheck",
+      "criterion": "Type checking passes",
+      "check": {
+        "cmd": "pnpm typecheck"
+      }
+    },
+    {
+      "id": "calm",
+      "criterion": "Writing in airplane mode feels calm",
+      "check": {
+        "judgment": "In airplane mode, write a note, reconnect, and confirm nothing was lost."
+      }
+    }
+  ],
+  "units": [
+    {
+      "id": "store",
+      "title": "Local draft store",
+      "goal": "Persist drafts on the device before any network call.",
+      "risk": "low",
+      "needs": [],
+      "acceptanceIds": [
+        "draft-store"
+      ]
+    },
+    {
+      "id": "queue",
+      "title": "Sync queue",
+      "goal": "Replay queued edits in order when connectivity returns.",
+      "risk": "medium",
+      "needs": [
+        "store"
+      ],
+      "acceptanceIds": [
+        "sync-queue"
+      ]
+    },
+    {
+      "id": "conflicts",
+      "title": "Conflict banner",
+      "goal": "Keep both versions of a conflicting edit and say so, rather than overwriting either.",
+      "risk": "medium",
+      "needs": [
+        "queue"
+      ],
+      "acceptanceIds": [
+        "conflicts"
+      ]
+    },
+    {
+      "id": "status",
+      "title": "Offline indicator",
+      "goal": "Show real connectivity state.",
+      "risk": "low",
+      "needs": [],
+      "acceptanceIds": [
+        "status",
+        "full-suite",
+        "typecheck",
+        "calm"
+      ]
+    }
+  ],
+  "authority": {
+    "paths": [
+      "src/"
+    ],
+    "commands": [
+      "pnpm test src/drafts",
+      "pnpm test src/sync",
+      "pnpm test src/conflicts",
+      "pnpm test src/status",
+      "pnpm test",
+      "pnpm typecheck"
+    ]
+  },
+  "outOfScope": [
+    "Real-time collaboration",
+    "Syncing attachments"
+  ],
+  "delegated": [
+    "Where the offline indicator sits",
+    "Banner wording"
+  ],
+  "decisions": [
+    {
+      "decision": "Keep both versions when edits conflict",
+      "reason": "Silently picking a winner is the failure this change exists to fix.",
+      "rejected": "Last write wins"
+    }
+  ]
+}

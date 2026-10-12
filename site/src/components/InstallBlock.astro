@@ -1,95 +1,61 @@
 ---
-import Blueprint from './Blueprint.astro';
+import type { InstallLine } from '../lib/install';
 
+/**
+ * One harness's install commands, copied as a unit. Commands for different
+ * harnesses are never mixed into one payload: pasted into the wrong one, they
+ * fail. Notes from the README ride beside their line and are never copied.
+ */
 interface Props {
-  /** The hero's framed call to action, or the quieter one further down. */
-  variant?: 'primary' | 'secondary';
-  /** Blinking terminal caret after the last Claude Code line. Hero only. */
-  caret?: boolean;
+  label: string;
+  lines: InstallLine[];
   class?: string;
 }
-
-const { variant = 'secondary', caret = false, class: className = '' } = Astro.props;
-
-// One clipboard payload per harness, labeled. Pasted together, the two
-// Claude Code lines register the marketplace and install from it in a
-// single go. The pi line is never mixed into that payload — pasted into
-// the wrong harness it fails — so each block copies only its own. The
-// caret stays on the Claude Code block: appending pi there would move the
-// hero's caret and blur which harness the page is talking to.
-const HARNESSES = [
-  {
-    label: 'Claude Code',
-    lines: ['/plugin marketplace add nicknisi/ideation', '/plugin install ideation@ideation'],
-    copyLabel: 'copy both',
-  },
-  {
-    label: 'pi',
-    lines: [
-      'pi install npm:pi-subagents',
-      'pi install npm:@quintinshaw/pi-dynamic-workflows',
-      'pi install npm:@juicesharp/rpiv-ask-user-question',
-      'pi install git:github.com/nicknisi/ideation',
-    ],
-    copyLabel: 'copy all',
-  },
-];
-
-const button =
-  'flex-none px-6 font-heading text-[14px] font-semibold cursor-pointer transition-colors ' +
-  'max-[780px]:w-full max-[780px]:min-h-[44px] ' +
-  (variant === 'primary'
-    ? 'border-accent bg-accent text-canvas hover:bg-accent-600 active:bg-accent-700'
-    : 'border-line text-ink hover:bg-ink/7 active:bg-ink/14');
+const { label, lines, class: className = '' } = Astro.props;
+const payload = lines.map(l => l.cmd).join('\n');
 ---
 
-<div class:list={['flex max-w-[640px] flex-col gap-4', className]}>
-  {
-    HARNESSES.map((harness, h) => (
-      <div class="flex flex-col gap-1.5">
-        <span class="font-heading text-[11px] font-semibold tracking-[0.14em] text-neutral-700 uppercase">
-          {harness.label}
-        </span>
-        <div class="flex items-stretch gap-3 max-[780px]:flex-wrap">
-          <div class="grid min-w-0 flex-1 gap-2 overflow-x-auto border border-line p-4 font-mono text-[13.5px] leading-[1.5]">
-            {
-              harness.lines.map((line, i) => (
-                <code class="whitespace-nowrap">
-                  <span class="pr-3 text-accent-700 select-none">$</span>
-                  {line}
-                  {caret && h === 0 && i === harness.lines.length - 1 && (
-                    <span
-                      aria-hidden="true"
-                      class="ml-[3px] inline-block h-[15px] w-[7px] animate-blink bg-accent align-middle"
-                    />
-                  )}
-                </code>
-              ))
-            }
-          </div>
-
-          {
-            variant === 'primary' ? (
-              <Blueprint
-                as="button"
-                type="button"
-                data-copy={harness.lines.join('\n')}
-                class={button}
-              >
-                <span data-copy-label>{harness.copyLabel}</span>
-              </Blueprint>
-            ) : (
-              <button
-                type="button"
-                data-copy={harness.lines.join('\n')}
-                class:list={['border', button]}
-              >
-                <span data-copy-label>{harness.copyLabel}</span>
-              </button>
-            )
-          }
+<div class:list={['sheet', className]}>
+  <div class="sheet-bar">
+    <span>{label}</span>
+    <button
+      type="button"
+      class="copy cursor-pointer rounded-(--radius-guide) border border-line-strong bg-surface-2 px-2 py-0.5 font-sans text-[0.75rem] text-ink transition-colors hover:border-accent hover:text-accent"
+      data-copy={payload}
+      aria-label={`Copy the ${label} install commands`}>Copy</button
+    >
+  </div>
+  <div class="overflow-x-auto px-4 py-3">
+    {
+      lines.map(l => (
+        <div class="flex items-baseline gap-3 font-mono text-[0.8125rem] leading-[1.8] whitespace-nowrap">
+          <code>
+            <span class="text-faint select-none" aria-hidden="true">
+              {l.cmd.startsWith('/') ? '›' : '$'}{' '}
+            </span>
+            {l.cmd}
+          </code>
+          {l.note && <span class="font-sans text-[0.75rem] text-muted">{l.note}</span>}
         </div>
-      </div>
-    ))
-  }
+      ))
+    }
+  </div>
 </div>
+
+<script is:inline>
+  // One delegated listener for every copy button on the page.
+  if (!window.__ideationCopy) {
+    window.__ideationCopy = true;
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest && e.target.closest('.copy[data-copy]');
+      if (!btn || !navigator.clipboard) return;
+      navigator.clipboard.writeText(btn.dataset.copy).then(function () {
+        var was = btn.textContent;
+        btn.textContent = 'Copied';
+        setTimeout(function () {
+          btn.textContent = was;
+        }, 1400);
+      });
+    });
+  }
+</script>

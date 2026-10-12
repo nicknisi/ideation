@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "compact-brief",
+  "title": "Make the change clear before the machinery",
+  "revision": 1,
+  "why": "Readers need to understand the proposed change and its evidence without navigating execution details.",
+  "change": {
+    "before": "Implementation mechanics obscure the intended outcome.",
+    "after": "A compact brief leads with the change; a receipt separates evidence from human acceptance."
+  },
+  "mustHold": ["Untrusted content is displayed as text.", "Human judgments never automatically pass."],
+  "outOfScope": ["Automatic publication or merging"],
+  "delegated": ["Responsive spacing and typography"],
+  "decisions": [{"decision": "Self-contained HTML", "reason": "Readable offline without dependencies.", "rejected": "Remote rendering service"}],
+  "acceptance": [
+    {"id": "render-tests", "criterion": "Renderer behavior tests pass", "check": {"cmd": "node --test scripts/change-render.test.mjs", "expect": "exits 0"}},
+    {"id": "readability", "criterion": "The proposed change is easy to scan", "check": {"judgment": "Review the brief at desktop and mobile widths"}}
+  ],
+  "units": [{"id": "render", "title": "Render brief and receipt", "goal": "Present change, boundaries, and honest evidence states.", "risk": "low", "needs": [], "acceptanceIds": ["render-tests", "readability"]}],
+  "authority": {"paths": ["scripts/change-render.mjs", "scripts/change-render.test.mjs"], "commands": ["node --test scripts/change-render.test.mjs"]}
+}

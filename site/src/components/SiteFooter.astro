@@ -1,19 +1,28 @@
 ---
-interface Props {
-  class?: string;
-}
-const { class: className = '' } = Astro.props;
+import { readVersion } from '../lib/repo';
+
+const version = readVersion();
+const REPO = 'https://github.com/nicknisi/ideation';
 ---
 
-<footer
-  class:list={[
-    'flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-t border-line pt-6 text-[13.5px] text-neutral-700',
-    className,
-  ]}
->
-  <span>
-    Made by <a href="https://nicknisi.com" class="text-accent-700 hover:text-accent-800 hover:underline hover:underline-offset-2">Nick Nisi</a> ·
-    <a href="https://github.com/nicknisi/ideation" class="text-accent-700 hover:text-accent-800 hover:underline hover:underline-offset-2">source and releases</a> · MIT
-  </span>
-  <slot />
+<footer class="mx-auto mt-24 max-w-[76rem] px-[clamp(1.25rem,4vw,2.5rem)] pb-12">
+  <div class="rule-double grid gap-6 pt-8 text-[0.9375rem] sm:grid-cols-[minmax(0,1fr)_auto]">
+    <div class="grid gap-2">
+      <p class="flex items-center gap-2 font-bold">
+        <span class="diamond text-[0.8rem]" aria-hidden="true"></span>ideation
+      </p>
+      <p class="max-w-[52ch] text-muted">
+        Agree on the contract, then walk away. MIT licensed, v{version}. Everything it writes is a
+        file you own.
+      </p>
+    </div>
+    <nav aria-label="Footer" class="grid grid-cols-2 gap-x-8 gap-y-1.5 font-sans text-[0.875rem] sm:text-right">
+      <a class="link" href="/">Overview</a>
+      <a class="link" href="/guide/">Guide</a>
+      <a class="link" href="/walkthrough/pi/">Pi walkthrough</a>
+      <a class="link" href={REPO}>Source ↗</a>
+      <a class="link" href="/walkthrough/">Claude Code walkthrough</a>
+      <a class="link" href={`${REPO}/releases`}>Releases ↗</a>
+    </nav>
+  </div>
 </footer>
