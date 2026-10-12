@@ -43,7 +43,7 @@ export const STAGES: Record<Stage, { label: string; blurb: string }> = {
   execute: {
     label: 'Executing',
     blurb:
-      'Turning an approved plan into reviewed commits. /ideation hands off to these itself; you reach for them to resume or to run one piece by hand.',
+      'Turning an approved plan into reviewed commits. In Claude Code, /ideation hands off to these itself; you reach for them to resume or to run one piece by hand. In Pi, the change workflow runs an approved plan instead.',
   },
 };
 
@@ -63,7 +63,7 @@ export const COMMANDS: CommandDoc[] = [
       { name: 'just do it', when: 'One clear, low-risk change. No page: a compact plan, its checks, one confirmation, then the run.' },
       { name: 'short plan', when: 'Buildable now, with two to five real forks. You answer them on the page, then approve.' },
       { name: 'interview', when: 'The problem, goals or scope are not settled. The evidence-gated interview, the four critics, then the page.' },
-      { name: 'map', when: 'Too big or foggy for one session. Open questions worked one per session until the route is clear, then the interview.' },
+      { name: 'map', when: 'Too big or foggy for one session. Its open questions are the map: research ones resolve in parallel, the rest one per session, until the route is clear; then the interview.' },
     ],
   },
   {
