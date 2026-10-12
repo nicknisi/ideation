@@ -1,6 +1,6 @@
 ---
 name: autopilot
-description: Orchestrate full execution of an ideation project — reads an approved plan's run contract (or a 0.x contract), builds an execution manifest, and runs all units on the deterministic Workflow engine (parallel for independent units, sequential for dependent ones). Auto-continues on success, gates on failure. Invoke only when the user explicitly asks to run an approved plan or contract, or when an active /goal directs /ideation:autopilot.
+description: Orchestrate full execution of an ideation project — reads an approved plan's run contract (or a 0.x contract), builds an execution manifest, and runs all units on the deterministic Workflow engine (parallel where independent phases touch separate files, sequential otherwise). Auto-continues on success, gates on failure. Invoke only when the user explicitly asks to run an approved plan or contract, or when an active /goal directs /ideation:autopilot.
 allowed-tools:
   - Read
   - Bash
@@ -42,8 +42,8 @@ Every project is read through its plan data, so a 1.0 plan and a 0.x folder take
    node ${CLAUDE_PLUGIN_ROOT}/scripts/plan-data.ts manifest <project directory>
    ```
 
-   It prints the engine manifest built from `run-contract.json` (`toManifest`): one phase per unit, in order, whose `specPath` is the unit's packet (`unit-<id>.md`), `prereqs` the titles of the units it needs, `files` the packet's File Changes, and `trailer` the unit's commit reference. The manifest also sets `strict: true`, `packet: true` and `hostCommits: false`. `completedPhases` already lists the units this branch has committed (Step 2's pre-pass, done from their trailers). `${CLAUDE_PLUGIN_ROOT}/test-fixtures/run-contract/manifest.json` is a worked example. **Use it verbatim as Step 3's args:** never edit a field, add a phase or write a packet yourself.
-   - If it refuses, stop and report its message. **Not approved** (no `run-contract.json`) or **changed after approval**: the plan goes back through `/ideation`'s Approval. **A packet is missing**: re-run `node ${CLAUDE_PLUGIN_ROOT}/scripts/plan-data.ts run-contract <project directory>` only if the user already approved this plan version, which rewrites the packets.
+   It prints the engine manifest built from `run-contract.json` (`toManifest`): one phase per unit, in order, whose `specPath` is the unit's packet (`unit-<id>.md`), `prereqs` the titles of the units it needs, `files` the plan's authority paths (the same list for every unit, so the units run one at a time), and `trailer` the unit's commit reference. The manifest also sets `strict: true`, `packet: true` and `hostCommits: false`. `completedPhases` already lists the units this branch has committed (Step 2's pre-pass, done from their trailers). `${CLAUDE_PLUGIN_ROOT}/test-fixtures/run-contract/manifest.json` is a worked example. **Use it verbatim as Step 3's args:** never edit a field, add a phase or write a packet yourself.
+   - If it refuses, stop and report its message. **Not approved** (no `run-contract.json`): if a `brief.json` sits beside the plan, it was approved in Pi's change workflow, which runs it there; say so and stop. Otherwise, or when it **changed after approval**, the plan goes back through `/ideation`'s Approval. **A packet is missing**: re-run `node ${CLAUDE_PLUGIN_ROOT}/scripts/plan-data.ts run-contract <project directory>` only if the user already approved this plan version, which rewrites the packets.
    - `projectName` and `slug` come from the manifest. The run record's `branch` is `ideation/<plan id>`. Skip Step 2 and go to Step 3.
 4. **A 0.x contract.** Read **`contract-data.json`** in the project directory. Its `execution.phases` array already holds each phase's `title`, `specPath`, `prereqs`, and `risk` — this is the manifest. Also read `projectName`, `slug`, `approvalMode` (`"express"` = single-confirmation approval, no per-artifact human review — drives `strict` in Step 3), and `branch`. **Validate** each `specPath` exists. If any are missing, report which and ask the user whether to continue without them or abort.
    - **Fallback if `contract-data.json` is absent** (older projects with only `contract.md`): parse the `## Execution Plan` section of `contract.md` — phase titles, spec paths from the `/ideation:execute-spec <path>` lines, and blocking relationships from the dependency graph — and build the same phase list. Also read the header's `**Approval**` line: `Express` → treat as `approvalMode: "express"` (set `strict` in Step 3). If you cannot parse it, abort with guidance to re-run ideation.
@@ -114,7 +114,7 @@ repo use consistent relative paths; no resolution or normalization).
 2. Tell the user before it starts: how many phases, how many already skipped, and that you'll pause only if a phase fails.
 3. **Claude Code only: capture the returned `runId`** — you need it for same-session resume. In pi, resume is the git skip pre-pass (Step 2, or a plan's manifest) plus re-invoking the tool.
 
-**If the engine is unavailable** (the `Workflow` feature not enabled in this Claude Code, or the pi plugin's engine extension failed to load): degrade gracefully — tell the user, then walk the phases yourself in dependency order using `/ideation:execute-spec <specPath>` per phase (for a 1.0 plan, each unit's packet; execute-spec's Commit step adds the unit's trailer), committing each before the next. For run contracts and express contracts, carry the `--strict` semantics into this path too (per the gate-behavior table in `${CLAUDE_PLUGIN_ROOT}/workflows/README.md`). This is the legacy manual path.
+**If the engine is unavailable** (the `Workflow` feature not enabled in this Claude Code, or the pi plugin's engine extension failed to load): degrade gracefully — tell the user, then walk the phases yourself in dependency order using `/ideation:execute-spec <specPath>` per phase (for a 1.0 plan, each unit's packet; execute-spec's Commit step adds the unit's trailer), committing each before the next. For run contracts and express contracts, invoke it as `/ideation:execute-spec --headless --strict <specPath>` so the fail-closed rules apply (the gate-behavior table in `${CLAUDE_PLUGIN_ROOT}/workflows/README.md`). This is the legacy manual path.
 
 ## Step 5: Handle the Summary
 
@@ -124,7 +124,7 @@ The engine returns `{ completed, noops, failed, skipped, results }` — plus an 
 
 - **`noops` are done, not failed.** A NO-OP phase produced a genuinely empty diff (the repo already satisfies its spec) — review was skipped, nothing was committed, and dependents were not blocked. Treat `completed + noops` as the set needing no further work; re-dispatching a no-op phase loops forever.
 - **Each entry in `results` carries `reviewStatus`** (`passed` / `validation-only` / `failed` / `skipped-empty-diff` / `not-run`), a `warnings` array that leads its `summary` string, and `reviewCycles`. Any `reviewStatus` other than `passed` on a committed phase means unreviewed or partially reviewed code landed — that must reach the Completion Report, never be collapsed into a bare PASS.
-- **Effort tracks risk** (informational — the engine handles it): a phase with `risk: "high"` runs its build and fix stages at `effort: 'high'`; review always runs at `effort: 'high'`. `risk` comes straight from `contract-data.json`, so it is worth passing through accurately.
+- **Effort tracks risk** (informational — the engine handles it): a phase with `risk: "high"` runs its build and fix stages at `effort: 'high'`; review always runs at `effort: 'high'`. `risk` comes from the manifest (each unit's `risk`, or `contract-data.json`'s for 0.x), so it is worth passing through accurately.
 
 ### Write the run record — before the failure gate
 
@@ -232,11 +232,11 @@ All {N} phases complete. Run `git log --oneline -{N}` to see the commits.
 
 **Unattended runs explicitly skip this step** (a `/goal` wrapper, or any run
 with no interactive user) — never prompt, never write
-`docs/ideation/learnings.md`; the run's notes wait for the interview engine's
-unmined-notes surfacing at the next interactive intake.
+`docs/ideation/learnings.md`; a 0.x run's notes files wait for the interview engine's
+unmined-notes surfacing at the next interactive intake (a 1.0 run writes none).
 
 On a watched run, after the Completion Report, run the Learning Capture step —
-aggregate this run's phase notes and apply the filter — per
+aggregate this run's gap decisions (each phase result's notes, plus a 0.x run's notes files) and apply the filter — per
 `${CLAUDE_PLUGIN_ROOT}/references/learning-filter.md`, the single owner of the
 procedure and the `learnings.md` lifecycle.
 
@@ -245,6 +245,6 @@ procedure and the `learnings.md` lifecycle.
 1. **The engine orchestrates; the skill prepares and gates.** Wave planning, parallelism, and result handling are deterministic JS in `workflows/execute-contract.mjs`. This skill builds the `args`, runs the git pre-pass, and handles the human-in-the-loop moments the sandbox can't.
 2. **No wave math, no `RESULT:` parsing here.** Pass `prereqs` through untouched; read the structured summary the engine returns.
 3. **The plan data is the source of truth** — for a 1.0 plan, the approved `run-contract.json` and its packets, read through `plan-data.ts manifest`; for a 0.x contract, `contract-data.json` (`contract.md` Execution Plan as fallback).
-4. **Subagents get clean contexts** — the engine runs each phase as five sibling agent stages (scout → build → review ⇄ fix → commit), each a fresh-context agent; for a 0.x spec the build stage runs execute-spec's build+verify halves as `--headless`, or `--headless --strict` when the manifest sets `strict`; for a plan's packet (`packet: true`) it implements the packet directly with the same prompts Pi's change runner uses (semantics: the gate-behavior table in `workflows/README.md`). No phase inherits another's context.
+4. **Subagents get clean contexts** — the engine runs each phase as five sibling agent stages (scout → build → review ⇄ fix → commit), each a fresh-context agent; for a 0.x spec the build stage runs execute-spec's build+verify halves as `--headless`, or `--headless --strict` when the manifest sets `strict`; for a plan's packet (`packet: true`) it implements the packet directly with the same `packet` prompts as Pi's change runner, differing only where `hostCommits` does: here an agent stage commits (semantics: the gate-behavior table in `workflows/README.md`). No phase inherits another's context.
 5. **Gate on failures, not successes** — the happy path is fully hands-off; the engine runs everything still reachable and only the skill pauses, after the run, when something failed.
 6. **Already-committed phases are durable** — each phase commits independently. The git pre-pass makes resume work across sessions; in Claude Code, `resumeFromRunId` makes it instant within a session.

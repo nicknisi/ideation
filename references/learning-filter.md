@@ -7,10 +7,13 @@ This reference is **invocation-agnostic** — the same rules are invoked from tw
 moments, each passing different inputs through them:
 
 1. **Interactive completion** (a watched `execute-spec` or autopilot run) —
-   input is the just-finished project's `implementation-notes-phase-*.html` and
-   that run's noted gap-decisions, **bounded to that one project**.
+   input is that run's noted gap-decisions, plus a 0.x project's
+   `implementation-notes-phase-*.html`, **bounded to that one project**. A 1.0
+   unit's packet forbids notes files, so its gap decisions come from the
+   Completion Report's Implementation Notes or the engine's phase results.
 2. **Intake** (interview engine) — input is unmined implementation notes left
-   behind by unattended runs, surfaced by the engine's bounded scan.
+   behind by unattended 0.x runs, surfaced by the engine's bounded scan. An
+   unattended 1.0 run leaves no notes files, so nothing of it reaches intake.
 
 Capture always passes through a human accept/edit/dismiss review — nothing is
 ever auto-appended, and unattended runs never write this file.
@@ -22,9 +25,9 @@ completion. Unattended runs (a `/goal` wrapper, `--headless`, or any run with no
 interactive user) skip it entirely — never prompt, never write; their notes wait
 for the intake path above.
 
-1. **Aggregate the inputs**, bounded to the one project: every
-   `implementation-notes-phase-*.html` the run produced, plus that run's noted
-   gap-decisions. Never a repo-wide scan.
+1. **Aggregate the inputs**, bounded to the one project: that run's noted
+   gap-decisions, plus every `implementation-notes-phase-*.html` a 0.x run
+   produced. Never a repo-wide scan.
 2. **Classify and generalize** (below). The filter yields **up to 3**
    candidates. Zero candidates → silence: no prompt, no output, no "nothing to
    capture" message — proceed as if the step didn't exist.
@@ -43,7 +46,7 @@ by the note categories used in `execute-spec`:
 - **spec deviation** — an intentional divergence from the spec
 - **tradeoff** — multiple valid approaches existed; one was chosen
 - **codebase surprise** — existing code was in an unexpected state
-- **dependency decision** — a dependency version/API/behavior differed from the spec's assumption
+- **dependency mismatch** — a dependency version/API/behavior differed from the plan's or spec's assumption
 
 ## Generalize
 
@@ -60,7 +63,8 @@ spec or interview is written. Discard project trivia.
   These change how the next spec/interview should be written.
 
 A useful test: would this pattern make you **ask a different interview question**
-or **add a row to a future spec's File Changes table**? If not, it's trivia.
+or **write a plan differently** (a check, a unit's `needs`, an authority path, a
+scope line)? If not, it's trivia.
 
 Two hard rules bound every capture moment:
 
@@ -93,7 +97,7 @@ exactly that mistake for its first several releases.
 
    Generalizable spec-gap and interview patterns captured from completed
    ideation projects. Intake reads this file so recurring gaps inform future
-   questioning and spec generation. Each entry is dated and cites its
+   questioning and plan writing. Each entry is dated and cites its
    evidence; treat entries as hints, never as a substitute for gate evidence.
    ```
 
@@ -144,4 +148,4 @@ exactly that mistake for its first several releases.
 6. **Human in the loop** — every candidate passes accept/edit/dismiss before it
    is written; unattended runs never write this file.
 7. **Markdown, not HTML** — `learnings.md` is a reference document read by future
-   sessions, per the SKILL.md Markdown/HTML split.
+   sessions, unlike the HTML pages written for people.

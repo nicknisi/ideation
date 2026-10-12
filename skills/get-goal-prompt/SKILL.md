@@ -22,7 +22,8 @@ so this skill only resolves the project, prints, and copies.
 drives the engine, which runs each unit's packet, or each 0.x phase's spec.)
 
 1. **Resolve the project folder.** Argument given: a folder is used directly, and a file
-   (`plan.json`, `run-contract.json`, `contract-data.json`, `contract.md`) means its folder.
+   (`plan.json`, `run-contract.json`, `contract-data.json`, `contract.md`) means its folder
+   (`contract.md` works only with `contract-data.json` beside it).
    No argument: glob `./docs/ideation/*/plan.json` and `./docs/ideation/*/contract-data.json`
    and take the folder most recently modified.
 2. **Already complete?** Run `node ${CLAUDE_PLUGIN_ROOT}/scripts/verify.mjs <folder>`.
@@ -47,8 +48,9 @@ drives the engine, which runs each unit's packet, or each 0.x phase's spec.)
    to run themselves (`! node …`) and stop. There is **no fallback template**.
 
 Then remind the user: enable auto mode (`/auto`) so tool calls don't block each turn, and
-confirm the engine is available (`Workflow` tool in Claude Code; in pi the plugin bundles
-its engine extension, so nothing further is needed). One **caveat, not a gate** — and honestly labeled: this detail was derived from
+confirm the engine is available (the `Workflow` tool in Claude Code). The goal targets
+Claude Code's background `Workflow`; in Pi, an approved 1.0 plan doesn't need one,
+because the change runner already runs it unattended. One **caveat, not a gate** — and honestly labeled: this detail was derived from
 Claude Code binary strings and could not be verified from this repo — `/goal` appears to
 require a trusted workspace and may refuse to run when hooks are restricted. If the paste
 is rejected, that is the likely reason; it is a property of the CLI session, not of this

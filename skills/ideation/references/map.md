@@ -12,7 +12,7 @@ The map plans by default. Each question resolves a *decision*, not a slice of th
 | --- | --- |
 | Destination: what reaching the end looks like | `title`, the first `why` quote, and `change.after` (what is true at the end, even when the end is a decision rather than a build) |
 | A decision ticket | one `openQuestions` entry: `id`, a `question` precise enough to hand to another session unchanged, its `type`, the `gate` it blocks, and `blockedBy` |
-| Decisions so far | a closed question is removed. Its answer becomes that gate's evidence, and a choice that turned an alternative down becomes a decision on the claim it changes (`answered`, with `rejected` and the reason) |
+| Decisions so far | a closed question is removed. Its answer becomes that gate's evidence, and a choice that turned an alternative down becomes a decision on the claim it changes (`state: "answered"`, with its `options`, `answer`, `recommended` and `reason`, and `rejected` with the reason; the full shape is `Decision` in `schemas/plan.ts`) |
 | Not yet specified (the fog) | the gap named in a not-ready gate's evidence sentence. It is never an `openQuestions` entry |
 | Out of scope | `scope.notChanging`, each with a few words on why |
 
@@ -65,4 +65,4 @@ Resolve one non-research question per session, so each decision gets a fresh loo
 
 ## Hand-off
 
-When no question is left and no gate evidence names fog, the route is clear. If the destination is a build, switch to `interview` in the same folder. The map's plan is its starting evidence: the destination seeds Problem Clarity, the decisions made are already recorded with their rejected alternatives, and `notChanging` is the exclusion half of Scope Boundaries. The interview starts at the gates that are still open, and it always interviews for success criteria. If the destination was a decision or an in-place change rather than a build, the plan's decisions already hold the outcome: point the user at whoever does the work, and stop.
+When no question is left and no gate evidence names fog, the route is clear. If the destination is a build, remove the map's `stoppedEarly` (the interview sets its own only if it stops early) and switch to `interview` in the same folder. The map's plan is its starting evidence: the destination seeds Problem Clarity, the decisions made are already recorded with their rejected alternatives, and `notChanging` is the exclusion half of Scope Boundaries. The interview starts at the gates that are still open, and it always interviews for success criteria. If the destination was a decision or an in-place change rather than a build, the plan's decisions already hold the outcome: point the user at whoever does the work, and stop.

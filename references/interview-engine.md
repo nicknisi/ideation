@@ -12,7 +12,7 @@ Acknowledge receipt. State what looks strong and what looks weak. Take a positio
 
 Resume runs before the sweep, because it decides which gates get interviewed at all, and a resumed sweep is scoped to the open questions rather than to the whole brain dump.
 
-**Trigger:** the user points ideation at an existing project (a path, a slug, or "resume {name}"). Absent that, run one **bounded** glob over `docs/ideation/*/plan.json` (and, for folders not yet converted, `docs/ideation/*/contract-data.json` and `docs/ideation/*/brief.json`), match on directory name, and read only the folder that matches. Same bounded style as the unmined-notes scan below. No match: fresh interview. More than one: `AskUserQuestion` to pick. A folder with only a 0.x `contract-data.json` (or a `brief.json`) is converted first, per the skill's "Old folders convert on read" rule.
+**Trigger:** the user points ideation at an existing project (a path, a slug, or "resume {name}"). Absent that, run one **bounded** glob over `docs/ideation/*/plan.json` (and, for folders not yet converted, `docs/ideation/*/contract-data.json` and `docs/ideation/*/brief.json`), compare directory names against the brain dump's subject, and read only the folder that matches. Same bounded style as the unmined-notes scan below. No match: fresh interview. More than one: `AskUserQuestion` to pick. A folder with only a 0.x `contract-data.json` (or a `brief.json`) is converted first, per the skill's "Old folders convert on read" rule.
 
 Read `gates` and `openQuestions` from that plan. Gates persisted as `ready` are not re-interviewed; their evidence stands. Announce in one line, no banner (same convention as the carried-conclusion and learning lines):
 
@@ -68,13 +68,13 @@ The pieces map onto structures the plan already has:
 
 ### Read accumulated learnings
 
-If `docs/ideation/learnings.md` exists, read it. It holds generalizable spec-gap and interview patterns captured from completed ideation projects (lifecycle: `${CLAUDE_PLUGIN_ROOT}/references/learning-filter.md`). Where a recorded pattern is relevant to this project's scope, apply it — ask the question it implies, or carry its spec implication into artifact generation — and **say so visibly at that moment**, one line, no banner:
+If `docs/ideation/learnings.md` exists, read it. It holds generalizable spec-gap and interview patterns captured from completed ideation projects (lifecycle: `${CLAUDE_PLUGIN_ROOT}/references/learning-filter.md`). Where a recorded pattern is relevant to this project's scope, apply it — ask the question it implies, or carry its implication into the plan (a check, a unit, a scope line) — and **say so visibly at that moment**, one line, no banner:
 
 ```
 Applying learning from {project} ({date}): {one-clause why}
 ```
 
-Print the line whenever a learning shapes a question you ask or a spec implication you carry forward. Learnings inform questions; they never replace the evidence a gate requires, and entries are dated because codebases drift.
+Print the line whenever a learning shapes a question you ask or an implication you carry into the plan. Learnings inform questions; they never replace the evidence a gate requires, and entries are dated because codebases drift.
 
 ### Surface unmined notes
 

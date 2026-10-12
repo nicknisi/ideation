@@ -12,7 +12,7 @@ Try to break the plan before the user sees it. Read the plan data, verify its cl
 
 You receive:
 
-- **Plan data** — usually the plan's critic view inline (`node scripts/plan-data.ts critic-view <folder>` prints it: `criticView` in `scripts/plan-data.ts`, the plan without exhibits), or a path to a `plan.json` (why, claims, decisions, checks, units, scope tiers, gates; its shape is `schemas/plan.ts`)
+- **Plan data** — usually the plan's critic view inline (`node scripts/plan-data.ts critic-view <folder>` prints it: `criticView` in `scripts/plan-data.ts`, the plan without exhibits), or a path to a `plan.json` (why, the claim tree with each decision on its claim, checks, units, scope tiers, gates, openQuestions; its shape is `schemas/plan.ts`)
 - **Project directory** — where ideation artifacts live (e.g., `docs/ideation/{slug}/`)
 - **Lens** — exactly one of `scope-creep`, `over-engineering`, `hidden-dependency`, `success-criteria`. Critique only through this lens; ignore concerns that belong to the other three.
 
@@ -22,7 +22,7 @@ You receive:
 
 Read the plan data (the critic view you were handed, or the `plan.json`). Extract the parts your lens cares about:
 
-- `why`, `goals` — the problem in its owner's words, and the level-1 claims (what someone can now do or see)
+- `why`, `goals` — the problem in its owner's words, and the ids of the level-1 claims (what someone can now do or see; their text is in `claims`)
 - `claims`, `decisions` — the claim tree by id, and each decision (on the claim it changes) with its id, `state`, and options
 - `checks` — what the plan promises to verify and how, each with an id
 - `scope.mvp`, `scope.full`, `scope.stretch`, `scope.future`, `scope.notChanging` — what's in and out, and at which tier
@@ -60,15 +60,15 @@ What unstated assumption, file, system, or sequencing does the plan depend on? S
 - A unit that assumes an artifact (file, schema, script, registered agent type) exists or was produced earlier, without saying so.
 - Sequencing that is wrong or incomplete: unit B needs unit A's output but does not list it in `needs`.
 - External systems, env vars, credentials, or tools the plan needs but never names.
-- A "Pattern to follow" or referenced path that does not exist in the repo.
+- A path the plan names (an exhibit `src`, a check `cmd`, a unit goal) that does not exist and that no unit creates.
 
 #### Lens: success-criteria
 
-Would these criteria actually detect failure? Are they pass/fail checkable as written? Each entry in `checks` is `{ id, criterion, check }` where `check` is a typed union: `{ "cmd": "shell command", "expect": "outcome" }` for mechanical verification, or `{ "judgment": "who looks at what" }` when only a human can tell (legacy plain-string checks still normalize — `scripts/verify.mjs` owns the rule). `scripts/verify.mjs` executes every `cmd` at acceptance time; `judgment` entries are printed, never counted. Specifically:
+Would these criteria actually detect failure? Are they pass/fail checkable as written? Each entry in `checks` is `{ id, criterion, check }` where `check` is a typed union: `{ "cmd": "shell command", "expect": "outcome" }` for mechanical verification, or `{ "judgment": "who looks at what" }` when only a human can tell (plan data accepts only these two shapes; a 0.x plain-string check is converted once by `scripts/plan-migrate.mjs`). `scripts/verify.mjs` executes every `cmd` at acceptance time; `judgment` entries are printed, never counted. Specifically:
 
 - Criteria that are vague or subjective ("works well", "is fast") — not mechanically checkable.
 - Criteria that would pass even if the feature were broken (false-negative blind spots) — including **tautological cmds** that cannot fail (e.g. `! find … -name '*.html'` always passes: `find` exits 0 even with no matches). A **negated grep** is the common shape: `! grep -q 'foo' out.html` passes for free when nothing ever emits `foo`, so it needs a positive twin somewhere in the criteria proving that string can appear at all.
-- **A cmd that greps the plan's own rendered output for a literal.** `contract.md`, `contract.html` and the plan page print every criterion, including its `cmd`, so a check that greps any of them for a string finds its own printed text and can never fail (or, negated, can never pass). Anchor the grep to the line shape of the section under test, or inspect the parsed data instead → rewrite the grep so it cannot match the criteria list.
+- **A cmd that greps the plan's own rendered output for a literal.** The plan page, the unit packets (Validation Commands), Pi's change page (`contract.html`) and a 0.x `contract.md` all print every criterion, including its `cmd`, so a check that greps any of them for a string finds its own printed text and can never fail (or, negated, can never pass). Anchor the grep to the line shape of the section under test, or inspect the parsed data instead → rewrite the grep so it cannot match the criteria list.
 - **Greps against prose the plan itself authors.** A check that greps rendered output or a doc for a heading, label, or sentence is coupled to wording the same plan is free to reword, and it fails silently forever once it does. Anchor on structure the generator derives mechanically — an element id, an `aria-labelledby`, a fenced-block marker — and flag any grep whose needle is a phrase a human chose → name the structural marker to grep instead.
 - **Criteria asserting a one-time act rather than a standing invariant.** A pinned version, a fixed date, or an exact count describes a moment, so it passes once and fails permanently afterward. If the only available phrasing is a one-shot fact, it belongs in the unit's goal, not in `checks` → move it, or restate it as the invariant it was standing in for.
 - **Prose in the `cmd` slot** — a `cmd` must be runnable shell, not a description ("start the server & then curl it" is prose; approval rejects it through verify.mjs's `validateCheck`, so catch it here where it's a one-line fix).
@@ -100,9 +100,9 @@ severity/lens target — description → suggested change
 
 **Severity levels:**
 
-| Severity  | Meaning                                                                    | Blocks approval? |
+| Severity  | Meaning                                                                    | Must be fixed?   |
 | --------- | -------------------------------------------------------------------------- | ---------------- |
-| `blocker` | The plan should not go to approval as-is. A real defect in the plan.       | Yes              |
+| `blocker` | A real defect in the plan; the skill fixes it before the first page.       | Yes              |
 | `notable` | Worth surfacing to the user. A judgment call they should make consciously. | No               |
 | `nit`     | Mention only. Minor wording or polish; no action required.                 | No               |
 
