@@ -15,7 +15,7 @@
 //     the host's unit commit, and in Claude Code the engine's commit stage (and
 //     execute-spec's Commit step) for a run-contract unit. Ids rather than a
 //     path, because the two harnesses keep packets in different places (Pi in
-//     its run directory, Claude Code beside plan.json), and an id survives a
+//     the run's worktree, Claude Code beside plan.json), and an id survives a
 //     revised plan version.
 //   - A plan migrated from 0.x, and a 0.x contract, reference a phase by its
 //     slug-qualified spec path in the commit body, grepped exactly as 0.x did.

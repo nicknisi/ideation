@@ -19,7 +19,7 @@ If the engine is unavailable in either harness (the `Workflow` feature off in CC
 
 ## 2. Agent (subagent) names
 
-The skills dispatch agents by name. Claude Code plugin-scopes agents as `<plugin>:<name>`; pi's agent names reject colons and use bare local names. The engine's `agentType` strings flow through `args.agentNames` (defaults are the CC strings).
+The skills dispatch agents by name. Claude Code plugin-scopes agents as `<plugin>:<name>`; pi has no agent registry on these paths (below). The engine's `agentType` strings default to the CC names; Claude Code can override them through `args.agentNames`, and Pi omits it because its engine host normalizes them.
 
 | Skill reference | Claude Code | pi |
 |-----------------|-------------|-----|
@@ -44,13 +44,13 @@ Planning calls two tools (one first-party, one third-party) the plugin deliberat
 | Extension | Provides | Used by | Without it |
 |-----------|----------|---------|------------|
 | `npm:@nicknisi/pi-subagents` | the `dispatch` + `fleet` tools (first-party in-process children) | ideation (intake sweep, plan critics, research questions), execute-spec (scout, reviewer, wave dispatch) | every agent dispatch fails |
-| `npm:@juicesharp/rpiv-ask-user-question` | the `ask_user_question` tool | ideation (every gate and decision), autopilot (failure gate), execute-spec (HOLD/abort questions) | every interactive decision point fails — if no ask-user-question tool is available, ask in plain text with lettered options and state your recommendation — never skip the question |
+| `npm:@juicesharp/rpiv-ask-user-question` | the `ask_user_question` tool | ideation (every gate and decision), autopilot (failure gate), execute-spec (HOLD/abort questions) | decision points fall back to plain text: ask with lettered options and state your recommendation; never skip the question. `extensions/preflight.ts` shows a startup notice naming the missing tool |
 
 The engine needs no external tool in pi: `extensions/engine.ts` is bundled with the plugin and drives the same `execute-contract.mjs` CC runs.
 
 **Why they are not bundled** (verified pi 0.83.0): pi allows one extension *file path* per tool name. A second path registering the same name is a fatal load error at startup (`Failed to load extension …: Tool "subagent" conflicts with …` — the process exits), and a copy bundled under this plugin's `node_modules/` is by definition a different path from a user-level install of the same tool. Bundling therefore crashes pi for every user who already installs these tools themselves. Unbundled, pi's package-identity dedup (one `npm:` name → one path under `~/.pi/agent/npm/`) guarantees a single copy, and your installed versions are the ones the plugin's skills call. Duplicate *skills* are milder — a `[Extension issues]` warning, first wins — but the same single-owner setup avoids those too.
 
-Versions ≤ 0.23.0 bundled these three extensions. If pi fails to start with tool-conflict errors after an upgrade, update the plugin (`pi update git:github.com/nicknisi/ideation`) so the old bundled manifest is gone, then install the two tools as above.
+Versions ≤ 0.23.0 bundled these tools' extensions. If pi fails to start with tool-conflict errors after an upgrade, update the plugin (`pi update git:github.com/nicknisi/ideation`) so the old bundled manifest is gone, then install the two tools as above.
 
 **Claude Code** needs none of these — it has `Agent`, `Workflow`, and `AskUserQuestion` as built-in tools. The `pi` manifest is ignored.
 
@@ -76,23 +76,23 @@ A plan page (`scripts/plan-render.ts`) ends in a response: the reader's decision
 
 The response reaches the model as one custom message. Its header says that the response is user feedback and approves nothing, and every typed string follows inside a JSON block. Nothing from the page can approve a plan or run anything. A batch that arrives twice is applied once.
 
-Without the extension (Riker's Pi workers run with `--no-extensions`), use `plan-render`, `plan-respond serve` and `plan-respond apply` as in Claude Code.
+Without the extension (for example Pi run with `--no-extensions`, as Riker's workers are), use `plan-render`, `plan-respond serve` and `plan-respond apply` as in Claude Code.
 
 **Paste always works.** It is the guaranteed path, in either harness. On the page, the user presses **Copy response** and pastes it into the session. The session saves it to a file and runs `apply <plan-folder>` with that file on stdin. Use paste when Claude Code's permission classifier denies running a local server, when Send fails, or when `serve` times out.
 
 ## 5. Running an approved plan
 
-Approval freezes the same run contract in both harnesses (`toRunContract` in `scripts/plan-data.ts`: the brief and its fingerprint), and every unit is built from the same packet (`workPacket` in `workflows/change-brief.mjs`) with the same engine prompts. Only who commits differs:
+Approval freezes the same run contract in both harnesses (`toRunContract` in `scripts/plan-data.ts`: the brief and its fingerprint), and every unit's packet comes from the same template (`workPacket` in `workflows/change-brief.mjs`) and runs through the same engine prompts. Claude Code fills a packet's Implementation Details with a fixed note (`PACKET_PLAN`); Pi fills them per attempt with a read-only planner's plan, plus the last failure on a retry. Beyond that, what differs is who commits and where the run happens:
 
 | | Pi | Claude Code |
 |---|---|---|
 | Freeze | `ideation_change` `prepare` with `plan: <folder>`, then Pi's confirmation | `node scripts/plan-data.ts run-contract <folder>` after `AskUserQuestion`: `run-contract.json` and `unit-<id>.md` beside `plan.json` |
-| Run | the change runner, in an isolated worktree, one unit per engine call | `/ideation:autopilot <folder>` runs `node scripts/plan-data.ts manifest <folder>`; one unit runs through `/ideation:execute-spec <packet>` |
-| Engine args | `packet: true, hostCommits: true` | `packet: true, hostCommits: false, strict: true` |
+| Run | the change runner, in an isolated worktree, one unit per engine call | `/ideation:autopilot <folder>` (which runs `node scripts/plan-data.ts manifest <folder>`) on branch `ideation/<plan id>`; a one-unit plan runs through `/ideation:execute-spec <packet>` in the current checkout |
+| Engine args | `packet: true, hostCommits: true, strict: true`, plus the brief's `executionMode` | `packet: true, hostCommits: false, strict: true` |
 | Commits | the host, after independent review and the checks | the engine's commit stage (an agent), or execute-spec's Commit step |
 | Unattended | the change runner already is | `/ideation:get-goal-prompt` prints a `/goal` from `scripts/plan-goal.mjs` |
 
-**The commit reference.** Every unit commit, in both harnesses, ends with the git trailer `Ideation-Unit: <plan id>/<unit id>` (`unitTrailer` in `scripts/verify.mjs`). `verify.mjs` counts a 1.0 plan's unit as committed when a commit on the current branch carries that line, so `commits=A/B` means what it meant in 0.x: B units expected to leave a commit, A of them committed. Autopilot's resume reads the same trailers (the manifest's `completedPhases`). Why a trailer: the two harnesses keep packets in different places (Pi in its run directory, Claude Code beside `plan.json`), so a path can't be shared, and a plan and unit id survive a revised plan version. A 0.x contract, and a plan migrated from one, keep the 0.x reference: the slug-qualified spec path in the commit body.
+**The commit reference.** Every unit commit, in both harnesses, ends with the git trailer `Ideation-Unit: <plan id>/<unit id>` (`unitTrailer` in `scripts/verify.mjs`). `verify.mjs` counts a 1.0 plan's unit as committed when a commit on the current branch carries that line, so `commits=A/B` means what it meant in 0.x: B units expected to leave a commit, A of them committed. Autopilot's resume reads the same trailers (the manifest's `completedPhases`). Why a trailer: the two harnesses keep packets in different places (Pi in the run's worktree under `docs/ideation/.native/<run-id>/`, Claude Code beside `plan.json`), so a path can't be shared, and a plan and unit id survive a revised plan version. A 0.x contract, and a plan migrated from one, keep the 0.x reference: the slug-qualified spec path in the commit body.
 
 ## What does NOT differ
 

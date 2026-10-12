@@ -24,8 +24,9 @@ Pi application is current.
    With `@nicknisi/pi-artifacts` 1.6.0 or newer (not yet published), the live draft
    page also shows **Approve in Pi**. It asks the owning Pi session to open that same confirmation;
    the terminal answer is still the approval. The button appears only while that
-   session is listening, never on a saved file, and a request while a confirmation
-   is already open, or for a change that is already running, is refused. With 1.5.x
+   session is listening, never on a saved file, and a request is refused while a
+   confirmation is open, while this session owns an active run, or when the page is
+   not the current draft. With 1.5.x
    the button stays hidden; approve with `/ideation approve` or the `/ideation` menu.
 4. During execution, `/ideation` offers the relevant controls. Pi's theme-aware widget
    shows the current stage, reviewed deliverables during implementation, and current
@@ -62,11 +63,15 @@ agreement as a new revision in a new worktree; only after that approval is the p
 run set aside, and its worktree and work are retained. Token and cost usage are
 recorded in the run for information and never stop it.
 
-The model tool accepts `action: "prepare", brief: { ... }` as a typed object, not a
-JSON-encoded string. The host stores an immutable canonical copy in the Git directory
-and publishes the readable copy to `docs/ideation/<change-id>/`; neither the user nor
-the model needs a temporary-file workaround. Existing `path` input is still supported.
-Preparation never approves.
+The model tool's `prepare` takes exactly one input. For a plan, the normal case, it is
+`plan: "docs/ideation/<slug>"`: the host derives the brief from `plan.json` with
+`toRunContract` (brief id = plan id, revision = plan version) and refuses a plan with
+an unanswered required decision, or with a gate that isn't ready unless the plan sets
+`stoppedEarly`. Revising a plan-prepared change asks for the next plan version.
+Otherwise it is `brief: { ... }` as a typed object, not a JSON-encoded string, or
+`path` to an existing brief. The host stores an immutable canonical copy in the Git
+directory and publishes the readable copy to `docs/ideation/<change-id>/`; neither the
+user nor the model needs a temporary-file workaround. Preparation never approves.
 
 Uncommitted work never blocks approval. If the checkout has any, approval asks where
 the run should start:
@@ -91,8 +96,8 @@ instructions. Changed scope requires new explicit approval.
 
 ## Leaving ideation
 
-You are never stuck in it. `/ideation exit` — or **Leave ideation**, always in the
-`/ideation` menu — works from any state:
+You are never stuck in it. `/ideation exit` works from any state, and **Leave
+ideation** is in the `/ideation` menu whenever there is a run or a draft:
 
 - a working run is stopped;
 - if the run changed anything, you choose to **bring the work into your checkout**
@@ -126,12 +131,13 @@ or dependency change is silently authorized, and the worker cannot patch depende
 internals to make its checks pass. Other environment setup may need explicit work.
 
 The documents are yours to keep. Each change gets `docs/ideation/<change-id>/` in the
-checkout, the same folder as its `plan.json` (or `<change-id>-change/` when a 0.x
-project with `contract-data.json` already uses that folder):
+checkout, the same folder as its `plan.json` (or `<change-id>-change/` when that folder
+holds a `contract-data.json`, as any plan migrated from 0.x does):
 
 - `brief.json` — the agreement, rewritten on each revision;
 - `contract.html` — the self-contained contract page, refreshed when the run changes
-  state (draft, approved, running, ready for review, accepted, and so on);
+  state (draft, ready, running, verifying, paused, needs decision, ready for review,
+  accepted, and so on);
 - `receipt.json` — the source-bound record of units, checks and decisions, written
   once the run is ready for review and again on acceptance.
 

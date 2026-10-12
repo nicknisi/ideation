@@ -1031,12 +1031,10 @@ const a =
     : (args ?? {});
 
 // Agent type names differ by harness. Claude Code plugin-scopes them as
-// `ideation:scout` / `ideation:reviewer` and ships a `general-purpose` builtin;
-// pi's workflow agentType registry uses bare local names (`scout`, `reviewer`,
-// `worker`) and rejects colons. Defaults are the CC strings so a manifest that
-// omits `agentNames` is byte-identical to the old hardcoded behavior; pi passes
-// `{ agentNames: { scout: 'scout', reviewer: 'reviewer', builder: 'worker' } }`
-// in the autopilot manifest (Step 3). Each is overridable individually.
+// `ideation:scout` / `ideation:reviewer` and ships a `general-purpose` builtin.
+// Pi omits the field: engine-host.mjs normalizes these names to agents/*.md
+// itself. Defaults are the CC strings so a manifest that omits `agentNames` is
+// byte-identical to the old hardcoded behavior. Each is overridable individually.
 // `a` is optional-chained for the same reason `a?.phases` below is: a JSON-string
 // `args` of "null" parses to null, and this runs before the diagnostic log().
 const agentNames = {
