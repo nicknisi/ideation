@@ -28,8 +28,8 @@ docs/ideation/*
 # Pi session-local state (agents, artifacts) — never published.
 .pi/
 
-# The root package.json declares no dependencies — the pi tools the skills call
-# (pi-subagents, pi-dynamic-workflows, rpiv-ask-user-question) are user-level
+# The root package.json declares only the @nicknisi/pi-shared library — the pi
+# tools the skills call (pi-subagents, rpiv-ask-user-question) are user-level
 # installs, deliberately not bundled (see references/harness-compat.md § 3).
 # package-lock.json stays committed as the stub `npm install` expects. A stray
 # `pnpm install` at the root would still emit a lockfile; ignore it. Leading

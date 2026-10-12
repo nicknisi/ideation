@@ -14,9 +14,21 @@
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { createSubagentRuntime } from "@nicknisi/pi-shared";
 import { Type } from "typebox";
-import { runContractEngine } from "../workflows/engine-host.mjs";
+
+// Loaded on the first run, not at startup. From this repo's tree,
+// @nicknisi/pi-shared resolves to the npm copy, whose dist value-imports
+// @earendil-works/pi-coding-agent; Pi's module alias does not intercept that
+// import there, so a module-scope import loads a second Pi bundle through jiti
+// on every Pi startup (seconds). One cached promise; a failed import surfaces
+// as this tool's error.
+let engineDeps: Promise<[typeof import("@nicknisi/pi-shared"), typeof import("../workflows/engine-host.mjs")]> | undefined;
+export function loadEngineDeps() {
+	engineDeps ??= Promise.all([import("@nicknisi/pi-shared"), import("../workflows/engine-host.mjs")]).catch(error => {
+		throw new Error(`ideation: could not load the engine: ${error instanceof Error ? error.message : String(error)}`);
+	});
+	return engineDeps;
+}
 
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -49,6 +61,7 @@ export default function (pi: ExtensionAPI) {
 		}),
 
 		async execute(_toolCallId, params, _signal, onUpdate, _ctx) {
+			const [{ createSubagentRuntime }, { runContractEngine }] = await loadEngineDeps();
 			const runtime = createSubagentRuntime({ namespace: "ideation-engine" });
 			const summary = await runContractEngine(params, {
 				spawn: opts => runtime.spawn(opts),
