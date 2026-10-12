@@ -19,7 +19,7 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from '
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { Claim, Decision, Exhibit, Plan } from '../schemas/plan.ts';
+import { GATE_KEYS, type Claim, type Decision, type Exhibit, type GateKey, type Plan } from '../schemas/plan.ts';
 import { load } from './plan-data.ts';
 import { isEntryPoint } from './verify.mjs';
 
@@ -90,6 +90,40 @@ function scope(plan: Plan): string {
   return ['<doc-claim aux="scope">', '<p>Scope: what is in, what is not changing.</p>', ...lists, '</doc-claim>'].join('\n');
 }
 
+const GATE_NAMES: Record<GateKey, string> = { problem: 'Problem Clarity', goals: 'Goal Definition', criteria: 'Success Criteria', scope: 'Scope Boundaries', consistency: 'Consistency' };
+const table = (head: string[], rows: string[][]) => `<div class="table-wrap"><table>\n<thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead>\n<tbody>\n${
+  rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('\n')}\n</tbody>\n</table></div>`;
+
+/**
+ * The gates, each with its evidence sentence. Open while any gate is not ready: that is what keeps a plan from running.
+ * Gates and open questions sit in the header beside the why quotes, outside <main>: like the quotes, they are plan
+ * text shown word for word, and pack's prose budgets apply only inside <main>.
+ */
+function gates(plan: Plan): string {
+  const ready = GATE_KEYS.filter(k => plan.gates[k].ready).length;
+  const rows = GATE_KEYS.map(k => [GATE_NAMES[k],
+    plan.gates[k].ready ? '<span class="pill ok">Ready</span>' : '<span class="pill warn">Not ready</span>', esc(plan.gates[k].evidence)]);
+  return `<details class="thread"${ready < GATE_KEYS.length ? ' open' : ''}><summary>Gates · ${ready} of ${GATE_KEYS.length} ready</summary>\n${table(['Gate', 'State', 'Evidence'], rows)}\n</details>\n`;
+}
+
+/**
+ * The open questions, which for a map are the map itself. A question is unblocked when none of its
+ * blockedBy ids is still open: a closed question is removed, so an id that is gone blocks nothing.
+ * Each group keeps array order, so the unblocked list is the frontier, first question first.
+ */
+function questions(plan: Plan): string {
+  if (!plan.openQuestions.length) return '';
+  const open = new Set(plan.openQuestions.map(q => q.id));
+  const waits = (q: Plan['openQuestions'][number]) => (q.blockedBy ?? []).filter(id => open.has(id));
+  const ask = (q: Plan['openQuestions'][number]) => `<code>${esc(q.id)}</code> ${esc(q.question)}`;
+  const free = plan.openQuestions.filter(q => !waits(q).length), held = plan.openQuestions.filter(q => waits(q).length);
+  const parts = [`<details class="thread" open><summary>Open questions · ${plan.openQuestions.length} (${free.length} unblocked)</summary>`];
+  if (free.length) parts.push('<h4>Unblocked</h4>', table(['Question', 'Type', 'Gate'], free.map(q => [ask(q), q.type, GATE_NAMES[q.gate]])));
+  if (held.length) parts.push('<h4>Blocked</h4>', table(['Question', 'Type', 'Gate', 'Blocked by'],
+    held.map(q => [ask(q), q.type, GATE_NAMES[q.gate], waits(q).map(id => `<code>${esc(id)}</code>`).join(' ')])));
+  return `${parts.join('\n')}\n</details>\n`;
+}
+
 /**
  * Pure and deterministic: the same plan gives the same bytes. The <title>
  * carries the version because the runtime keeps a reader's answers, drafts and
@@ -110,9 +144,9 @@ ${css}</style>
 <header>
 <h1>${esc(plan.title)}</h1>
 <div class="meta"><span>${esc(plan.id)}</span><span>Version ${plan.version}</span>${plan.supersedes ? `<span>Supersedes ${esc(plan.supersedes)}</span>` : ''}</div>
-${plan.why.length ? `<details class="thread"><summary>Why · ${plan.why.length} ${plan.why.length === 1 ? 'quote' : 'quotes'}</summary>
+${plan.stoppedEarly ? `<p class="dek">Stopped early: ${esc(plan.stoppedEarly)}</p>\n` : ''}${plan.why.length ? `<details class="thread"><summary>Why · ${plan.why.length} ${plan.why.length === 1 ? 'quote' : 'quotes'}</summary>
 ${plan.why.map(w => `<doc-quote${attrs({ via: via(w.from), from: w.from })}>${esc(w.quote)}</doc-quote>`).join('\n')}
-</details>\n` : ''}</header>
+</details>\n` : ''}${gates(plan)}${questions(plan)}</header>
 <main>
 <doc-plan>
 ${plan.claims.map(claim).join('\n')}
