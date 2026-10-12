@@ -1,0 +1,173 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { briefFingerprint, validateBrief } from '../workflows/change-brief.mjs';
+import { load, nextVersion, toRunContract, validate } from './plan-data.ts';
+
+const FIXTURE = new URL('../test-fixtures/plan/plan.json', import.meta.url);
+const fixture = () => JSON.parse(readFileSync(FIXTURE, 'utf8'));
+const claim = id => ({ id, text: `Claim ${id}`, exhibit: { kind: 'mock', body: 'x', sketch: true } });
+/** The fixture with one change applied. */
+function plan(change) { const p = fixture(); change(p); return p; }
+const rejects = (change, message) => assert.throws(() => validate(plan(change)), e => e instanceof TypeError && e.message === message, message);
+
+test('a valid plan round-trips through load, validate and JSON', () => {
+  const loaded = load(FIXTURE);
+  assert.equal(validate(loaded), loaded);
+  assert.deepEqual(JSON.parse(JSON.stringify(validate(loaded))), fixture());
+});
+
+test('load names the file when it is not JSON', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'plan-')); t.after(() => rmSync(dir, { recursive: true }));
+  writeFileSync(join(dir, 'plan.json'), '{');
+  assert.throws(() => load(join(dir, 'plan.json')), new RegExp(`^TypeError: ${join(dir, 'plan.json')}: `));
+});
+
+test('invalid plans fail with the JSON path and the reason', () => {
+  rejects(p => { p.claims.push(claim('4'), claim('5'), claim('6')); }, 'claims[5]: at most 5 level-1 claims');
+  rejects(p => { p.claims[1].children = ['a', 'b', 'c', 'd', 'e', 'f'].map(claim); }, 'claims[1].children[5]: at most 5 children');
+  rejects(p => { p.claims[0].children[0].children[0].children = [claim('1.1.1.1')]; }, 'claims[0].children[0].children[0].children[0]: at most 3 levels');
+  rejects(p => { p.claims[0].exhibit.kind = 'video'; }, 'claims[0].exhibit.kind: expected one of mock, machine, calls, schema, code');
+  rejects(p => { delete p.claims[1].exhibit.body; }, 'claims[1].exhibit: expected src or body');
+  rejects(p => { p.claims[0].decision.recommended = 'seven'; }, 'claims[0].decision.recommended: "seven" is not an option');
+  rejects(p => { p.claims[1].decision.answer = 'later'; }, 'claims[1].decision.answer: "later" is not an option');
+  rejects(p => { p.units[1].needs = ['worker', 'deploy']; }, 'units[1].needs[1]: unknown unit "deploy"');
+  rejects(p => { p.checks[0].check = { cmd: 'npm test', judgment: 'looks right' }; }, 'checks[0].check: expected {cmd, expect?} or {judgment}');
+  rejects(p => { p.checks[1].check = 'npm test'; }, 'checks[1].check: expected {cmd, expect?} or {judgment}');
+  rejects(p => { p.checks[1].check = {}; }, 'checks[1].check: expected {cmd, expect?} or {judgment}');
+});
+
+test('duplicate IDs and other cross-references fail by path', () => {
+  rejects(p => { p.claims[2].id = '1.1'; }, 'claims[2].id: duplicate claim ID "1.1"');
+  rejects(p => { p.checks[1].id = 'retry-tests'; }, 'checks[1].id: duplicate check ID "retry-tests"');
+  rejects(p => { p.units[1].id = 'worker'; }, 'units[1].id: duplicate unit ID "worker"');
+  rejects(p => { p.claims[2].decision.id = 'retries'; }, 'claims[2].decision.id: duplicate decision ID "retries"');
+  rejects(p => { p.units[0].checkIds = ['nope']; }, 'units[0].checkIds[0]: unknown check "nope"');
+  rejects(p => { p.units[0].claimIds = ['9']; }, 'units[0].claimIds[0]: unknown claim "9"');
+  rejects(p => { p.claims[2].decision.answer = 'env'; }, 'claims[2].decision.answer: only an answered decision has an answer (state is not-opened)');
+  rejects(p => { p.claims[0].decision.rejected.push({ value: 'three', reason: 'x' }); }, 'claims[0].decision.rejected[1].value: the chosen option cannot be rejected');
+  rejects(p => { p.gates.scope.ready = 'yes'; }, 'gates.scope.ready: expected boolean');
+  rejects(p => { delete p.gates.consistency; }, 'gates.consistency: required');
+  rejects(p => { p.openQuestions = [{ id: 'q', question: 'Which?', gate: 'budget', type: 'research' }]; }, 'openQuestions[0].gate: expected one of problem, goals, criteria, scope, consistency');
+  rejects(p => { p.extra = true; }, 'plan.extra: unknown field');
+});
+
+test('nextVersion bumps the version, supersedes the previous file, and leaves the input alone', () => {
+  const before = fixture(), input = fixture();
+  const next = nextVersion(input);
+  assert.deepEqual(input, before);
+  assert.equal(next.version, 3);
+  assert.equal(next.supersedes, 'plan.v2.json');
+  assert.deepEqual({ ...next, version: before.version, supersedes: before.supersedes }, before);
+  next.claims[0].text = 'changed';
+  assert.equal(input.claims[0].text, before.claims[0].text);
+  assert.equal(nextVersion(next).supersedes, 'plan.v3.json');
+});
+
+test('toRunContract derives a brief validateBrief accepts, fingerprinted by briefFingerprint', () => {
+  const contract = toRunContract(fixture());
+  assert.deepEqual(Object.keys(contract).sort(), ['brief', 'fingerprint', 'plan']);
+  assert.deepEqual(validateBrief(contract.brief), contract.brief);
+  assert.equal(contract.fingerprint, briefFingerprint(contract.brief));
+  assert.equal(contract.plan, 'plan.v2.json');
+  const { brief } = contract;
+  assert.equal(brief.id, 'send-retry');
+  assert.equal(brief.revision, 2);
+  assert.equal(brief.why, 'When a send fails I only find out hours later. Nobody should have to press send twice.');
+  assert.deepEqual(brief.outOfScope, ['How a message is composed']);
+  assert.deepEqual(brief.acceptance, fixture().checks);
+  assert.deepEqual(brief.units.map(u => [u.id, u.needs, u.acceptanceIds, u.design ?? null]),
+    [['worker', [], ['retry-tests'], null], ['outbox-label', ['worker'], ['gave-up-readable'], 'Adds one label; removing it restores the old row.']]);
+  // Kept and answered decisions, with what was rejected; the unopened optional one is left out.
+  assert.deepEqual(brief.decisions, [
+    { decision: 'How many retries before the worker stops? 3, five minutes apart', reason: 'Three covers a brief outage without hiding a real failure.', rejected: 'None. The user presses Try again (It is the problem we are fixing.)' },
+    { decision: 'What does a given-up send say? Gave up after 3 tries', reason: 'The count tells the user retries already happened.', rejected: 'Not sent (Reads as if nothing was tried.)' },
+  ]);
+});
+
+test('toRunContract is deterministic and does not touch its input', () => {
+  const input = fixture();
+  const first = toRunContract(input), second = toRunContract(input);
+  assert.deepEqual(first, second);
+  assert.deepEqual(input, fixture());
+  first.brief.units[0].needs.push('x');
+  assert.deepEqual(input, fixture());
+});
+
+test('toRunContract refuses unanswered required decisions and not-ready gates, naming them', () => {
+  const open = p => { p.claims[0].decision.state = 'not-opened'; p.claims[1].decision.state = 'not-opened'; delete p.claims[1].decision.answer; };
+  assert.throws(() => toRunContract(plan(open)), { message: 'plan send-retry v2 is not approvable: required decisions not answered: retries, give-up-label' });
+  assert.throws(() => toRunContract(plan(p => { p.gates.goals.ready = false; p.gates.scope.ready = false; })),
+    { message: 'plan send-retry v2 is not approvable: gates not ready: goals, scope' });
+  assert.throws(() => toRunContract(plan(p => { open(p); p.gates.criteria.ready = false; })),
+    { message: 'plan send-retry v2 is not approvable: required decisions not answered: retries, give-up-label; gates not ready: criteria' });
+  // An unopened decision that isn't required doesn't block.
+  assert.doesNotThrow(() => toRunContract(plan(p => { p.claims[0].decision.required = false; p.claims[0].decision.state = 'not-opened'; p.claims[0].decision.rejected = []; })));
+});
+
+test('an early-stopped plan is approvable with gates still open, but not with required decisions open', () => {
+  const stopped = p => { p.gates.scope.ready = false; p.gates.scope.evidence = ''; p.stoppedEarly = 'The user ended the interview.'; };
+  assert.equal(validateBrief(toRunContract(plan(stopped)).brief).id, 'send-retry');
+  assert.throws(() => toRunContract(plan(p => { stopped(p); p.claims[0].decision.state = 'not-opened'; p.claims[0].decision.rejected = []; })),
+    { message: 'plan send-retry v2 is not approvable: required decisions not answered: retries' });
+});
+
+test('toRunContract passes on what the brief itself requires', () => {
+  assert.throws(() => toRunContract(plan(p => { p.mustHold = []; })), /^TypeError: mustHold: expected nonempty array/);
+  assert.throws(() => toRunContract(plan(p => { p.authority.commands = []; })), /^TypeError: authority.commands: missing exact command for retry-tests/);
+});
+
+/**
+ * What Riker reads from an ideation:v1:run-changed event. Mirrors parseRun in
+ * riker's packages/riker/src/ideation.ts (decision 170), copied so this repo's
+ * tests never read Riker's. parseRun drops an event without a run id matching
+ * /^[\w.-]+$/, a repoRoot or a brief id, and takes the title, why, unit needs
+ * and acceptance checks from the brief; here those are required outright.
+ */
+function rikerReads(event) {
+  const want = (ok, what) => { if (!ok) throw new Error(`Riker cannot read ${what}`); };
+  const nonempty = v => typeof v === 'string' && v.trim() !== '';
+  const { run } = event;
+  want(event.type === 'ideation:v1:run-changed', 'type');
+  want(nonempty(run?.id) && /^[\w.-]+$/.test(run.id), 'run.id');
+  want(nonempty(run.repoRoot), 'run.repoRoot');
+  const { brief } = run;
+  for (const key of ['id', 'title', 'why']) want(nonempty(brief?.[key]), `brief.${key}`);
+  for (const [i, u] of brief.units.entries()) {
+    want(nonempty(u.id), `brief.units[${i}].id`);
+    want(Array.isArray(u.needs) && u.needs.every(nonempty), `brief.units[${i}].needs`);
+  }
+  for (const [i, a] of brief.acceptance.entries()) {
+    want(nonempty(a.id) && nonempty(a.criterion), `brief.acceptance[${i}]`);
+    want(nonempty(a.check?.cmd) !== nonempty(a.check?.judgment), `brief.acceptance[${i}].check`);
+  }
+  for (const [i, u] of run.units.entries()) want(nonempty(u.id) && nonempty(u.title) && nonempty(u.state) && Number.isInteger(u.attempts), `run.units[${i}]`);
+  return {
+    id: run.id, change: brief.id, title: brief.title, why: brief.why, repo: run.repoRoot,
+    units: brief.units.map(u => ({ id: u.id, needs: u.needs })),
+    acceptance: brief.acceptance.map(a => ({ id: a.id, criterion: a.criterion, command: a.check.cmd, judgment: a.check.judgment })),
+  };
+}
+
+test('a run-changed event built from the run contract is one Riker can read', () => {
+  const { brief } = toRunContract(fixture());
+  // Shaped like change-run.mjs's snapshot: run id is `${brief.id}-${uuid}`.
+  const id = `${brief.id}-00000000-0000-4000-8000-000000000000`;
+  const event = { type: 'ideation:v1:run-changed', run: {
+    id, repoRoot: '/repo', state: 'ready', branch: `ideation/${id}`, workspace: `/repo/.ideation/${id}`, baseRevision: 'abc123',
+    attention: { reason: 'acceptance', message: 'Objective verification complete.' },
+    units: brief.units.map(u => ({ id: u.id, title: u.title, state: 'ready', attempts: 0 })),
+    brief,
+  } };
+  assert.deepEqual(rikerReads(event), {
+    id, change: 'send-retry', title: 'Failed sends retry on their own', why: brief.why, repo: '/repo',
+    units: [{ id: 'worker', needs: [] }, { id: 'outbox-label', needs: ['worker'] }],
+    acceptance: [
+      { id: 'retry-tests', criterion: "The retry worker's tests pass", command: 'node --test src/retry.test.mjs', judgment: undefined },
+      { id: 'gave-up-readable', criterion: 'A given-up send is easy to spot', command: undefined, judgment: 'Look at the outbox with one given-up send' },
+    ],
+  });
+  assert.throws(() => rikerReads({ ...event, run: { ...event.run, id: 'has space' } }), /run\.id/);
+});
