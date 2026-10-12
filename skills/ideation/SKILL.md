@@ -15,7 +15,7 @@ One entry point. Read the request and its context, pick a depth, state it with a
 | `just do it` | One clear change: you can state before → after and its checks now, and nothing about it is risky | `plan.json` with one unit, no page | the terminal confirmation, then the run |
 | `short plan` | Buildable now, but with 2–5 real forks a person should decide | `plan.json` with a few claims and its decisions, a plan page | answers through the respond loop, then the terminal confirmation |
 | `interview` | Ambiguous or risky: the problem, goals, criteria or scope aren't settled yet | `plan.json` gated by the five gates and the four critics, a plan page | the same |
-| `map` | Too big or foggy for one session: the route to a plan is itself unknown | `plan.json` whose `openQuestions` are the map | the interview, once the route is clear |
+| `map` | Too big or foggy for one session: the route to a plan is itself unknown | `plan.json` whose `openQuestions` are the map, and a plan page to read it | the interview, once the route is clear |
 | `should we?` | The user is still weighing whether to build at all | **nothing** | a depth, or a stop |
 
 The first four are depths. `should we?` is the opening that comes before them.

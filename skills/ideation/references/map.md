@@ -50,7 +50,8 @@ Never resolve more than one non-research question per session. Research question
 2. **Map the frontier, breadth first.** Fan out across the whole space, not deep on one thread. If no fog appears and the journey fits one session, switch to `interview`.
 3. **Write `plan.json`**: destination, the questions you can phrase now (wire `blockedBy` in a second pass, once every id exists), the fog as gate evidence, and out-of-scope items. Name it in one line (`Mapping "{name}" → docs/ideation/{slug}/`).
 4. **Fire the research agents**, one per `research` question, all at once (in pi, one `dispatch` call with one read-only task each). Fold each answer in as described above.
-5. **Stop.** Charting is one session's work, and it resolves nothing but research.
+5. **Open the page.** The user reads the map there, not in the JSON: the unblocked questions (the frontier), the blocked ones and what blocks them, and the gates. Open it the way the respond loop does (the skill's *The page and the respond loop*): in Pi, ask the user to run `/ideation respond docs/ideation/<slug>`; in Claude Code, render it with `plan-render.ts` and `open` it. The page approves nothing, and the map's decisions are still asked in the terminal.
+6. **Stop.** Charting is one session's work, and it resolves nothing but research.
 
 **Work the map** (a folder, with or without a named question):
 
@@ -59,6 +60,7 @@ Never resolve more than one non-research question per session. Research question
 3. Resolve it by its type, reading related plan data as you need it.
 4. Record the answer by removing the question, updating the gate's evidence, and adding a decision if one was chosen. Write it as a new plan version (the skill's versions rule).
 5. Add newly phrasable questions, clear the fog they came from, rule out of scope whatever has turned out to be beyond the destination, and update or remove questions the answer has made wrong.
+6. Open the page on the new version, as in charting.
 
 ## Hand-off
 

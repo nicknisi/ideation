@@ -140,6 +140,31 @@ test('the mapping: claims, exhibits by kind, sketches labelled, decisions with t
   assert.match(renderPlan(open), /<p><b>Not opened \(required\)\.<\/b>/);
 });
 
+test('the header shows the gates and the open questions, unblocked first, so a map can be read on its page', () => {
+  const open = PLANS.find(p => p.name === 'test-fixtures/open-questions').plan;
+  const html = renderPlan({ ...open, stoppedEarly: 'map: the route is still open' });
+  assert.match(html, /<\/div>\n<p class="dek">Stopped early: map: the route is still open<\/p>\n/);
+  // Any gate not ready keeps the gates open; each row has its state and evidence.
+  assert.match(html, /<details class="thread" open><summary>Gates · 1 of 5 ready<\/summary>\n<div class="table-wrap"><table>\n<thead><tr><th>Gate<\/th><th>State<\/th><th>Evidence<\/th><\/tr><\/thead>/);
+  assert.match(html, /<tr><td>Problem Clarity<\/td><td><span class="pill ok">Ready<\/span><\/td><td>/);
+  assert.match(html, /<tr><td>Goal Definition<\/td><td><span class="pill warn">Not ready<\/span><\/td><td>/);
+  // Questions: the frontier in array order, then the blocked ones with only the ids still open.
+  assert.match(html, /<summary>Open questions · 4 \(2 unblocked\)<\/summary>\n<h4>Unblocked<\/h4>/);
+  const [unblocked, blocked] = html.split('<h4>Blocked</h4>');
+  assert.deepEqual([...unblocked.matchAll(/<tr><td><code>([\w-]+)<\/code>/g)].map(m => m[1]), ['runtime-step-timeout', 'resume-line-readability']);
+  assert.match(unblocked, /<td><code>runtime-step-timeout<\/code> [^<]+<\/td><td>research<\/td><td>Success Criteria<\/td><\/tr>/);
+  assert.match(blocked, /<thead><tr><th>Question<\/th><th>Type<\/th><th>Gate<\/th><th>Blocked by<\/th><\/tr><\/thead>/);
+  assert.match(blocked, /<td><code>exit-code-vs-crash<\/code> [^<]+<\/td><td>task<\/td><td>Consistency<\/td><td><code>runtime-step-timeout<\/code><\/td><\/tr>/);
+  assert.match(blocked, /<td><code>skip-vs-fail-accounting<\/code> [^<]+<\/td><td>decision<\/td><td>Scope Boundaries<\/td><td><code>runtime-step-timeout<\/code> <code>resume-line-readability<\/code><\/td><\/tr>/);
+  assert.doesNotMatch(html, /already-closed-elsewhere/, 'a closed id blocks nothing and is not shown');
+  // The header holds them, outside <main>: the claim tree and pack's prose budgets are unchanged.
+  assert.ok(html.indexOf('Open questions') < html.indexOf('</header>'));
+  // A ready plan with no questions: the gates fold away and there is no questions section or stop line.
+  const ready = renderPlan(load(join(ROOT, 'test-fixtures/plan/plan.json')));
+  assert.match(ready, /<details class="thread"><summary>Gates · 5 of 5 ready<\/summary>/);
+  assert.doesNotMatch(ready, /Open questions|Stopped early/);
+});
+
 test('rendering is deterministic: the same plan gives the same bytes, rendered and packed', t => {
   const plan = load(join(ROOT, 'test-fixtures/plan/plan.json'));
   assert.equal(renderPlan(plan), renderPlan(structuredClone(plan)));
@@ -169,6 +194,12 @@ test('plan text is data: markup and quotes in any field come out inert', () => {
   p.claims[0].decision.options[1].label = evil;
   p.claims[0].decision.rejected[0].reason = evil;
   p.scope.mvp = [evil];
+  p.stoppedEarly = evil;
+  p.gates.goals = { ready: false, evidence: evil };
+  p.openQuestions = [
+    { id: evil, question: evil, gate: 'goals', type: 'decision' },
+    { id: 'held', question: evil, gate: 'scope', type: 'research', blockedBy: [evil] },
+  ];
   const html = renderPlan(p);
   // Block sources sit in text/plain scripts, where the sequences that could end them early are broken.
   const sources = [...html.matchAll(/<script type="text\/plain">([\s\S]*?)<\/script>/g)].map(m => m[1]);
