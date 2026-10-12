@@ -46,15 +46,18 @@ function check(c: any, at: string) {
 
 function decision(d: any, at: string) {
   object(d, ['id', 'question', 'options', 'recommended', 'reason', 'required', 'state', 'answer', 'rejected'],
-    ['id', 'question', 'options', 'recommended', 'reason', 'required', 'state', 'rejected'], at);
-  str(d.id, `${at}.id`); str(d.question, `${at}.question`); str(d.reason, `${at}.reason`);
+    ['id', 'options', 'recommended', 'reason', 'required', 'state', 'rejected'], at);
+  str(d.id, `${at}.id`); str(d.reason, `${at}.reason`);
+  // A recorded decision (answered or kept) may lack a question and alternatives; an open one may not.
+  const open = d.state === 'not-opened';
+  if (open || d.question !== undefined) str(d.question, `${at}.question`);
   const values = ids('option');
   list(d.options, `${at}.options`, (o, oat) => {
     object(o, ['value', 'label'], ['value', 'label'], oat);
     str(o.value, `${oat}.value`); str(o.label, `${oat}.label`);
     values(o.value, `${oat}.value`);
   });
-  if (d.options.length < 2) fail(`${at}.options`, 'expected at least 2 options');
+  if (d.options.length < (open ? 2 : 1)) fail(`${at}.options`, open ? 'expected at least 2 options' : 'expected at least 1 option');
   const option = (value: any, vat: string) => {
     if (!d.options.some((o: any) => o.value === value)) fail(vat, `${JSON.stringify(value)} is not an option`);
   };
@@ -65,8 +68,8 @@ function decision(d: any, at: string) {
   else if (d.answer !== undefined) fail(`${at}.answer`, `only an answered decision has an answer (state is ${d.state})`);
   const chosen = chosenValue(d);
   list(d.rejected, `${at}.rejected`, (r, rat) => {
-    object(r, ['value', 'reason'], ['value', 'reason'], rat);
-    option(r.value, `${rat}.value`); str(r.reason, `${rat}.reason`);
+    object(r, ['value', 'reason'], ['value'], rat);
+    option(r.value, `${rat}.value`); if (r.reason !== undefined) str(r.reason, `${rat}.reason`);
     if (r.value === chosen) fail(`${rat}.value`, 'the chosen option cannot be rejected');
   });
 }
@@ -211,9 +214,9 @@ export function toRunContract(plan: Plan): RunContract {
     mustHold: plan.mustHold,
     outOfScope: plan.scope.notChanging,
     decisions: decisions.filter(d => d.state !== 'not-opened').map(d => ({
-      decision: `${d.question} ${label(d, chosenValue(d))}`,
+      decision: d.question === undefined ? label(d, chosenValue(d)) : `${d.question} ${label(d, chosenValue(d))}`,
       reason: d.reason,
-      ...(d.rejected.length ? { rejected: d.rejected.map(r => `${label(d, r.value)} (${r.reason})`).join('; ') } : {}),
+      ...(d.rejected.length ? { rejected: d.rejected.map(r => r.reason === undefined ? label(d, r.value) : `${label(d, r.value)} (${r.reason})`).join('; ') } : {}),
     })),
     acceptance: plan.checks,
     units: plan.units.map(u => ({
