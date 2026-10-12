@@ -1,6 +1,6 @@
 /* Plan pages wear the ideation field guide (DESIGN.md) over html-plan's own
    palette. This file only maps tokens: each html-plan token takes the value of
-   the field-guide token named in its comment, as contract-gen.css declares it,
+   the field-guide token named in its comment, as field-guide.css declares it,
    light here and dark in the two dark blocks (design-tokens.test.mjs holds them
    equal). htmlplan.css itself is unmodified.
 

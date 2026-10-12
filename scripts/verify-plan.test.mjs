@@ -141,17 +141,49 @@ test('a contract-data.json path prints no precedence note', t => {
   assert.doesNotMatch(run(repo, [join(dir, 'contract-data.json'), '--list']).out, /^verify: /m);
 });
 
-test('a native plan has no spec paths, so commits=0/0', t => {
+test('a native plan counts a unit committed when a commit on the branch carries its trailer', t => {
   const { repo, dir } = scratchRepo(t, 'docs/ideation/send-retry', {});
   rmSync(join(dir, 'contract-data.json'));
   const plan = JSON.parse(readFileSync(join(ROOT, 'test-fixtures/plan/plan.json'), 'utf8'));
   plan.checks[0].check = { cmd: 'true', expect: 'exits 0' };
   writeFileSync(join(dir, 'plan.json'), JSON.stringify(plan));
-  const { code, out } = run(repo, [dir]);
-  assert.equal(verifyLine(out), 'VERIFY send-retry: commits=0/0 pass=1 fail=0 judgment=1');
-  assert.doesNotMatch(out, /commit is not counted|none is readable/);
-  assert.equal(code, 0);
-  assert.match(run(repo, [dir, '--advise']).out, /^RUNMODE send-retry: run-spec/m);
+  const git = (...a) => spawnSync('git', a, { cwd: repo, encoding: 'utf8', timeout: 30_000 });
+  const commit = message => git('commit', '-q', '--allow-empty', '-m', message);
+
+  assert.equal(verifyLine(run(repo, [dir]).out), 'VERIFY send-retry: commits=0/2 pass=1 fail=0 judgment=1');
+  // Near misses: the trailer quoted mid-line, another plan's unit, a unit id prefix.
+  commit('docs: mention it\n\nWe will add Ideation-Unit: send-retry/worker later.');
+  commit('feat: elsewhere\n\nIdeation-Unit: other-plan/worker');
+  commit('feat: prefix\n\nIdeation-Unit: send-retry/work');
+  assert.equal(verifyLine(run(repo, [dir]).out), 'VERIFY send-retry: commits=0/2 pass=1 fail=0 judgment=1');
+
+  commit('feat: retry worker\n\nIdeation-Unit: send-retry/worker');
+  const one = run(repo, [dir]);
+  assert.equal(verifyLine(one.out), 'VERIFY send-retry: commits=1/2 pass=1 fail=0 judgment=1');
+  assert.match(one.out, /^ {2}ok {3}Ideation-Unit: send-retry\/worker {2}[0-9a-f]{8}$/m);
+  assert.match(one.out, /^ {2}-- {3}Ideation-Unit: send-retry\/outbox-label {2}no commit carries this trailer$/m);
+  assert.equal(one.code, 1);
+
+  // A squash merge folds the trailer into the body with other lines around it.
+  commit('feat: gave-up label (#12)\n\n* show the label\n  Ideation-Unit: send-retry/outbox-label\n\nCo-authored-by: Someone <s@example.invalid>');
+  const done = run(repo, [dir]);
+  assert.equal(verifyLine(done.out), 'VERIFY send-retry: commits=2/2 pass=1 fail=0 judgment=1');
+  assert.doesNotMatch(done.out, /commit is not counted|none is readable/);
+  assert.equal(done.code, 0);
+});
+
+test('--advise reads a plan with the same rules, in units', t => {
+  const { repo, dir } = scratchRepo(t, 'docs/ideation/send-retry', {});
+  rmSync(join(dir, 'contract-data.json'));
+  const plan = JSON.parse(readFileSync(join(ROOT, 'test-fixtures/plan/plan.json'), 'utf8'));
+  writeFileSync(join(dir, 'plan.json'), JSON.stringify(plan));
+  const advice = run(repo, [dir, '--advise']).out;
+  assert.match(advice, /^RUNMODE send-retry: watch {2}phases=2 cmd=1 judgment=1 risk=high$/m);
+  assert.match(advice, /✗ unit "Gave-up label" is risk=high — be present for the failure gate/);
+
+  plan.units = [{ ...plan.units[0], needs: [] }];
+  writeFileSync(join(dir, 'plan.json'), JSON.stringify(plan));
+  assert.match(run(repo, [dir, '--advise']).out, /^RUNMODE send-retry: run-spec {2}phases=1 .*\n\n {2}✓ 1 unit — orchestration adds nothing; run its packet with \/ideation:execute-spec$/m);
 });
 
 test('a migrated plan without its 0.x source beside it says why no commit is counted', t => {

@@ -6,6 +6,7 @@
 // Usage:
 //   node scripts/plan-data.ts critic-view <plan-folder>
 //   node scripts/plan-data.ts run-contract <plan-folder>
+//   node scripts/plan-data.ts manifest <plan-folder>
 //
 // critic-view prints what the plan critics review (criticView). run-contract
 // is the Claude Code hand-off after approval: it writes run-contract.json
@@ -13,12 +14,14 @@
 // workPacket) beside plan.json, for autopilot or execute-spec to run. Running
 // it is not approval: skills/ideation runs it only after the user approved the
 // plan in a terminal confirmation, and toRunContract still refuses a plan with
-// an unanswered required decision or a gate that isn't ready.
+// an unanswered required decision or a gate that isn't ready. manifest prints
+// the engine manifest autopilot runs for an approved plan (toManifest), with
+// the units already committed on this branch (their trailers) as completed.
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
 import { briefFingerprint, validateBrief, workPacket } from '../workflows/change-brief.mjs';
-import { isEntryPoint } from './verify.mjs';
+import { commitBodies, hasTrailer, isEntryPoint, unitTrailer } from './verify.mjs';
 import {
   DECISION_STATES, EXHIBIT_KINDS, GATE_KEYS, MAX_CLAIMS, MAX_DEPTH, QUESTION_TYPES, RISKS, SCOPE_TIERS,
   type Claim, type Decision, type Plan, type RunContract,
@@ -304,16 +307,73 @@ export function writeRunContract(folder: string, sourceRevision: string) {
   return { contract, path, packets };
 }
 
+/**
+ * The run contract beside plan.json, once approved. Throws when there is none,
+ * or when it no longer matches the plan: an edited plan is approved again
+ * before anything runs from it.
+ */
+export function approvedRunContract(folder: string): RunContract {
+  const path = join(folder, 'run-contract.json');
+  if (!existsSync(path)) {
+    throw new Error(`${folder} has no run-contract.json: the plan is not approved. Approve it in a terminal confirmation (skills/ideation's Approval), which writes run-contract.json.`);
+  }
+  const frozen = JSON.parse(readFileSync(path, 'utf8')) as RunContract;
+  const plan = load(join(folder, 'plan.json'));
+  if (frozen.fingerprint !== briefFingerprint(frozen.brief) || frozen.fingerprint !== toRunContract(plan).fingerprint) {
+    throw new Error(`${path} no longer matches plan.json (v${plan.version}): the plan changed after approval. Approve the current version, which rewrites run-contract.json.`);
+  }
+  return frozen;
+}
+
+type Unit = { id: string; title: string; risk: string; needs: string[] };
+
+/**
+ * The engine manifest (workflows/README.md's args contract) Claude Code's
+ * autopilot runs for an approved plan. Pure. Each unit is a phase whose spec is
+ * its packet: packet, because the packets are approved; strict, because no
+ * person reviewed the packets themselves; hostCommits off, because Claude
+ * Code's commit stage is an agent, which adds each unit's trailer. `completed`
+ * lists unit ids already committed.
+ */
+export function toManifest(contract: RunContract, projectDir: string, completed: string[] = []) {
+  const brief = contract.brief as { id: string; title: string; units: Unit[]; authority: { paths: string[] } };
+  const dir = projectDir.endsWith('/') ? projectDir : `${projectDir}/`;
+  const titleOf = (id: string) => brief.units.find(u => u.id === id)!.title;
+  return {
+    projectName: brief.title, slug: brief.id, projectDir: dir, strict: true, packet: true, hostCommits: false,
+    phases: brief.units.map(u => ({
+      title: u.title, specPath: dir + packetFile(u.id), prereqs: u.needs.map(titleOf), risk: u.risk,
+      files: brief.authority.paths, trailer: unitTrailer(brief.id, u.id),
+    })),
+    completedPhases: brief.units.filter(u => completed.includes(u.id)).map(u => u.title),
+  };
+}
+
+/** toManifest for a plan folder: refuses an unapproved or stale plan and a missing
+    packet, and reads which units this branch has committed from their trailers. */
+export function manifestFor(folder: string, cwd = process.cwd()) {
+  const contract = approvedRunContract(folder);
+  const brief = contract.brief as { id: string; units: Unit[] };
+  for (const u of brief.units) {
+    if (!existsSync(join(folder, packetFile(u.id)))) throw new Error(`${join(folder, packetFile(u.id))} is missing: run run-contract again; never write a packet by hand.`);
+  }
+  const commits = commitBodies(folder);
+  const completed = brief.units.filter(u => commits.some(c => hasTrailer(c.body, unitTrailer(brief.id, u.id)))).map(u => u.id);
+  return toManifest(contract, relative(cwd, resolve(folder)) || '.', completed);
+}
+
 const USAGE = `Usage:
   node scripts/plan-data.ts critic-view <plan-folder>    print what the plan critics review
   node scripts/plan-data.ts run-contract <plan-folder>   write run-contract.json and unit packets
+  node scripts/plan-data.ts manifest <plan-folder>       print the engine manifest for an approved plan
 run-contract is not approval: run it only after the user approves the plan in the terminal.`;
 
 function main(argv: string[]): number {
   const [command, folder, ...rest] = argv;
-  if (!folder || rest.length || !['critic-view', 'run-contract'].includes(command)) { console.error(USAGE); return 2; }
+  if (!folder || rest.length || !['critic-view', 'run-contract', 'manifest'].includes(command)) { console.error(USAGE); return 2; }
   try {
     if (command === 'critic-view') { process.stdout.write(JSON.stringify(criticView(load(join(folder, 'plan.json'))), null, 2) + '\n'); return 0; }
+    if (command === 'manifest') { process.stdout.write(JSON.stringify(manifestFor(folder), null, 2) + '\n'); return 0; }
     const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: folder, encoding: 'utf8' });
     const { contract, path, packets } = writeRunContract(folder, head.status === 0 ? head.stdout.trim() : 'unknown (not a git checkout)');
     console.log(`run contract: ${path} (${contract.brief.id} v${contract.brief.revision}, ${contract.fingerprint.slice(0, 12)})`);

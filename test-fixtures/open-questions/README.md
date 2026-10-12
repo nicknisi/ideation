@@ -1,9 +1,10 @@
 # Open questions fixture
 
-A synthetic ideation project that exercises the `openQuestions` renderers in
-`../../scripts/contract-gen.ts` (`buildOpenQuestions` for HTML,
-`mdOpenQuestions` for Markdown). The content is throwaway; the **shape** is the
-point.
+A synthetic 0.x ideation project holding every `openQuestions` shape. It was
+written for the 0.x contract renderer's open-questions section, which retired
+with that renderer (its goal and problem text still say so); it now guards
+that plan-migrate carries those shapes into plan data intact. The content is
+throwaway; the **shape** is the point.
 
 ## Why this is not part of the orchestration fixture
 
@@ -30,17 +31,19 @@ that blocks it.
 The stale id (`already-closed-elsewhere`) is the load-bearing part. The interview
 engine drops a question from the array when it closes and never scrubs that id
 out of the entries pointing at it, so a `blockedBy` naming something absent is
-the normal steady state rather than corrupt data. Both renderers resolve
-`blockedBy` against the ids actually present (`stillBlocking`), which is what
-keeps a question whose blockers have all closed from rendering as still blocked.
+the normal steady state rather than corrupt data. Anything that reads
+`blockedBy` has to resolve it against the ids actually present, which is what
+keeps a question whose blockers have all closed from reading as still blocked,
+so migration must carry the stale id rather than scrub it.
 
 Delete the stale id and the fixture stops testing the only case that regresses
 silently.
 
 ## Running it
 
-CI runs `verify.mjs` against this fixture rather than just rendering it, because
-the fixture's own success criterion is what asserts the stale-id path:
+CI runs `verify.mjs` against this fixture, because the fixture's own success
+criterion is what asserts that all four questions, and the stale id, survive
+migration:
 
 ```bash
 node scripts/verify.mjs test-fixtures/open-questions/contract-data.json

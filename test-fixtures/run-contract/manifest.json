@@ -3,20 +3,30 @@
   "slug": "send-retry",
   "projectDir": "docs/ideation/send-retry/",
   "strict": true,
+  "packet": true,
+  "hostCommits": false,
   "phases": [
     {
       "title": "Retry worker",
       "specPath": "docs/ideation/send-retry/unit-worker.md",
       "prereqs": [],
       "risk": "medium",
-      "files": ["src/"]
+      "files": [
+        "src/"
+      ],
+      "trailer": "Ideation-Unit: send-retry/worker"
     },
     {
       "title": "Gave-up label",
       "specPath": "docs/ideation/send-retry/unit-outbox-label.md",
-      "prereqs": ["Retry worker"],
+      "prereqs": [
+        "Retry worker"
+      ],
       "risk": "high",
-      "files": ["src/"]
+      "files": [
+        "src/"
+      ],
+      "trailer": "Ideation-Unit: send-retry/outbox-label"
     }
   ],
   "completedPhases": []

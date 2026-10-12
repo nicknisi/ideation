@@ -179,7 +179,8 @@ Ask only once no required decision is open. Pi's confirmation shows its own summ
 4. Hand off to the existing engine.
    - **One unit:** read and follow `${CLAUDE_PLUGIN_ROOT}/skills/execute-spec/SKILL.md` with the packet path, interactively, in the current checkout.
    - **More than one:** read and follow `${CLAUDE_PLUGIN_ROOT}/skills/autopilot/SKILL.md` from its Step 1 with `docs/ideation/<slug>/run-contract.json`. It runs fail-closed on branch `ideation/<slug>`. Append two lines to its report: `Branch: ideation/<slug>` and `Review: git diff <default-branch>...ideation/<slug>`.
-   - `TODO(4.2)`: an unattended `/goal` (`/ideation:get-goal-prompt`) still needs a 0.x contract.
+   - **Unattended**, if the user would rather walk away: `/ideation:get-goal-prompt docs/ideation/<slug>` prints a `/goal` (owned by `${CLAUDE_PLUGIN_ROOT}/scripts/plan-goal.mjs`) that drives autopilot on the run contract until `verify.mjs` passes. It needs the `run-contract.json` written in step 3, so offer it only after approval.
+   - Every unit commit ends with the trailer `Ideation-Unit: <slug>/<unit id>`, which autopilot's engine and execute-spec both add, as Pi's change runner does. `verify.mjs` counts it for `commits=`.
 
 ### Harness differences
 

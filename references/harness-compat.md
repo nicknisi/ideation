@@ -1,6 +1,6 @@
 # Harness compatibility — Claude Code and pi
 
-This plugin runs in two harnesses. Four things differ; everything else is shared.
+This plugin runs in two harnesses. Five things differ; everything else is shared.
 
 ## 1. The engine invocation
 
@@ -80,9 +80,23 @@ Without the extension (Riker's Pi workers run with `--no-extensions`), use `plan
 
 **Paste always works.** It is the guaranteed path, in either harness. On the page, the user presses **Copy response** and pastes it into the session. The session saves it to a file and runs `apply <plan-folder>` with that file on stdin. Use paste when Claude Code's permission classifier denies running a local server, when Send fails, or when `serve` times out.
 
+## 5. Running an approved plan
+
+Approval freezes the same run contract in both harnesses (`toRunContract` in `scripts/plan-data.ts`: the brief and its fingerprint), and every unit is built from the same packet (`workPacket` in `workflows/change-brief.mjs`) with the same engine prompts. Only who commits differs:
+
+| | Pi | Claude Code |
+|---|---|---|
+| Freeze | `ideation_change` `prepare` with `plan: <folder>`, then Pi's confirmation | `node scripts/plan-data.ts run-contract <folder>` after `AskUserQuestion`: `run-contract.json` and `unit-<id>.md` beside `plan.json` |
+| Run | the change runner, in an isolated worktree, one unit per engine call | `/ideation:autopilot <folder>` runs `node scripts/plan-data.ts manifest <folder>`; one unit runs through `/ideation:execute-spec <packet>` |
+| Engine args | `packet: true, hostCommits: true` | `packet: true, hostCommits: false, strict: true` |
+| Commits | the host, after independent review and the checks | the engine's commit stage (an agent), or execute-spec's Commit step |
+| Unattended | the change runner already is | `/ideation:get-goal-prompt` prints a `/goal` from `scripts/plan-goal.mjs` |
+
+**The commit reference.** Every unit commit, in both harnesses, ends with the git trailer `Ideation-Unit: <plan id>/<unit id>` (`unitTrailer` in `scripts/verify.mjs`). `verify.mjs` counts a 1.0 plan's unit as committed when a commit on the current branch carries that line, so `commits=A/B` means what it meant in 0.x: B units expected to leave a commit, A of them committed. Autopilot's resume reads the same trailers (the manifest's `completedPhases`). Why a trailer: the two harnesses keep packets in different places (Pi in its run directory, Claude Code beside `plan.json`), so a path can't be shared, and a plan and unit id survive a revised plan version. A 0.x contract, and a plan migrated from one, keep the 0.x reference: the slug-qualified spec path in the commit body.
+
 ## What does NOT differ
 
 - `${CLAUDE_PLUGIN_ROOT}` path resolution — resolved in Nick's setup by the user-level `claude-plugin-root.ts` pi extension (sets the env var, rewrites the token in tool calls); not bundled with the plugin. Without it: resolve `${CLAUDE_PLUGIN_ROOT}` relative to the skill's own directory (two levels up from `skills/{name}/`); never read the environment variable, which may be unset or point at a different package. Skills write `${CLAUDE_PLUGIN_ROOT}/…` as in CC.
 - Skill frontmatter (`name`, `description`, `allowed-tools`, `disable-model-invocation`, `argument-hint`) — parsed identically by both harnesses. Unknown fields are ignored.
 - The `pi` manifest in `package.json` — CC ignores it; pi uses it to discover `skills/` and `extensions/`.
-- All script paths (`scripts/contract-gen.ts`, `scripts/verify.mjs`, `workflows/*.mjs`) — identical, run via `node` in both.
+- All script paths (`scripts/plan-*.ts|mjs`, `scripts/verify.mjs`, `workflows/*.mjs`) — identical, run via `node` in both.

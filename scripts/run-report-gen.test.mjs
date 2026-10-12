@@ -9,7 +9,7 @@
  * disagrees with itself.
  *
  * Two of these tests exist because the bug already happened in this repo's
- * sibling generator: contract-gen once advertised an outcome the engine cannot
+ * retired sibling generator, contract-gen, once advertised an outcome the engine cannot
  * produce (an invented `PARTIAL`), which is why the accepted enums are drift-
  * tested against workflows/execute-contract.mjs rather than trusted, and why a
  * record carrying `PARTIAL` has its own negative control.
@@ -23,6 +23,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -58,12 +59,15 @@ const clone = () => JSON.parse(readFileSync(VALID_FIXTURE, 'utf8'));
  * assumed. Pass `record` to render an object, `inputPath` to render a
  * committed fixture from its real location.
  */
-function runGen({ record, inputPath }) {
+function runGen({ record, inputPath, beside = [] }) {
   const scratch = mkdtempSync(join(tmpdir(), 'run-report-gen-'));
   try {
     const input = inputPath ?? join(scratch, 'run-record.json');
     if (!inputPath) writeFileSync(input, JSON.stringify(record, null, 2));
     const output = join(scratch, 'nested', 'run-report.html');
+    // Pages the report sits beside in its project directory.
+    if (beside.length) mkdirSync(dirname(output), { recursive: true });
+    for (const name of beside) writeFileSync(join(dirname(output), name), '');
     const r = spawnSync(
       process.execPath,
       [GENPATH, '--input', input, '--output', output],
@@ -118,7 +122,7 @@ describe('validation', () => {
   });
 
   it('refuses an invented outcome (negative control)', () => {
-    // The exact bug class this repo already shipped once, in contract-gen's
+    // The exact bug class this repo already shipped once, in the retired contract-gen's
     // run-model diagram: an outcome no engine code path can produce.
     const record = clone();
     record.summary.results[0].result = 'PARTIAL';
@@ -324,7 +328,7 @@ describe('render honesty', () => {
       /VERIFY run-report-fixture: commits=2\/3 pass=4 fail=1 judgment=1/,
       'the VERIFY line is not rendered verbatim',
     );
-    has(html, /href="contract\.html"/, 'the contract link is absent');
+    has(html, /href="plan\.html"/, 'the plan link is absent');
     has(
       html,
       /href="implementation-notes-phase-2\.html"/,
@@ -343,7 +347,7 @@ describe('render honesty', () => {
     );
   });
 
-  it('names the contract it executed in the masthead, not only in the close band', () => {
+  it('names the plan it executed in the masthead, not only in the close band', () => {
     // A report is opened cold, days later, from a directory of siblings. The
     // close band's contract link at the foot of the page is too late to
     // orient the reader — and a project named like its artifact type (the
@@ -354,9 +358,28 @@ describe('render honesty', () => {
     assert.equal(code, 0);
     has(
       html,
-      /Execution record of the <a href="contract\.html">[^<]+ contract<\/a>/,
-      'the lede must open with the contract association, linked',
+      /Execution record of the <a href="plan\.html">[^<]+ plan<\/a>/,
+      'the lede must open with the plan association, linked',
     );
+  });
+
+  it('links plan.html beside it, falling back to a migrated folder\'s contract.html and saying so', () => {
+    const both = runGen({ inputPath: VALID_FIXTURE, beside: ['plan.html', 'contract.html', 'contract-data.json'] });
+    assert.equal(both.code, 0, both.err);
+    has(both.html, /<a href="plan\.html">plan\.html<\/a><span class="meta">the plan this run executed</, 'plan.html must win when it exists');
+    lacks(both.html, /href="contract\.html"/, 'a 0.x page must not be linked once plan.html exists');
+
+    const legacy = runGen({ inputPath: VALID_FIXTURE, beside: ['contract.html', 'contract-data.json'] });
+    assert.equal(legacy.code, 0, legacy.err);
+    has(legacy.html, /Execution record of the <a href="contract\.html">[^<]+ contract<\/a>/, 'the lede must link the page that exists');
+    has(legacy.html, /<a href="contract\.html">contract\.html<\/a><span class="meta">the 0\.x contract this run executed; this folder has no plan\.html</, 'the fallback must say what it is');
+    lacks(legacy.html, /href="plan\.html"/, 'no dead plan.html link when only contract.html exists');
+
+    // Pi's change page in a 1.0 plan folder is not the plan this run executed.
+    const pi = runGen({ inputPath: VALID_FIXTURE, beside: ['contract.html', 'plan.json'] });
+    assert.equal(pi.code, 0, pi.err);
+    lacks(pi.html, /href="contract\.html"/, 'a 1.0 folder never links contract.html as its plan');
+    has(pi.html, /<a href="plan\.html">plan\.html<\/a>/, 'a 1.0 folder links its plan page');
   });
 
   it('renders the review diff in merge-base form against baseBranch', () => {

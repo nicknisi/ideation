@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { gitText } from './change-workspace.mjs';
 import * as engineHost from './engine-host.mjs';
 import { computeWaves } from './wave-planner.mjs';
+import { unitTrailer } from '../scripts/verify.mjs';
 
 const clone = value => structuredClone(value);
 const json = async path => JSON.parse(await readFile(path, 'utf8'));
@@ -26,6 +27,10 @@ export function stopAttention(error, r) {
   const base = failureAttention(error);
   return base.reason === 'provider-client-version' ? base : { ...base, message: `${base.message} ${next}` };
 }
+
+/** The host's commit message for one unit. Its trailer is the unit's commit
+ * reference, which scripts/verify.mjs counts for commits=. */
+export const unitCommitMessage = (brief, unit) => `${brief.title}: ${unit.title}\n\n${unitTrailer(brief.id, unit.id)}`;
 
 export function failureAttention(error) {
   const detail = String(error?.message ?? error);
@@ -284,7 +289,7 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
             const specPath = join(packetDir, `spec-phase-${order.indexOf(id) + 1}.md`);
             const plan = receipt.lastFailure ? `${planned.data.plan}\n\n## What went wrong last time\n\n${receipt.lastFailure}` : planned.data.plan;
             await writeFile(specPath, b.workPacket(r.brief, unit, { plan, sourceRevision: await w.sourceRevision(r.workspace) }));
-            const summary = await engine({ projectName: r.brief.title, slug: r.id, projectDir: packetDir, strict: true, native: true,
+            const summary = await engine({ projectName: r.brief.title, slug: r.id, projectDir: packetDir, strict: true, packet: true, hostCommits: true,
               executionMode: r.brief.executionMode,
               phases: [{ title: unit.title, specPath, prereqs: [], risk: unit.risk, files: [] }] }, {
               ...options(),
@@ -317,7 +322,7 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
                 if (info.stage === 'commit') {
                   if (!reviewedRevision || reviewedRevision !== await w.sourceRevision(r.workspace)) throw new Error('Independent current-source review required');
                   const revision = await checks(ctx, criteria, w);
-                  const hash = a.allowLocalCommit ? await w.commitWorkspace(r.workspace, a.paths, { message: `${r.brief.title}: ${unit.title}`, specPath, sourceRevision: revision, signal: ctx.abort.signal }) : null;
+                  const hash = a.allowLocalCommit ? await w.commitWorkspace(r.workspace, a.paths, { message: unitCommitMessage(r.brief, unit), specPath, sourceRevision: revision, signal: ctx.abort.signal }) : null;
                   receipt.commitHash = hash; committed = true;
                   r.sourceRevision = await w.sourceRevision(r.workspace); await save(r);
                   const empty = (await w.changedFiles(r.workspace)).length === 0;

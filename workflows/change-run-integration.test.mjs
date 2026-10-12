@@ -67,6 +67,8 @@ test('real engine + brief + workspace: host commit, durable review receipt, chec
   assert.equal(r.units[0].reviewEvidence.result.verdict, 'PASS');
   assert.equal(r.units[0].outcome, 'COMMITTED');
   assert.equal(await f.git(r.workspace, 'rev-parse', 'HEAD'), r.units[0].commitHash);
+  // The host's unit commit carries the reference verify.mjs counts for commits=.
+  assert.match(await f.git(r.workspace, 'log', '-1', '--format=%B'), /^Native: One\n\nIdeation-Unit: native\/one\s*$/);
   assert.equal(r.evidence[0].status, 'passed');
   assert.equal(r.evidence[0].sourceRevision, r.sourceRevision);
   assert.equal(await f.git(f.root, 'show', 'HEAD:src/value'), 'before');

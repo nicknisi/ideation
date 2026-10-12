@@ -127,7 +127,7 @@ test('prototype-like state names are unknown, never inherited labels', () => {
 });
 test('canonical theme is reused verbatim, without another token palette', () => {
   const html = renderBrief(fresh());
-  const canonical = readFileSync(new URL('./contract-gen.css', import.meta.url), 'utf8');
+  const canonical = readFileSync(new URL('./field-guide.css', import.meta.url), 'utf8');
   const layout = readFileSync(new URL('./change-render.css', import.meta.url), 'utf8');
   assert.ok(html.includes(canonical));
   assert.ok(!/#[\da-f]{3,8}\b/i.test(layout), 'no invented palette');

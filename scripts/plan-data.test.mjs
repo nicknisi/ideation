@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { briefFingerprint, validateBrief, workPacket } from '../workflows/change-brief.mjs';
-import { criticView, load, nextVersion, PACKET_PLAN, packetFile, toRunContract, validate, writeRunContract } from './plan-data.ts';
+import { criticView, load, manifestFor, nextVersion, PACKET_PLAN, packetFile, toManifest, toRunContract, validate, writeRunContract } from './plan-data.ts';
+import { unitTrailer } from './verify.mjs';
 
 const FIXTURE = new URL('../test-fixtures/plan/plan.json', import.meta.url);
 const fixture = () => JSON.parse(readFileSync(FIXTURE, 'utf8'));
@@ -282,21 +283,52 @@ test('the CLI prints the critic view, writes the run contract, and is never mist
   assert.match(usage.stderr, /run-contract is not approval/);
 });
 
-test("autopilot's run-contract manifest example matches what run-contract writes", t => {
+test("autopilot's run-contract manifest: the worked example is toManifest's output", t => {
   const dir = folder(t);
-  const { brief } = writeRunContract(dir, 'abc').contract;
+  const contract = writeRunContract(dir, 'abc').contract;
+  const { brief } = contract;
   const manifest = JSON.parse(readFileSync(new URL('../test-fixtures/run-contract/manifest.json', import.meta.url), 'utf8'));
   const projectDir = `docs/ideation/${brief.id}/`;
+  assert.deepEqual(toManifest(contract, `docs/ideation/${brief.id}`), manifest);
+  // A Claude Code run contract runs approved packets fail-closed, and its agent commit stage adds the trailer.
   assert.deepEqual(manifest, {
-    projectName: brief.title, slug: brief.id, projectDir, strict: true, completedPhases: [],
+    projectName: brief.title, slug: brief.id, projectDir, strict: true, packet: true, hostCommits: false, completedPhases: [],
     phases: brief.units.map(u => ({
       title: u.title, specPath: projectDir + packetFile(u.id),
       prereqs: u.needs.map(id => brief.units.find(n => n.id === id).title), risk: u.risk, files: brief.authority.paths,
+      trailer: unitTrailer(brief.id, u.id),
     })),
   });
   for (const p of manifest.phases) {
     assert.ok(existsSync(join(dir, p.specPath.slice(projectDir.length))), `${p.specPath} is a written packet`);
-    // The packet's File Changes list is what autopilot reads into files.
+    // The packet's File Changes list is what files carries.
     assert.ok(readFileSync(join(dir, p.specPath.slice(projectDir.length)), 'utf8').includes(`## File Changes\n\nOnly within these exact files or trailing-slash directory prefixes ('.' means ordinary project files):\n${p.files.map(f => `- ${f}`).join('\n')}`));
   }
+});
+
+test('manifest refuses an unapproved or edited plan and a missing packet, and resumes from trailers', t => {
+  const repo = mkdtempSync(join(tmpdir(), 'plan-manifest-')); t.after(() => rmSync(repo, { recursive: true, force: true }));
+  const git = (...a) => spawnSync('git', a, { cwd: repo, encoding: 'utf8', timeout: 30_000 });
+  git('init', '-q', '-b', 'main'); git('config', 'user.email', 't@example.invalid'); git('config', 'user.name', 'T'); git('config', 'commit.gpgsign', 'false');
+  const dir = join(repo, 'docs', 'ideation', 'send-retry');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'plan.json'), JSON.stringify(fixture()));
+  assert.throws(() => manifestFor(dir, repo), /has no run-contract\.json: the plan is not approved/);
+  const cliRefusal = spawnSync(process.execPath, [CLI, 'manifest', dir], { encoding: 'utf8', timeout: 30_000 });
+  assert.equal(cliRefusal.status, 1);
+  assert.match(cliRefusal.stderr, /^plan-data: .*not approved/m);
+
+  writeRunContract(dir, 'abc');
+  assert.deepEqual(manifestFor(dir, repo), toManifest(toRunContract(fixture()), 'docs/ideation/send-retry'));
+  git('add', '-A'); git('commit', '-q', '-m', 'feat: retry worker\n\nIdeation-Unit: send-retry/worker');
+  assert.deepEqual(manifestFor(dir, repo).completedPhases, ['Retry worker']);
+  const printed = spawnSync(process.execPath, [CLI, 'manifest', 'docs/ideation/send-retry'], { cwd: repo, encoding: 'utf8', timeout: 30_000 });
+  assert.equal(printed.status, 0, printed.stderr);
+  assert.deepEqual(JSON.parse(printed.stdout), manifestFor(dir, repo));
+
+  rmSync(join(dir, 'unit-outbox-label.md'));
+  assert.throws(() => manifestFor(dir, repo), /unit-outbox-label\.md is missing: run run-contract again/);
+  writeRunContract(dir, 'abc');
+  writeFileSync(join(dir, 'plan.json'), JSON.stringify(plan(p => { p.mustHold.push('Unapproved.'); })));
+  assert.throws(() => manifestFor(dir, repo), /no longer matches plan\.json \(v2\): the plan changed after approval/);
 });

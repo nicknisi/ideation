@@ -7,8 +7,9 @@ than reinvent: the contract renderer previously shipped a completely separate
 dark "command deck" world, and that mismatch was the single biggest reason a
 generated contract did not read as part of this product.
 
-The canonical token declarations are `scripts/contract-gen.css` (inlined into
-every generated contract) and `site/src/styles/global.css` (worn by the whole site).
+The canonical token declarations are `scripts/field-guide.css` (inlined into
+Pi's change page, and the values `scripts/plan-render.css` maps the plan page
+onto) and `site/src/styles/global.css` (worn by the whole site).
 This document owns the values; those files declare them; every other surface
 inherits.
 
@@ -44,7 +45,7 @@ those colours.
 ## Tokens
 
 Both declarations carry the same values. `global.css` declares them with a
-`prefers-color-scheme` media query; `contract-gen.css` uses `light-dark()`.
+`prefers-color-scheme` media query; `field-guide.css` uses `light-dark()`.
 Either is fine — the values are the contract.
 
 | role | light | dark |

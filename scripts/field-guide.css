@@ -1,0 +1,259 @@
+/* ═══════════════════════════════════════════════════════════════════
+   The ideation field guide — the canonical sheet.
+
+   DESIGN.md is the token authority; this file is its canonical CSS
+   declaration (site/src/styles/global.css is the other). Paper ground,
+   ink, ONE cobalt accent, serif voice, letterpress offsets, hairline
+   rules, 3px radii. Graphite dark deck, never navy.
+
+   It holds what every generated page shares: the tokens, the reset, the
+   status stamp and the theme toggle. scripts/change-render.mjs inlines it
+   verbatim ahead of change-render.css (Pi's change page), and
+   plan-render.css maps html-plan's tokens onto these values;
+   design-tokens.test.mjs holds all three to DESIGN.md. A page's own
+   composition belongs in its own sheet, never here.
+
+   Self-contained: no fonts, no CDNs, no images.
+   ═══════════════════════════════════════════════════════════════════ */
+
+
+:root {
+  /* Auto: follow the system. The masthead toggle forces a deck by
+     setting data-theme, which pins color-scheme and resolves every
+     light-dark() below. */
+  color-scheme: light dark;
+
+  /* ── Palette ─────────────────────────────────────────────────
+     light-dark(paper deck, graphite deck). Values are the shipped
+     ideation site's, so a page looks like the product that
+     produced it. */
+  --bg: light-dark(#f7f7f3, #131417);
+  --surface-1: light-dark(#fcfcfa, #1a1c20);
+  --surface-2: light-dark(#ffffff, #202329);
+  --wash: light-dark(#ebebe4, #0c0d0f);
+  --line: light-dark(#dededf, #2d3036);
+  --line-strong: light-dark(#a6a6a0, #4c505a);
+  --ink: light-dark(#191b1d, #e9e9e4);
+  --muted: light-dark(#50555a, #a8aaa6);
+  --faint: light-dark(#75797d, #82858a);
+
+  --accent: light-dark(#2b46c7, #93a7ff);
+  --accent-tint: light-dark(#e6eafb, #1e2542);
+  --go: light-dark(#187a48, #63bf8d);
+  --go-tint: light-dark(#e0f0e7, #15291e);
+  --caution: light-dark(#94660a, #d2ad55);
+  --caution-tint: light-dark(#f5ecd2, #2b2513);
+  --danger: light-dark(#bb3a2c, #e0796e);
+  --danger-tint: light-dark(#f8e2de, #331714);
+
+  /* Letterpress: an offset, no blur. The world's depth device. */
+  --press: 3px 3px 0 0 var(--line);
+  --press-strong: 4px 4px 0 0 var(--wash);
+
+  /* ── Type ────────────────────────────────────────────────────
+     Serif = voice. Sans = interface furniture. Mono = evidence. */
+  --font-serif:
+    'Iowan Old Style', 'Palatino Nova', Palatino, 'Book Antiqua', Georgia,
+    'Times New Roman', serif;
+  --font-mono:
+    'Berkeley Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, Consolas,
+    monospace;
+  --font-sans:
+    system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial,
+    sans-serif;
+
+  --t-kicker: 0.6875rem;
+  --t-meta: 0.75rem;
+  --t-data: 0.8125rem;
+  --t-small: 0.875rem;
+  --t-body: 1rem;
+  --t-lead: 1.125rem;
+  --t-h3: 1.25rem;
+  --t-h2: 1.75rem;
+  --t-display: clamp(2.25rem, 5.5vw, 3.5rem);
+  --t-figure: clamp(1.75rem, 4vw, 2.5rem);
+
+  /* ── Space (4pt) ─────────────────────────────────────────── */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 72px;
+  --s9: 104px;
+
+  --radius: 3px;
+  --radius-lg: 4px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --measure: 68ch;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* ── Reset ─────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+  /* clear the running head when jumping to a section */
+  scroll-padding-top: 76px;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: var(--font-serif);
+  font-size: var(--t-body);
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  font-kerning: normal;
+}
+:where(button, summary):focus-visible,
+:where(a, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* ── Stamp ─────────────────────────────────────────────────── */
+
+/* Letterpress stamp — status, worn like a rubber stamp on paper. */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-family: var(--font-mono);
+  font-size: var(--t-meta);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: var(--s1) var(--s3);
+  border: 1.5px solid currentColor;
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+.stamp::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+.is-go {
+  color: var(--go);
+}
+.is-caution {
+  color: var(--caution);
+}
+.is-danger {
+  color: var(--danger);
+}
+.is-accent {
+  color: var(--accent);
+}
+
+/* ── Theme ─────────────────────────────────────────────────── */
+
+/* The mark: a rotated square, the same glyph as the plugin's favicon. */
+.masthead-mark {
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  transform: rotate(45deg);
+  flex: 0 0 auto;
+}
+.theme-toggle {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-top: var(--s1);
+  padding: 0;
+  color: var(--faint);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.theme-toggle::after {
+  content: '';
+  position: absolute;
+  inset: -7px;
+}
+.theme-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.theme-toggle svg {
+  width: 15px;
+  height: 15px;
+  display: none;
+}
+.theme-toggle[data-mode='auto'] .i-auto,
+.theme-toggle[data-mode='light'] .i-light,
+.theme-toggle[data-mode='dark'] .i-dark {
+  display: block;
+}
+
+/* ── Motion ────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ── Print — a paper document ──────────────────────────────── */
+
+@media print {
+  :root,
+  :root[data-theme] {
+    color-scheme: light;
+    --bg: #ffffff;
+    --surface-1: #ffffff;
+    --surface-2: #ffffff;
+    --wash: #f2f2ee;
+    --line: #c9c9c4;
+    --line-strong: #8a8a84;
+    --ink: #000000;
+    --muted: #303336;
+    --faint: #4a4d51;
+    --accent: #1c2f96;
+    --accent-tint: #eceffc;
+    --go: #105934;
+    --caution: #6b4a07;
+    --danger: #8e2b20;
+    --press: none;
+    --press-strong: none;
+  }
+  body {
+    font-size: 10.5pt;
+  }
+  .theme-toggle {
+    display: none !important;
+  }
+}

@@ -1,7 +1,7 @@
 ---
 name: get-goal-prompt
-description: "Generate a /goal command that runs an ideation project to completion UNATTENDED by driving /ideation:autopilot. The /goal string is owned by scripts/contract-gen.ts (--print-goal); this skill resolves the project's contract-data.json, prints the goal, and copies it to the clipboard. Use when the user says 'goal', 'run as goal', 'goal prompt', or wants to run the project long-haul/unattended rather than watching /ideation:autopilot interactively."
-argument-hint: '[path/to/contract-data.json | path/to/contract.md]'
+description: "Generate a /goal command that runs an ideation project to completion UNATTENDED by driving /ideation:autopilot. The /goal string is owned by scripts/plan-goal.mjs; this skill resolves the project (an approved plan folder, or a 0.x contract), prints the goal, and copies it to the clipboard. Use when the user says 'goal', 'run as goal', 'goal prompt', or wants to run the project long-haul/unattended rather than watching /ideation:autopilot interactively."
+argument-hint: '[path/to/project-folder | plan.json | run-contract.json | contract-data.json | contract.md]'
 disable-model-invocation: true
 allowed-tools:
   - Read
@@ -15,27 +15,32 @@ allowed-tools:
 ## Arguments: $ARGUMENTS
 
 Emit the `/goal` that drives `/ideation:autopilot` to completion unattended. The goal
-string has exactly one owner — `buildGoal()` in `${CLAUDE_PLUGIN_ROOT}/scripts/contract-gen.ts`,
-printed by `--print-goal` — so this skill only resolves the project, prints, and copies.
+string has exactly one owner — `buildGoal()` in `${CLAUDE_PLUGIN_ROOT}/scripts/plan-goal.mjs` —
+so this skill only resolves the project, prints, and copies.
 **Never hand-author or template the /goal**; a second copy of that string is drift.
 (The layered model: the `/goal` is a durability wrapper that drives autopilot, which
-drives the engine, which runs execute-spec per phase.)
+drives the engine, which runs each unit's packet, or each 0.x phase's spec.)
 
-1. **Resolve `contract-data.json` first** — it is the source of truth; `contract.md` is
-   only a legacy fallback. Argument given: a `contract-data.json` path is used directly;
-   a `contract.md` path means its sibling `contract-data.json`. No argument: glob
-   `./docs/ideation/*/contract-data.json` and take the most recently modified. If the
-   project has no `contract-data.json`, stop and say so — `--print-goal` consumes it,
-   so the fix is re-running ideation, not hand-writing a goal. (`TODO(4.2)`: a 1.0 plan
-   folder, with `plan.json` and no `contract-data.json`, has no `/goal` yet. Say so, and
-   point to running its `run-contract.json` with `/ideation:autopilot`.)
-2. **Already complete?** Run `node ${CLAUDE_PLUGIN_ROOT}/scripts/verify.mjs <contract-data.json>`.
+1. **Resolve the project folder.** Argument given: a folder is used directly, and a file
+   (`plan.json`, `run-contract.json`, `contract-data.json`, `contract.md`) means its folder.
+   No argument: glob `./docs/ideation/*/plan.json` and `./docs/ideation/*/contract-data.json`
+   and take the folder most recently modified.
+2. **Already complete?** Run `node ${CLAUDE_PLUGIN_ROOT}/scripts/verify.mjs <folder>`.
    Exit 0 → quote its final `VERIFY {slug}: …` line, tell the user the project is
    complete, and stop.
-3. **Print the goal:** `node ${CLAUDE_PLUGIN_ROOT}/scripts/contract-gen.ts --input <contract-data.json> --print-goal`
-   — an early exit that writes nothing (no lineage snapshot, no re-render). The output
-   already carries the isolation-branch clause when the contract has `branch`, the
-   background-workflow rule, and the verify.mjs-based done-when.
+3. **Print the goal:** `node ${CLAUDE_PLUGIN_ROOT}/scripts/plan-goal.mjs <folder>`. It writes
+   nothing, and it reads the folder the way verify.mjs does:
+   - **A 1.0 plan** gets a goal only once approved: `run-contract.json` must be beside
+     `plan.json` and still match it. The goal runs `/ideation:autopilot` on the run
+     contract, on branch `ideation/<plan id>`, and repairs only the implementation, never
+     the approval.
+   - **A migrated or 0.x folder** gets the goal its `contract-data.json` always had,
+     carrying its isolation branch when it has one.
+   Every goal carries the background-workflow rule and the verify.mjs-based done-when,
+   whose `commits=N/N` is verify.mjs's own count.
+   **If it refuses, show its message and stop.** The fix is never a hand-written goal:
+   not approved, or changed after approval → approve the current plan through
+   `/ideation`; unrunnable checks → fix them in the plan (or `contract-data.json`).
 4. **Copy and show:** pipe the printed command to `pbcopy` (Linux: `xclip -selection clipboard`
    or `xsel --clipboard`), then print it so the user sees what they are about to paste.
 5. **On a permission denial** of any command above: print the exact command for the user

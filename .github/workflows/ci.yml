@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      # Node >= 22.18 required: contract-gen.ts runs via native type-stripping, no tsx/tsc.
+      # Node >= 22.18 required: the scripts/*.ts files run via native type-stripping, no tsx/tsc.
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
@@ -36,15 +36,21 @@ jobs:
       - name: Run tests
         run: node --run test
 
-      - name: Render orchestration fixture (contract-gen smoke test)
-        run: node scripts/contract-gen.ts --input test-fixtures/orchestration/contract-data.json --output /tmp/ci.html
+      # Converts the 0.x orchestration fixture to plan data in a scratch folder
+      # and renders it the way a plan page is rendered. Writes files only;
+      # nothing opens a browser.
+      - name: Render a migrated fixture (plan-render smoke test)
+        run: |
+          mkdir -p /tmp/ci-plan
+          cp test-fixtures/orchestration/contract-data.json /tmp/ci-plan/
+          node scripts/plan-migrate.mjs /tmp/ci-plan
+          node scripts/plan-render.ts /tmp/ci-plan/plan.json -o /tmp/ci.html
 
       # The orchestration fixture is Approved with every gate ready, so it can
       # never carry an open question — an open question *is* a gate that did not
       # close. This second fixture holds that shape, and its own success
-      # criterion asserts the stale-blockedBy path, so run it through verify
-      # rather than just rendering it.
-      - name: Verify open-questions fixture (openQuestions renderers)
+      # criterion asserts that migration keeps it, stale blockedBy id included.
+      - name: Verify open-questions fixture (openQuestions survive migration)
         run: node scripts/verify.mjs test-fixtures/open-questions/contract-data.json
 
   # The guide derives its command table from skills/*/SKILL.md and its gates
