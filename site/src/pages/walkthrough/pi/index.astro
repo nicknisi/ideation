@@ -61,23 +61,29 @@ const PLATE = [
           <h2 class={stepTitle}><span class={stepNum}>01</span>Say what should change</h2>
           <p class={stepIntro}>
             Open <code class="code">/ideation</code> and describe it the way you would to a colleague.
-            The agent reads the code first, then asks only what the code cannot answer, each question
-            with a recommendation.
+            The agent picks a depth and says why in one line, so you can overrule it in a word. It reads
+            the code first, then asks only what the code cannot answer, each question with a
+            recommendation.
           </p>
           <Deck>
             <pre><span class="user"><span class="prompt">› </span>/ideation</span>
 <span class="quiet">What should change?</span>
 
 <span class="user"><span class="prompt">› </span>Notes vanish when I lose signal on a trail. Save them on the device and sync later.</span>
-<span class="quiet">Read src/notes/, src/api/client.ts and the sync tests. One thing the code can’t tell me: should “the offline indicator feels right” be a test, or your call? Recommended: a test for the state, plus one airplane-mode walkthrough by you.</span>
+<span class="quiet">Depth: short plan. Four units and one fork the code can’t settle; the rest follows it. Say “just do it” or “interview” to change it.</span>
+<span class="quiet">Read src/notes/, src/api/client.ts and the sync tests. The fork: should “the offline indicator feels right” be a test, or your call? Recommended: a test for the state, plus one airplane-mode walkthrough by you.</span>
 
 <span class="user"><span class="prompt">› </span>Both.</span>
+<span class="quiet">Wrote docs/ideation/offline-drafts/plan.json, with that decision answered. Preparing it for approval.</span>
 <span class="tool"><Fragment set:html={wt.term.toolCall} /></span><span class="tool"><Fragment set:html={wt.term.toolResult} /></span>
 <Fragment set:html={wt.term.draft} /></pre>
           </Deck>
           <p class="mt-4 max-w-[64ch] text-[0.9375rem] text-muted">
-            The last three blocks are real: the tool call, its result, and the widget that stays
-            above the editor. Pi also shows: <em>{pi.notices.prepared}</em>
+            The last three blocks are real: the tool call, which prepares the plan folder, its result,
+            and the widget that stays above the editor. Pi also shows: <em>{pi.notices.prepared}</em>
+            Had a decision still been open, <code class="code">/ideation respond</code> would have come
+            first: the plan page (live with pi-artifacts) or a terminal form, and each confirmed answer a
+            new plan version.
           </p>
         </section>
 
@@ -85,10 +91,10 @@ const PLATE = [
         <section data-step class="min-w-0">
           <h2 class={stepTitle}><span class={stepNum}>02</span>Read the contract</h2>
           <p class={stepIntro}>
-            It opens in your browser by itself: before and after, what must hold, how the work
-            connects, and a verification plan that claims no results yet. The exact paths and commands
-            wait in the boundaries at the bottom. It is stamped <em>Draft</em>, because nothing is
-            approved.
+            Preparing the plan freezes its run contract, and its page opens in your browser by itself:
+            before and after, what must hold, how the work connects, and a verification plan that claims
+            no results yet. The exact paths and commands wait in the boundaries at the bottom. It is
+            stamped <em>Draft</em>, because nothing is approved.
           </p>
           <ContractFrame state="proposed" label={`Contract · ${title} · revision 1`} title={`The proposed contract for ${title}, revision 1`} />
         </section>
@@ -98,8 +104,9 @@ const PLATE = [
           <h2 class={stepTitle}><span class={stepNum}>03</span>Revise it on the same page</h2>
           <p class={stepIntro}>
             Something bothers you about conflicts, so you say so, on the page or in chat. A comment is
-            feedback, never permission. The agent prepares revision 2 of the same change, and the page
-            updates in place: same link, comments kept, and a delta of exactly what moved.
+            feedback, never permission. The agent writes the plan’s next version and prepares it again as
+            revision 2, and the page updates in place: same link, comments kept, and a delta of exactly
+            what moved.
           </p>
           <Transcript source="comment on “A conflicting edit shows a banner”" status="feedback · not approval">
             <p>If it doesn’t overwrite, where does the other edit go?</p>
@@ -115,9 +122,10 @@ const PLATE = [
         <section data-step class="min-w-0">
           <h2 class={stepTitle}><span class={stepNum}>04</span>Approve once</h2>
           <p class={stepIntro}>
-            <code class="code">/ideation approve</code> remembers the prepared brief, so there is no path
+            <code class="code">/ideation approve</code> remembers the prepared change, so there is no path
             to copy; with pi-artifacts 1.6.0 (not yet published), the live page’s <em>Approve in Pi</em>
-            button brings up the same dialog. The
+            button brings up the same dialog, and on 1.5.x the button stays hidden. The page never
+            approves. The
             confirmation is short on purpose: it binds the paths and commands, and the complete
             agreement stays in the browser. Yes starts work immediately, in an isolated worktree on its
             own branch.
@@ -141,7 +149,8 @@ const PLATE = [
         <section data-step class="min-w-0">
           <h2 class={stepTitle}><span class={stepNum}>05</span>Walk away</h2>
           <p class={stepIntro}>
-            Each piece gets a working plan just before it runs, a build, and an independent review.
+            Each unit gets a working plan just before it runs, a build, and an independent review, and
+            its commit carries the <code class="code">Ideation-Unit</code> trailer.
             While work is live the widget moves: a spinner, the active step’s shimmer, a shine along
             cells that evidence already filled. Motion only decorates recorded state; it never moves a
             count. The same contract page is now the live page, stamped <em>Approved</em>.
@@ -194,8 +203,9 @@ const PLATE = [
           </Deck>
           <p class="mt-4 max-w-[64ch] text-[0.9375rem] text-muted">
             The commits are on <code class="code">{wt.branch}</code>. Review the diff and merge it the way
-            you merge anything else; ideation never does that part. The brief, contract and receipt are
-            in <code class="code">docs/ideation/{wt.brief.id}/</code> if you want the record in history.
+            you merge anything else; ideation never does that part. The plan and its versions, the brief,
+            the contract and the receipt are in <code class="code">docs/ideation/{wt.brief.id}/</code> if
+            you want the record in history.
           </p>
           <ContractFrame state="accepted" label={`Contract · ${title} · accepted`} title={`The contract for ${title} after acceptance`} class="mt-6" />
         </section>

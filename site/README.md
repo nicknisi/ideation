@@ -55,16 +55,17 @@ The site does not restate the plugin's behaviour from memory. At build time it r
 
 | Source | Read by | What it supplies |
 | --- | --- | --- |
-| `skills/*/SKILL.md` frontmatter | `src/lib/skills.ts` | Every planning command, argument hint and badge (whether Claude may start it, whether it can write files). |
+| `skills/*/SKILL.md` frontmatter, and the ideation skill's "Pick the depth" table | `src/lib/skills.ts` | Every command, argument hint and badge (whether Claude may start it, whether it can write files), and `/ideation`'s depths. |
 | `references/confidence-rubric.md` | `src/lib/gates.ts` | The evidence gates, their questions and ready-when conditions. |
-| `references/harness-compat.md` | `src/lib/harness.ts` | The harness tables in the guide. |
+| `references/harness-compat.md` | `src/lib/harness.ts` | The harness tables in the guide, including who runs and commits an approved plan. |
 | `README.md` `## Installation` | `src/lib/install.ts` | Every install block, for both harnesses. |
+| `README.md` `## From 0.x` → `### Removed commands` | `src/lib/migration.ts` | The guide's From 0.x table: where each removed 0.x command went. |
 | `extensions/change.ts` | `src/lib/pi.ts` | The `/ideation` subcommands, guided-menu labels, `ideation_change` actions and the notifications Pi shows. |
 | `scripts/change-render.mjs`, `workflows/change-tui.mjs`, `workflows/change-ui.mjs`, `workflows/change-brief.mjs` | `src/lib/native.ts` | The Pi walkthrough's contract pages, widget frames and approval/acceptance dialogs, rendered by the product's own code from a fixture brief. |
 | `.claude-plugin/plugin.json` | `src/lib/repo.ts` | The version badge. |
 
-Only editorial judgement is authored: `src/data/commands.ts` (the planning commands'
-order and prose), `src/data/pi.ts` (what each `/ideation` subcommand is for) and the
+Only editorial judgement is authored: `src/data/commands.ts` (the commands'
+order and prose, and the depths' wording), `src/data/pi.ts` (what each `/ideation` subcommand is for) and the
 walkthrough fixture in `src/data/walkthrough/`.
 
 The joins throw rather than rendering something false:
@@ -75,6 +76,9 @@ The joins throw rather than rendering something false:
   for one that no longer exists; a subcommand the dispatcher handles but the command
   description omits, or the reverse;
 - an install section without the shape the page depends on;
+- a guide depth list that disagrees with the skill's "Pick the depth" table;
+- a From 0.x row whose 0.x command still ships as a skill, or whose 1.0 column names
+  none of `/ideation`'s depths;
 - a walkthrough fixture that fails the real `validateBrief()`, a revision that does
   not revise, a ready run that does not verify every check, a widget role the
   adapter does not map, or any widget line wider than the columns it was rendered for;

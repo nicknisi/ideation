@@ -27,12 +27,12 @@ const mark = 'bg-accent-tint text-current';
       </h1>
       <p class="mt-6 text-[1.1875rem] leading-[1.6] text-muted">
         A made-up feature — a garden where your bookmarks grow when you read them and wilt when you
-        don't — taken from a rambling paragraph to reviewed commits. It fits in one session, so it
-        starts at the brain dump; an effort too big to see the route would begin further upstream,
-        with <code class={mono}>/ideation</code>'s map depth drawing the map. Every transcript below is the
-        shape of a real run: the questions it asks, the findings it files, and the two places it
-        stopped. For the run itself — a real contract, specs, and implementation notes, unedited —
-        the repo keeps{" "}
+        don't — taken from a rambling paragraph to reviewed commits. It fits in one session, so{' '}
+        <code class={mono}>/ideation</code> picks the interview depth; an effort too big to see the
+        route would start at the map depth instead, and a settled one-line change at just do it. Every
+        transcript below is the shape of a real run: the questions it asks, the findings it files, and
+        the two places it stopped. For a real 0.x run — a contract, specs, and implementation notes,
+        unedited — the repo keeps{" "}
         <a
           href="https://github.com/nicknisi/ideation/tree/main/docs/ideation/ux-dejank"
           class="link"
@@ -51,8 +51,8 @@ const mark = 'bg-accent-tint text-current';
         <section data-step class="min-w-0">
           <h2 class={stepTitle}><span class={stepNum}>01</span>The brain dump</h2>
           <p class={stepIntro}>
-            No structure required. It reads the mess and names what is strong and what is weak
-            before it asks anything.
+            No structure required. It names the depth it picked and why, then reads the mess and says
+            what is strong and what is weak before it asks anything.
           </p>
           <Transcript source="/ideation" status="intake">
             <p class="font-mono text-[0.84rem] leading-[1.75] text-muted">
@@ -60,6 +60,10 @@ const mark = 'bg-accent-tint text-current';
               when you go back and actually read it the thing grows. if you never touch it, <mark
                 class={mark}>it wilts</mark
               >. seasons maybe? idk. cozy.
+            </p>
+            <p class="border-t border-line pt-3 text-accent">
+              Depth: interview. The loop is clear, but the scope and the success criteria aren’t. Say
+              “short plan” to change it.
             </p>
             <div class="grid gap-2 border-t border-line pt-3">
               <p><span class={tag}>Strong</span>a clear core loop: save → revisit → grow.</p>
@@ -116,8 +120,7 @@ const mark = 'bg-accent-tint text-current';
           <Transcript source="critique" status="2 blockers · 2 concerns">
             <p>
               <span class="pr-3 font-mono text-[0.75rem] text-accent">scope-creep · BLOCKER</span
-              >“Seasons” appears in the goals but in no phase and no success criterion. Cut it or
-              scope it.
+              >“Seasons” appears in the goals but in no unit and no check. Cut it or scope it.
             </p>
             <p>
               <span class="pr-3 font-mono text-[0.75rem] text-accent"
@@ -141,24 +144,33 @@ const mark = 'bg-accent-tint text-current';
 
         <!-- ── 04 ───────────────────────────────────────────────────────── -->
         <section data-step class="min-w-0">
-          <h2 class={stepTitle}><span class={stepNum}>04</span>The fork</h2>
+          <h2 class={stepTitle}><span class={stepNum}>04</span>The plan</h2>
           <p class={stepIntro}>
-            The contract lands and the run stops. One question routes the finish, and the tier you
-            pick decides what reaches the specs at all.
+            The plan lands as <code class={mono}>plan.json</code> and a page. You answer what is still
+            open there, and your answers come back as the next version. Then the run stops: the page
+            cannot approve, so one question in the terminal does.
           </p>
-          <Transcript source="contract.html" status="awaiting approval">
-            <p class="text-accent">
-              Express recommended — all five gates went ready with no early stop, and four of six
-              success criteria carry check commands.
-            </p>
+          <Transcript source="plan.html → plan.v2.json" status="awaiting approval">
+            <div class="grid gap-2">
+              <p>
+                <span class="mr-2 font-mono text-[0.75rem] text-muted">[1.3]</span>How long before a seed
+                wilts? <span class="text-accent">Recommended: 14 days, configurable.</span>
+              </p>
+              <p class="font-mono text-[0.8125rem] text-muted">✓ kept as proposed</p>
+            </div>
             <div class="grid gap-2 border-t border-line pt-3">
-              <p><span class={tag}>Must</span>save → seed · visit → growth · wilt query · the garden view</p>
-              <p><span class={tag}>Should</span>a configurable wilt window</p>
+              <p><span class={tag}>mvp</span>save → seed · visit → growth · wilt query · the garden view</p>
+              <p><span class={tag}>full</span>a configurable wilt window</p>
               <p class="text-muted">
-                <span class="mr-3 font-sans text-[0.8125rem] font-semibold text-muted">Could</span>seasons — deferred, and
-                recorded in the decision log so it stays deferred
+                <span class="mr-3 font-sans text-[0.8125rem] font-semibold text-muted">not changing</span>seasons, with
+                the decision that ruled them out recorded on its claim
               </p>
             </div>
+            <p class="border-t border-line pt-3">
+              Approve plan v2 and run it?{' '}
+              <span class="font-mono text-[0.8125rem] text-accent">› Approve and run</span>{' '}
+              <span class="font-mono text-[0.8125rem] text-muted">· Needs changes · Stop here</span>
+            </p>
           </Transcript>
         </section>
 
@@ -166,34 +178,37 @@ const mark = 'bg-accent-tint text-current';
         <section data-step class="min-w-0">
           <h2 class={stepTitle}><span class={stepNum}>05</span>Execution</h2>
           <p class={stepIntro}>
-            Phases commit in waves on an isolation branch. Each is reviewed before it lands, and
-            each commit names its spec, so a resumed run skips what is already done.
+            Approval writes the run contract and one work packet per unit, and autopilot builds them in
+            waves on an isolation branch. Each unit is reviewed before it lands, and each commit carries
+            its <code class={mono}>Ideation-Unit</code> trailer, so a resumed run skips what is already
+            done.
           </p>
           <Transcript
             source="ideation/bookmark-garden"
-            status="4 phases · 4 commits"
+            status="4 units · 4 commits"
             bodyClass="gap-6 font-mono text-[0.8125rem] leading-[1.85]"
           >
             <div>
               <div class="tracking-[0.06em] text-muted">wave 1</div>
               <div>
-                Phase 1 — Soil schema + visit tracking <span class="text-accent">✓ 5eedbed</span>
+                Soil schema + visit tracking <span class="text-accent">✓ 5eedbed</span>
               </div>
             </div>
             <div>
               <div class="tracking-[0.06em] text-muted">wave 2 · parallel</div>
-              <div>Phase 2 — Growth stages <span class="text-accent">✓ f01a9e5</span></div>
+              <div>Growth stages <span class="text-accent">✓ f01a9e5</span></div>
               <div class="text-muted">
                 review cycle 1: wilt query missed never-visited seeds → fixed, cycle 2 pass
               </div>
-              <div>Phase 3 — Wilt query <span class="text-accent">✓ 7ab3c10</span></div>
+              <div>Wilt query <span class="text-accent">✓ 7ab3c10</span></div>
             </div>
             <div>
               <div class="tracking-[0.06em] text-muted">wave 3</div>
-              <div>Phase 4 — The garden view <span class="text-accent">✓ 9a2eb00</span></div>
+              <div>The garden view <span class="text-accent">✓ 9a2eb00</span></div>
             </div>
             <div class="border-t border-line pt-3">
-              node verify.mjs — <span class="text-accent">6 checks, 6 pass</span>
+              VERIFY bookmark-garden: <span class="text-accent">commits=4/4 pass=4 fail=0</span> judgment=2
+              <div class="text-muted">report: run-&lt;date&gt;.html, linked to plan.html</div>
             </div>
           </Transcript>
         </section>
@@ -213,7 +228,7 @@ const mark = 'bg-accent-tint text-current';
             </p>
             <p class="text-muted">
               <span class="pr-3 font-mono text-muted">☐</span>The garden view needed
-              empty-state art the spec never mentioned.{' '}
+              empty-state art the plan never mentioned.{' '}
               <span class="font-mono text-[0.8125rem]">dismissed</span>
             </p>
             <p class="text-muted">

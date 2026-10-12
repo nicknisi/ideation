@@ -1,6 +1,6 @@
 {
   "name": "ideation",
-  "description": "Single-plugin marketplace for the ideation plugin — one /ideation entry point that plans at the right depth, from pressure-testing whether an idea is worth building to evidence-gated interviews, and runs the approved plan.",
+  "description": "Single-plugin marketplace for ideation: one /ideation entry point that plans at the right depth (a no-files 'should we?' opening, just do it, a short plan, an evidence-gated interview, or a multi-session map), writes a versioned plan you answer on a page, and runs what you approve in the terminal.",
   "owner": {
     "name": "Nick Nisi",
     "email": "nick@nisi.org"
@@ -9,7 +9,7 @@
     {
       "name": "ideation",
       "source": "./",
-      "description": "One entry point, at the right depth. /ideation picks just do it, short plan, an evidence-gated interview stress-tested by adversarial plan critics, or a map for foggy multi-session work, and opens with a no-files 'should we?' conversation when the question is whether to build at all. Plans are data you answer on a page or in the terminal; a terminal approval hands the run contract to a deterministic workflow engine. Watched runs teach the next interview.",
+      "description": "One /ideation entry point, at the right depth: just do it, a short plan, an evidence-gated interview stress-tested by four adversarial plan critics, or a map for foggy multi-session work, opening with a no-files 'should we?' conversation when the question is whether to build at all. Every depth writes a living, versioned plan (plan.json) you answer on a page or in the terminal. Approval is always a terminal confirmation, and it hands the run contract to a deterministic workflow engine that builds, reviews and commits each unit. Watched runs teach the next interview.",
       "author": {
         "name": "Nick Nisi",
         "email": "nick@nisi.org"
