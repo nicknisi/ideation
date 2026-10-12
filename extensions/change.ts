@@ -446,7 +446,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
     return;
   }
   pi.registerCommand('ideation', {
-    description: 'Open ideation: plan at the right depth, review or approve your prepared change, follow progress, or control a run. Also: plan <idea>, <plan-folder> [question] to resume a plan, approve [path], status, review, pause, resume, stop, accept, exit, motion [on|off], respond <plan-folder>.',
+    description: 'Open ideation: plan at the right depth, review or approve your prepared change, follow progress, or control a run. A plan folder in place of a subcommand resumes that plan. Also: plan <idea>, approve [path], status, review, pause, resume, stop, accept, exit, motion [on|off], respond <plan-folder>.',
     getArgumentCompletions: async (prefix: string) => {
       const [head = '', ...rest] = prefix.split(' ');
       const tail = rest.join(' ');
