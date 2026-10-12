@@ -24,7 +24,7 @@
     {
       "id": "1",
       "text": "A failed send retries three times, five minutes apart.",
-      "exhibit": { "kind": "machine", "body": "failed -> retrying -> sent | gave-up", "sketch": true },
+      "exhibit": { "kind": "machine", "body": "machine send initial failed\nstate failed          # The send failed.\nstate retrying        # The worker tries again.\nstate sent     final  # The message went out.\nstate gave-up  final  # The outbox shows it.\n\n| failed | retrying | sent |\n| .      | gave-up  | .    |\n\nfailed   -due->   retrying : 5 min\nretrying -ok->    sent\nretrying -fail->  failed   : under 3\nretrying -limit-> gave-up  : 3 tries", "sketch": true },
       "decision": {
         "id": "retries",
         "question": "How many retries before the worker stops?",
@@ -43,7 +43,7 @@
         {
           "id": "1.1",
           "text": "The worker reads the attempt count before each send.",
-          "exhibit": { "kind": "calls", "body": "retryWorker -> outbox.attempts -> send", "sketch": true },
+          "exhibit": { "kind": "calls", "body": "~ retryWorker()                 @ src/retry.ts:12\n+   **readAttempts**(row)       @ src/outbox.ts:18\n    send(row)                   @ src/send.ts:30", "sketch": true },
           "children": [
             {
               "id": "1.1.1",

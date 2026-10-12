@@ -78,7 +78,11 @@ export interface Exhibit {
   src?: string;
   lines?: string;
   ref?: string;
-  /** Inline content, for sketches and anything without a source file. */
+  /** Inline content, for sketches and anything without a source file: the source of the
+   * html-plan block the kind names (vendor/html-plan; skills/html-plan/references/blocks.md
+   * upstream), e.g. machine and calls in their DSLs, code and schema as text. A mock's body is
+   * shown as text, never markup. The page renderer (scripts/plan-render.ts) passes it through,
+   * so pack's lint reports a body that does not parse. */
   body?: string;
   /** True when the exhibit shows something that doesn't exist yet. */
   sketch: boolean;
