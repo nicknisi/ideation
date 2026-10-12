@@ -82,7 +82,7 @@ The evidence-gated interview, at full rigor.
 
 ## map
 
-For an effort whose route is unknown, too big or foggy for one session. The map is plan data: decision tickets are `openQuestions` with `type`, `gate` and `blockedBy`, research questions resolve through read-only Explore agents, and **at most one non-research question resolves per session**. When the route is clear, the map hands off to `interview` in the same folder. Read and follow `references/map.md` for the ticket model, fog of war, out of scope, and the two invocations.
+For an effort whose route is unknown, too big or foggy for one session. The map is plan data: decision tickets are `openQuestions` with `type`, `gate` and `blockedBy`, research questions resolve through read-only Explore agents, and **one non-research question resolves per session**, unless the user asks to keep going. When the route is clear, the map hands off to `interview` in the same folder. Read and follow `references/map.md` for the ticket model, fog of war, out of scope, and the two invocations.
 
 ## Shared rules
 
