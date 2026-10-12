@@ -37,6 +37,11 @@ const SUBCOMMANDS: [string, string, boolean][] = [
   ['respond', 'Answer a plan: its page, a terminal form, or a pasted response', true],
 ];
 const RUN_ARGUMENT = new Set(['status', 'review', 'pause', 'resume', 'stop', 'accept', 'exit']);
+/** A folder ideation can resume: plan data, or a 0.x contract or brief that converts on read. */
+const isPlanFolder = async (dir: string) => {
+  for (const file of ['plan.json', 'contract-data.json', 'brief.json']) if (await stat(join(dir, file)).then(s => s.isFile(), () => false)) return true;
+  return false;
+};
 // Loaded on the first spawn, not at startup or session start: from this repo's
 // tree @nicknisi/pi-shared value-imports a second Pi bundle that Pi's module
 // alias does not intercept, which costs seconds through jiti. One cached
@@ -441,7 +446,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
     return;
   }
   pi.registerCommand('ideation', {
-    description: 'Open ideation: plan at the right depth, review or approve your prepared change, follow progress, or control a run. Also: plan <idea>, approve [path], status, review, pause, resume, stop, accept, exit, motion [on|off], respond <plan-folder>.',
+    description: 'Open ideation: plan at the right depth, review or approve your prepared change, follow progress, or control a run. Also: plan <idea>, <plan-folder> [question] to resume a plan, approve [path], status, review, pause, resume, stop, accept, exit, motion [on|off], respond <plan-folder>.',
     getArgumentCompletions: async (prefix: string) => {
       const [head = '', ...rest] = prefix.split(' ');
       const tail = rest.join(' ');
@@ -468,6 +473,8 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
       const s = await ensure(ctx);
       try {
         let [action = '', ...rest] = args.trim().split(/\s+/); let arg = rest.join(' ');
+        // A plan folder in place of a subcommand resumes it, as in Claude Code: `/ideation docs/ideation/<slug>/ [question]`.
+        if (action && !SUBCOMMANDS.some(([name]) => name === action) && await isPlanFolder(resolve(ctx.cwd, action))) { arg = args.trim(); action = 'plan'; }
         let prepared = preparedFor(s, ctx);
         if (!action && ctx.hasUI) {
           const runs = await s.runner.status();

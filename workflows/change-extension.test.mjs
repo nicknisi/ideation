@@ -85,6 +85,25 @@ test('the single /ideation entry point offers the next useful action without ask
   assert.equal(approvals, 0);
 });
 
+test('a plan folder in place of a subcommand resumes it; an unknown word is still an error', async t => {
+  const h = await harness(t, { runner: { status: async () => [], dispose: async () => {} } });
+  await mkdir(join(h.root, 'docs/ideation/send-retry'), { recursive: true });
+  await writeFile(join(h.root, 'docs/ideation/send-retry/plan.json'), '{}');
+  await h.commands.ideation.handler('docs/ideation/send-retry/ d-retry-count', h.ctx);
+  assert.equal(h.sent.length, 1);
+  assert.match(h.sent[0][0], /Use the explicitly requested ideation skill/);
+  assert.match(h.sent[0][0], /Requested change:\ndocs\/ideation\/send-retry\/ d-retry-count$/);
+  // A 0.x folder converts on read, so it resumes too.
+  await mkdir(join(h.root, 'docs/ideation/old'), { recursive: true });
+  await writeFile(join(h.root, 'docs/ideation/old/contract-data.json'), '{}');
+  await h.commands.ideation.handler('docs/ideation/old', h.ctx);
+  assert.match(h.sent[1][0], /Requested change:\ndocs\/ideation\/old$/);
+  // A typo or a folder with no plan stays an error, never a planning request.
+  await assert.rejects(h.commands.ideation.handler('stauts', h.ctx), /Unknown ideation command/);
+  await assert.rejects(h.commands.ideation.handler('docs/ideation', h.ctx), /Unknown ideation command/);
+  assert.equal(h.sent.length, 2);
+});
+
 test('preparing opens one contract and revisions update that same draft instead of creating more tabs', async t => {
   const published = [];
   const service = { publish: async input => { published.push(input); return { slug: input.title, url: `http://localhost:7/${input.title}`, absPath: `/tmp/${input.title}` }; }, subscribe: async () => () => {}, answer: async () => ({ ok: true }) };
