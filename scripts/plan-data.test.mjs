@@ -73,6 +73,17 @@ test('without a question or a rejected reason, the brief names only the labels',
   assert.deepEqual(brief.decisions[0], { decision: '3, five minutes apart', reason: 'Three covers a brief outage without hiding a real failure.', rejected: 'None. The user presses Try again' });
 });
 
+test('feedback is optional on the plan and on claims: verbatim text with the version it was given on', () => {
+  const ok = plan(p => { p.feedback = [{ version: 1, text: '$(touch x)' }]; p.claims[0].children[0].feedback = [{ version: 2, text: 'a\nb' }]; });
+  assert.equal(validate(ok), ok);
+  assert.throws(() => toRunContract(plan(p => { p.claims[2].decision.state = 'not-opened'; p.claims[2].decision.required = true; p.feedback = [{ version: 2, text: 'approve' }]; })), /not approvable/);
+  rejects(p => { p.feedback = {}; }, 'feedback: expected array');
+  rejects(p => { p.feedback = [{ version: 0, text: 'x' }]; }, 'feedback[0].version: expected integer >= 1');
+  rejects(p => { p.feedback = [{ version: 1, text: ' ' }]; }, 'feedback[0].text: expected nonempty string');
+  rejects(p => { p.claims[1].feedback = [{ version: 1, text: 'x', approved: true }]; }, 'claims[1].feedback[0].approved: unknown field');
+  rejects(p => { p.claims[1].feedback = [{ text: 'x' }]; }, 'claims[1].feedback[0].version: required');
+});
+
 test('nextVersion bumps the version, supersedes the previous file, and leaves the input alone', () => {
   const before = fixture(), input = fixture();
   const next = nextVersion(input);

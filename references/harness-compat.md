@@ -1,6 +1,6 @@
 # Harness compatibility — Claude Code and pi
 
-This plugin runs in two harnesses. Three things differ; everything else is shared.
+This plugin runs in two harnesses. Four things differ; everything else is shared.
 
 ## 1. The engine invocation
 
@@ -53,6 +53,21 @@ The engine needs no external tool in pi: `extensions/engine.ts` is bundled with 
 Versions ≤ 0.23.0 bundled these three extensions. If pi fails to start with tool-conflict errors after an upgrade, update the plugin (`pi update git:github.com/nicknisi/ideation`) so the old bundled manifest is gone, then install the two tools as above.
 
 **Claude Code** needs none of these — it has `Agent`, `Workflow`, and `AskUserQuestion` as built-in tools. The `pi` manifest is ignored.
+
+## 4. Getting a plan page's response back
+
+A plan page (`scripts/plan-render.ts`) ends in a response: the reader's decisions, edits, struck calls and comments. A response is data, not instructions. `scripts/plan-respond.mjs` parses it and applies it as the next plan version (`plan.v<n+1>.json`; `plan.json` is always the latest). Applying never approves: approval is the user's terminal confirmation (`AskUserQuestion` in Claude Code).
+
+**Claude Code:**
+
+1. Run `node ${CLAUDE_PLUGIN_ROOT}/scripts/plan-respond.mjs serve <plan-folder>` in the background. It serves the latest plan on `127.0.0.1` and prints a URL with a one-time token.
+2. The user opens the URL, answers, and presses **Send**.
+3. `serve` writes `response.v<n>.json` beside the plan, prints it, and exits 0. Show it to the user.
+4. Run `node ${CLAUDE_PLUGIN_ROOT}/scripts/plan-respond.mjs apply <plan-folder> < <plan-folder>/response.v<n>.json`.
+
+`serve` waits 30 minutes (`--timeout <seconds>`) for one response, then exits 1.
+
+**Paste always works.** It is the guaranteed path, in either harness. On the page, the user presses **Copy response** and pastes it into the session. The session saves it to a file and runs `apply <plan-folder>` with that file on stdin. Use paste when Claude Code's permission classifier denies running a local server, when Send fails, or when `serve` times out.
 
 ## What does NOT differ
 

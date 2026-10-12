@@ -1,0 +1,249 @@
+{
+  "schemaVersion": 1,
+  "id": "send-retry",
+  "title": "Failed sends retry on their own",
+  "version": 1,
+  "supersedes": null,
+  "why": [
+    {
+      "quote": "When a send fails I only find out hours later.",
+      "from": "user"
+    },
+    {
+      "quote": "Nobody should have to press send twice.",
+      "from": "user"
+    }
+  ],
+  "change": {
+    "before": "A failed send stays failed until someone notices and presses send again.",
+    "after": "A failed send retries on its own, and the user sees when it gave up."
+  },
+  "mustHold": [
+    "A message is never sent twice.",
+    "Retries stop after the configured limit."
+  ],
+  "gates": {
+    "problem": {
+      "ready": true,
+      "evidence": "The user described the missed sends in their own words."
+    },
+    "goals": {
+      "ready": true,
+      "evidence": "Retry and give-up are both observable in the outbox."
+    },
+    "criteria": {
+      "ready": true,
+      "evidence": "Both checks name a command or a reviewer."
+    },
+    "scope": {
+      "ready": true,
+      "evidence": "Backoff tuning is out; the retry worker is in."
+    },
+    "consistency": {
+      "ready": true,
+      "evidence": "The worker and the outbox read the same attempt count."
+    }
+  },
+  "claims": [
+    {
+      "id": "1",
+      "text": "A failed send retries three times, five minutes apart.",
+      "exhibit": {
+        "kind": "machine",
+        "body": "machine send initial failed\nstate failed          # The send failed.\nstate retrying        # The worker tries again.\nstate sent     final  # The message went out.\nstate gave-up  final  # The outbox shows it.\n\n| failed | retrying | sent |\n| .      | gave-up  | .    |\n\nfailed   -due->   retrying : 5 min\nretrying -ok->    sent\nretrying -fail->  failed   : under 3\nretrying -limit-> gave-up  : 3 tries",
+        "sketch": true
+      },
+      "decision": {
+        "id": "retries",
+        "question": "How many retries before the worker stops?",
+        "options": [
+          {
+            "value": "three",
+            "label": "3, five minutes apart"
+          },
+          {
+            "value": "five",
+            "label": "5, with backoff"
+          },
+          {
+            "value": "none",
+            "label": "None. The user presses Try again"
+          }
+        ],
+        "recommended": "three",
+        "reason": "Three covers a brief outage without hiding a real failure.",
+        "required": true,
+        "state": "kept",
+        "rejected": [
+          {
+            "value": "none",
+            "reason": "It is the problem we are fixing."
+          }
+        ]
+      },
+      "children": [
+        {
+          "id": "1.1",
+          "text": "The worker reads the attempt count before each send.",
+          "exhibit": {
+            "kind": "calls",
+            "body": "~ retryWorker()                 @ src/retry.ts:12\n+   **readAttempts**(row)       @ src/outbox.ts:18\n    send(row)                   @ src/send.ts:30",
+            "sketch": true
+          },
+          "children": [
+            {
+              "id": "1.1.1",
+              "text": "The attempt count lives on the outbox row.",
+              "exhibit": {
+                "kind": "code",
+                "src": "src/outbox.ts",
+                "body": "export type OutboxRow = { id: string; attempts: number };",
+                "sketch": true
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "text": "The outbox shows when a send gave up.",
+      "exhibit": {
+        "kind": "mock",
+        "body": "<div>Gave up after 3 tries · Try again</div>",
+        "sketch": true
+      },
+      "decision": {
+        "id": "give-up-label",
+        "question": "What does a given-up send say?",
+        "options": [
+          {
+            "value": "count",
+            "label": "Gave up after 3 tries"
+          },
+          {
+            "value": "plain",
+            "label": "Not sent"
+          }
+        ],
+        "recommended": "plain",
+        "reason": "The count tells the user retries already happened.",
+        "required": true,
+        "state": "answered",
+        "answer": "count",
+        "rejected": [
+          {
+            "value": "plain",
+            "reason": "Reads as if nothing was tried."
+          }
+        ]
+      }
+    },
+    {
+      "id": "3",
+      "text": "Retry timing is one setting.",
+      "exhibit": {
+        "kind": "schema",
+        "body": "retry: { attempts: number; delayMs: number }",
+        "sketch": true
+      },
+      "decision": {
+        "id": "setting-home",
+        "question": "Where does the setting live?",
+        "options": [
+          {
+            "value": "config",
+            "label": "In config.json"
+          },
+          {
+            "value": "env",
+            "label": "In an environment variable"
+          }
+        ],
+        "recommended": "config",
+        "reason": "Config already holds the outbox settings.",
+        "required": true,
+        "state": "not-opened",
+        "rejected": []
+      }
+    }
+  ],
+  "checks": [
+    {
+      "id": "retry-tests",
+      "criterion": "The retry worker's tests pass",
+      "check": {
+        "cmd": "node --test src/retry.test.mjs",
+        "expect": "exits 0"
+      }
+    },
+    {
+      "id": "gave-up-readable",
+      "criterion": "A given-up send is easy to spot",
+      "check": {
+        "judgment": "Look at the outbox with one given-up send"
+      }
+    }
+  ],
+  "openQuestions": [],
+  "units": [
+    {
+      "id": "worker",
+      "title": "Retry worker",
+      "goal": "Retry failed sends up to the limit.",
+      "risk": "medium",
+      "needs": [],
+      "checkIds": [
+        "retry-tests"
+      ],
+      "claimIds": [
+        "1",
+        "1.1",
+        "1.1.1",
+        "3"
+      ]
+    },
+    {
+      "id": "outbox-label",
+      "title": "Gave-up label",
+      "goal": "Show when a send gave up.",
+      "risk": "high",
+      "design": "Adds one label; removing it restores the old row.",
+      "needs": [
+        "worker"
+      ],
+      "checkIds": [
+        "gave-up-readable"
+      ],
+      "claimIds": [
+        "2"
+      ]
+    }
+  ],
+  "authority": {
+    "paths": [
+      "src/"
+    ],
+    "commands": [
+      "node --test src/retry.test.mjs"
+    ],
+    "allowLocalCommit": true
+  },
+  "scope": {
+    "mvp": [
+      "Retry worker",
+      "Gave-up label"
+    ],
+    "full": [],
+    "stretch": [
+      "Backoff"
+    ],
+    "future": [],
+    "notChanging": [
+      "How a message is composed"
+    ],
+    "dropped": [
+      "A retry button on every row"
+    ]
+  }
+}
