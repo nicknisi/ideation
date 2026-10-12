@@ -90,13 +90,18 @@ function scope(plan: Plan): string {
   return ['<doc-claim aux="scope">', '<p>Scope: what is in, what is not changing.</p>', ...lists, '</doc-claim>'].join('\n');
 }
 
-/** Pure and deterministic: the same plan gives the same bytes. */
+/**
+ * Pure and deterministic: the same plan gives the same bytes. The <title>
+ * carries the version because the runtime keeps a reader's answers, drafts and
+ * strikes under the page's path and title, and a live page keeps its path
+ * from version to version: a new version must not restore the last one's.
+ */
 export function renderPlan(plan: Plan): string {
   const via = (from: string) => /\.\w+$/.test(from) ? 'doc' : 'prompt';
   return `<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
-<title>${esc(plan.title)}</title>
+<title>${esc(plan.title)} · v${plan.version}</title>
 <link rel="stylesheet" href="htmlplan.css">
 <script src="htmlplan.js" defer></script>
 <style data-plan-render>
@@ -126,7 +131,8 @@ export function packPlan(plan: Plan, { out, root = process.cwd(), lintOnly = fal
     const page = join(dir, 'plan.html');
     writeFileSync(page, renderPlan(plan));
     const args = [PACK, page, '--root', realpathSync(root), ...(lintOnly ? ['--lint-only'] : ['-o', resolve(out ?? 'plan.html')])];
-    try { return execFileSync(process.execPath, args, { encoding: 'utf8' }); }
+    // pack is plain node with no browser; the timeout only bounds a wedged child.
+    try { return execFileSync(process.execPath, args, { encoding: 'utf8', timeout: 120_000, killSignal: 'SIGKILL' }); }
     catch (e: any) { throw new Error(`${e.stdout ?? ''}${e.stderr ?? ''}`.trim() || e.message); }
   } finally { rmSync(dir, { recursive: true, force: true }); }
 }

@@ -170,23 +170,32 @@ test('checks produce bounded real evidence and invalidate all objective evidence
   const mutated = await api.runChecks(root, [{ id: 'before', check: { cmd: 'true' } }, { id: 'mutate', check: { cmd: 'echo changed > src/a.txt' } }], { timeoutMs: 1000 });
   assert.ok(mutated.every(r => r.status === 'failed' && r.output.includes('mutated')));
 });
-test('timeout and cancellation settle and kill process-group descendants, including redirected backgrounds', async t => {
+// Outcomes, not wall-clock speed: each mode must settle for its own reason, and the
+// SIGTERM-ignoring descendant must be gone. A loaded machine may take seconds; a
+// missing kill hangs forever, which the test timeout catches.
+test('timeout and cancellation settle and kill process-group descendants, including redirected backgrounds', { timeout: 60_000 }, async t => {
   const root = await fixture(t);
-  for (const mode of ['timeout', 'abort', 'background']) {
-    const pidfile = join(root, '.ideation-policy-pid');
+  // The abort case gets a deadline it can never reach, so only the abort can end it.
+  const modes = { timeout: { timeoutMs: 200, reason: /^Timed out\n/ }, abort: { timeoutMs: 30_000, reason: /^Cancelled\n/ }, background: { timeoutMs: 30_000, reason: /^Command left background processes\n/ } };
+  for (const [mode, { timeoutMs, reason }] of Object.entries(modes)) {
+    const pidfile = join(root, `.ideation-policy-pid-${mode}`);
     const controller = new AbortController();
     const cmd = `node -e 'process.on("SIGTERM",()=>{});setInterval(()=>{},1000)' >/dev/null 2>&1 & echo $! > '${pidfile}'; ${mode === 'background' ? 'exit 0' : 'wait'}`;
-    const timer = mode === 'abort' ? setTimeout(() => controller.abort(), 120) : undefined;
+    // Abort once the descendant exists, so cancellation has something to kill.
+    if (mode === 'abort') void (async () => { for (const end = Date.now() + 20_000; Date.now() < end && !(await readFile(pidfile, 'utf8').catch(() => ''));) await new Promise(r => setTimeout(r, 10)); controller.abort(); })();
     const start = Date.now();
-    const [result] = await api.runChecks(root, [{ id: mode, check: { cmd } }], { timeoutMs: 200, signal: controller.signal });
-    clearTimeout(timer);
-    assert.ok(Date.now() - start < 2000);
-    assert.equal(result.status, 'failed');
+    const [result] = await api.runChecks(root, [{ id: mode, check: { cmd } }], { timeoutMs, signal: controller.signal });
+    assert.equal(result.status, 'failed', mode);
+    assert.match(result.output, reason, `${mode} settled for its own reason`);
+    // Generous: 75 times the short deadline, and half the long ones, so neither can end the others.
+    assert.ok(Date.now() - start < 15_000, `${mode} settled in bounded time`);
     const pid = Number(await readFile(pidfile, 'utf8'));
+    assert.ok(pid > 0, `${mode} recorded its descendant`);
     let alive = true;
-    for (let i = 0; i < 40 && alive; i++) {
+    for (const end = Date.now() + 15_000; alive && Date.now() < end;) {
       try { process.kill(pid, 0); await new Promise(r => setTimeout(r, 25)); } catch (e) { if (e.code === 'ESRCH') alive = false; else throw e; }
     }
+    if (alive) try { process.kill(pid, 'SIGKILL'); } catch {}
     assert.equal(alive, false, `lingering ${mode} child ${pid}`);
   }
 });
@@ -211,7 +220,11 @@ test('commit preparation cannot hang on a clean filter after cancellation', asyn
   assert.ok(Date.now() - startedAt < 4000, 'abort applies to Git preparation, not only git commit');
 });
 
-test('stop and timeout bound commit hooks without bypassing signing or losing local changes', async t => {
+// Outcomes, not a race between bounds. commitWorkspace's timeoutMs is one deadline for
+// the whole operation, preparation included, so a loaded machine can spend a short
+// one before the hook starts. Each mode gets the margin that makes its own bound fire:
+// a generous deadline for the timeout, and one that can never fire for the abort.
+test('stop and timeout bound commit hooks without bypassing signing or losing local changes', { timeout: 120_000 }, async t => {
   const root = await fixture(t);
   const hooks = join(root, '.git/hooks');
   await git(root, 'config', 'core.hooksPath', hooks);
@@ -220,23 +233,47 @@ test('stop and timeout bound commit hooks without bypassing signing or losing lo
   await chmod(join(hooks, 'pre-commit'), 0o755);
   const head = await git(root, 'rev-parse', 'HEAD');
   await writeFile(join(root, 'src/a.txt'), 'pending\n');
+  const notBypassed = /Signing and hooks were not bypassed/;
+  const hookPid = async () => Number(await readFile(marker, 'utf8').catch(() => '')) || 0;
   for (const mode of ['timeout', 'abort']) {
     await rm(marker, { force: true });
     const controller = new AbortController();
-    const outcome = api.commitWorkspace(root, ['src/'], { message: 'scoped change', sourceRevision: await api.sourceRevision(root), signal: controller.signal, timeoutMs: mode === 'timeout' ? 1500 : 5000 });
-    const rejected = assert.rejects(outcome, /commit did not finish|aborted/i);
+    const start = Date.now();
+    const outcome = api.commitWorkspace(root, ['src/'], { message: 'scoped change', sourceRevision: await api.sourceRevision(root), signal: controller.signal, timeoutMs: mode === 'timeout' ? 5000 : 60_000 });
+    const settled = outcome.then(() => assert.fail(`${mode}: the commit must not finish`), e => e);
     if (mode === 'abort') {
       let started = false;
-      for (let i = 0; i < 100 && !started; i++) { started = Boolean(await readFile(marker).catch(() => null)); if (!started) await new Promise(r => setTimeout(r, 10)); }
+      for (const end = Date.now() + 30_000; !started && Date.now() < end;) { started = Boolean(await hookPid()); if (!started) await new Promise(r => setTimeout(r, 10)); }
       controller.abort();
       assert.ok(started, 'hook must actually be running before cancellation');
     }
-    await rejected;
-    assert.equal(await git(root, 'rev-parse', 'HEAD'), head);
+    const error = await settled;
+    if (mode === 'abort') {
+      // The hook was running and the deadline is a minute away: only the stop can end it.
+      assert.match(error.message, /^Local commit did not finish: Git commit did not finish: Cancelled/);
+      assert.match(error.message, notBypassed);
+    } else if (await hookPid()) {
+      // The hook ran, so preparation fit in the deadline: the deadline stopped the hook.
+      assert.match(error.message, /^Local commit did not finish: Git commit did not finish: Timed out/);
+      assert.match(error.message, notBypassed);
+    } else {
+      // Preparation alone outlasted the deadline (a very loaded machine): the same
+      // deadline bounded the operation before git commit ever ran. Still no commit.
+      assert.match(error.message, /^Local commit did not finish: Git commit did not finish: Timed out|^Git operation budget exhausted$/);
+    }
+    assert.ok(Date.now() - start < 25_000, `${mode}: settled well inside the hook's 30s sleep`);
+    // The hook is killed with its process group, nothing was committed, and the change is intact.
+    const pid = await hookPid();
+    let alive = Boolean(pid);
+    for (const end = Date.now() + 15_000; alive && Date.now() < end;) {
+      try { process.kill(pid, 0); await new Promise(r => setTimeout(r, 25)); } catch (e) { if (e.code === 'ESRCH') alive = false; else throw e; }
+    }
+    if (alive) try { process.kill(pid, 'SIGKILL'); } catch {}
+    assert.equal(alive, false, `lingering ${mode} hook ${pid}`);
+    assert.equal(await git(root, 'rev-parse', 'HEAD'), head, `${mode}: no commit, so signing and hooks were not skipped to make one`);
     assert.equal(await readFile(join(root, 'src/a.txt'), 'utf8'), 'pending\n');
   }
 });
-
 test('review shows new files without staging contents; commit is scoped and source bound', async t => {
   const root = await fixture(t);
   await writeFile(join(root, 'src/new file'), 'new content\n');

@@ -168,6 +168,14 @@ ignores the request handler ideation passes, so the draft page shows no button. 
 confirmation; anything that can reach the local server could send a request, so a
 request is never treated as approval.
 
+Plan pages (`/ideation respond <plan-folder>`) use the same service, one slug per plan
+id, and ask for no page requests. Their Send saves one annotation through the page's
+own pi-artifacts endpoints and posts it as one feedback batch; the extension itself
+still writes no sidecar. On those pages html-plan's own comment controls are off, so
+pi-artifacts' Review is the one comment surface. The next plan version is written only
+after a terminal confirmation. Details, and the fallbacks (a terminal form, a local
+`plan.html`, paste), are in `references/harness-compat.md` §4.
+
 Without a service, a durable `file://` view is used. It updates on disk; refresh the
 browser manually. No live transport or annotations are claimed in fallback mode.
 Provider failure warns and exposes the local view; it never changes a run outcome or

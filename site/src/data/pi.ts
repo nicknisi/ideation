@@ -20,6 +20,7 @@ export const SHORT: Record<string, string> = {
   accept: 'record your decision',
   exit: 'leave, taking the work with you',
   motion: 'widget animation on or off',
+  respond: 'answer a plan, then confirm',
 };
 
 const SUBCOMMANDS: Record<string, string> = {
@@ -35,6 +36,8 @@ const SUBCOMMANDS: Record<string, string> = {
     'Record your acceptance of a ready-for-review run after reading its evidence and judgments. It never merges, pushes or deploys.',
   exit: 'Leave ideation from any state. Stops a working run, brings its work into your checkout as uncommitted changes (or keeps it on its branch), and clears the widget. Nothing comes back on its own.',
   motion: 'Turn the widget animation on or off (saved). PI_REDUCED_MOTION=1 or IDEATION_MOTION=off also switch it off.',
+  respond:
+    'Answer the latest plan.json in a plan folder: on its live page (with the artifacts service), in a terminal form, or by pasting the page’s Copy response. The response is shown in the session, and the next plan version is written only after you confirm. It never approves the plan.',
 };
 
 const TOOL_ACTIONS: Record<string, string> = {

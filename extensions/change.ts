@@ -34,6 +34,7 @@ const SUBCOMMANDS: [string, string, boolean][] = [
   ['accept', 'Record your acceptance of a ready change', false],
   ['exit', 'Leave ideation and take the work with you', false],
   ['motion', 'Turn the widget animation on or off', true],
+  ['respond', 'Answer a plan: its page, a terminal form, or a pasted response', true],
 ];
 const RUN_ARGUMENT = new Set(['status', 'review', 'pause', 'resume', 'stop', 'accept', 'exit']);
 // Loaded on the first spawn, not at startup or session start: from this repo's
@@ -65,7 +66,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
     if (!s) return;
     s.live = false;
     clearInterval(s.repaint);
-    await Promise.allSettled([s.bridge.dispose(), s.runner.dispose(), s.docsTail]);
+    await Promise.allSettled([s.bridge.dispose(), s.runner.dispose(), s.docsTail, s.plans?.then((p: any) => p.dispose())]);
     if (s.ctx.hasUI) { s.ctx.ui.setStatus('ideation', undefined); s.ctx.ui.setWidget('ideation', undefined); }
     s.widget = undefined;
   }
@@ -209,6 +210,12 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
     })();
     try { return await initializing; } finally { initializing = undefined; }
   }
+  // The plan respond loop (workflows/plan-pi.mjs over scripts/plan-respond.mjs),
+  // loaded on first use. Only the terminal confirmation writes a plan version.
+  const plansFor = (s: any) => s.plans ??= import('../workflows/plan-pi.mjs').then(({ createPlanResponder }) => createPlanResponder({
+    events: pi.events, stateDir: join(s.stateDir, 'plans'), root: s.repoRoot, getCtx: () => s.ctx, isLive: () => s.live && current === s,
+    notify: (message: string, level?: string) => notify(s, message, level), sendMessage: (message: any, options: any) => pi.sendMessage(message, options),
+  }));
   const briefAt = async (s: any, path: string) => validateBrief(JSON.parse(await readFile(resolve(s.cwd, path), 'utf8')));
   const preparedFor = (s: any, ctx: any) => {
     if (s.prepared) return s.prepared;
@@ -434,7 +441,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
     return;
   }
   pi.registerCommand('ideation', {
-    description: 'Open ideation: review or approve your prepared change, follow progress, or control a run. Also: plan <idea>, approve [path], status, review, pause, resume, stop, accept, exit, motion [on|off].',
+    description: 'Open ideation: review or approve your prepared change, follow progress, or control a run. Also: plan <idea>, approve [path], status, review, pause, resume, stop, accept, exit, motion [on|off], respond <plan-folder>.',
     getArgumentCompletions: async (prefix: string) => {
       const [head = '', ...rest] = prefix.split(' ');
       const tail = rest.join(' ');
@@ -495,6 +502,7 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
         }
         if (!action) action = 'status';
         if (action === 'exit') { await leaveIdeation(s, ctx, arg); return; }
+        if (action === 'respond') { await (await plansFor(s)).respond(arg, ctx); return; }
         if (action === 'motion') {
           const want = /^(on|off)$/i.test(arg) ? arg.toLowerCase() === 'on' : !s.motionOn;
           const path = settingsPath();

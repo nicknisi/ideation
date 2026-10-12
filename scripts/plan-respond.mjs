@@ -47,6 +47,14 @@
 // permission classifier will not run a local server, the user presses Copy
 // response and pastes it, and the session runs `apply` with it on stdin.
 //
+// Pi: `/ideation respond <plan-folder>` (workflows/plan-pi.mjs, a UI layer over
+// this file) publishes the same page through @nicknisi/pi-artifacts, or walks the
+// decisions in a terminal form. formQuestions lists what the form asks, and
+// formResponse gives the Response the page gives for the same choices. Either
+// way the user confirms in the terminal before applyFolder writes anything.
+// Without the extension (Riker's workers run Pi with --no-extensions), render,
+// serve and apply here work as they do for Claude Code.
+//
 // The server answers only requests whose Host is 127.0.0.1:<port> or
 // localhost:<port> and whose path carries the token (compared in constant
 // time); serves the page to GET only and takes POST only at the respond path,
@@ -140,11 +148,11 @@ function callLabel(n) {
 /** What the page shows for a plan, in the terms its response uses. */
 function pageOf(plan) {
   const claims = numbered(plan);
-  const asks = claims.filter(c => c.claim.decision).map(({ claim, no }) => {
+  const asks = claims.filter(c => c.claim.decision).map(({ claim, no, ref }) => {
     const d = claim.decision;
     const current = d.state === 'answered' ? d.answer : d.recommended;
     const label = (value) => shown(d.options.find(o => o.value === value).label);
-    return { d, no, current, label, question: (d.question ?? d.options.find(o => o.value === current).label).trim() };
+    return { d, claim, no, ref, current, label, question: (d.question ?? d.options.find(o => o.value === current).label).trim() };
   });
   // plan-render.ts exhibit(): a schema's title is its src (or "schema"), then " · sketch"; pack gives a src-only one file=src.
   const schemas = claims.filter(c => c.claim.exhibit.kind === 'schema').map(({ claim, no }) => {
@@ -297,6 +305,50 @@ export function parseResponse(input, plan) {
     comments: each('Comments', parseComments),
     walked: each('Walked', parseWalked),
   };
+}
+
+/**
+ * The decisions a terminal form walks, in claim order, as the page asks them:
+ * each with the option shown first (`preselected`: the current answer, or the
+ * recommended option when there is none yet).
+ */
+export function formQuestions(plan) {
+  validate(plan);
+  return pageOf(plan).asks.map(({ d, claim, no, ref, current, label, question }) => ({
+    decisionId: d.id, claimId: claim.id, claim: ref, no, question, state: d.state, required: d.required,
+    preselected: current, recommended: d.recommended,
+    options: d.options.map(o => ({ value: o.value, label: label(o.value) })),
+  }));
+}
+
+/**
+ * The Response a terminal form gives: the same one the page gives for the same
+ * choices. `choices` maps a decision id to { value?, comment? } for each
+ * decision the user moved past: kept when value is absent or the current
+ * choice, changed otherwise. A decision with no entry was never opened and
+ * stays not-opened, never read as agreement. A comment sits on the decision's
+ * claim, labelled as the page labels a comment on that claim.
+ * @returns {Response}
+ */
+export function formResponse(plan, choices = {}) {
+  validate(plan);
+  if (!isObject(choices)) refuse('form choices must be an object');
+  const page = pageOf(plan);
+  for (const key of Object.keys(choices)) if (!page.asks.some(a => a.d.id === key)) refuse(`the form answers ${q(key)}, which is no decision of this plan`);
+  const decisions = [], comments = [];
+  for (const ask of page.asks) {
+    const id = ask.d.id, choice = choices[id];
+    if (choice === undefined) { decisions.push({ decisionId: id, state: 'not-opened' }); continue; }
+    if (!isObject(choice)) refuse(`the form's choice for ${q(id)} must be an object`);
+    for (const key of Object.keys(choice)) if (key !== 'value' && key !== 'comment') refuse(`the form's choice for ${q(id)} has unknown field ${q(key)}`);
+    const value = choice.value ?? ask.current;
+    if (!ask.d.options.some(o => o.value === value)) refuse(`${q(value)} is not an option of ${q(id)}`);
+    decisions.push(value === ask.current ? { decisionId: id, state: 'kept' } : { decisionId: id, state: 'changed', value });
+    if (choice.comment !== undefined && typeof choice.comment !== 'string') refuse(`the form's comment on ${q(id)} must be text`);
+    // The page saves a comment trimmed, and drops an empty one.
+    if (choice.comment?.trim()) comments.push({ target: ask.claim.id, label: ask.ref, text: choice.comment.trim() });
+  }
+  return validateResponse({ plan: { id: plan.id, version: plan.version }, decisions, edits: [], strikes: [], comments, walked: [] }, plan);
 }
 
 /** Every claim by id. */
@@ -489,6 +541,16 @@ function tokenMatches(presented, token) {
   return timingSafeEqual(digest(presented), digest(token));
 }
 
+/**
+ * Puts `snippet` (a host's hook, trusted markup this repo writes) into a packed
+ * page right after its <meta charset>, so it runs before the runtime does.
+ */
+export function withHead(packed, snippet) {
+  const anchor = '<meta charset="utf-8">';
+  if (packed.indexOf(anchor) < 0 || packed.indexOf(anchor) > packed.indexOf('<script')) throw new Error('plan-respond: the packed page has no <meta charset> before its scripts to put the respond hook after');
+  return packed.replace(anchor, () => `${anchor}\n${snippet}`);
+}
+
 const HEADERS = {
   'cache-control': 'no-store',
   'x-content-type-options': 'nosniff',
@@ -515,9 +577,7 @@ export async function serve(folder, { timeoutMs = DEFAULT_TIMEOUT_S * 1000, root
   const token = randomBytes(32).toString('hex');
   const respondPath = `/${token}/respond`;
   const hook = `<script>window.__planRespond = (payload) => fetch(${q(respondPath)}, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });</script>`;
-  const anchor = '<meta charset="utf-8">';
-  if (packed.indexOf(anchor) < 0 || packed.indexOf(anchor) > packed.indexOf('<script')) throw new Error('plan-respond: the packed page has no <meta charset> before its scripts to put the respond hook after');
-  const page = Buffer.from(packed.replace(anchor, `${anchor}\n${hook}`));
+  const page = Buffer.from(withHead(packed, hook));
 
   let finished = false, timer, port;
   let settle;

@@ -607,7 +607,7 @@ test('/ideation arguments tab-complete: subcommands, motion on|off, and run IDs'
   const runner = { status: async () => [makeRun('needs-decision', { id: 'riker-terminal-1', repoRoot: rootOf() }), makeRun('cancelled', { id: 'gone-1', exit: { at: 1 } })], dispose: async () => {} };
   const h = await harness(t, { runner }); root = h.root;
   const complete = h.commands.ideation.getArgumentCompletions;
-  assert.deepEqual((await complete('')).map(i => i.label), ['plan', 'approve', 'status', 'review', 'pause', 'resume', 'stop', 'accept', 'exit', 'motion']);
+  assert.deepEqual((await complete('')).map(i => i.label), ['plan', 'approve', 'status', 'review', 'pause', 'resume', 'stop', 'accept', 'exit', 'motion', 'respond']);
   assert.deepEqual((await complete('ex')).map(i => i.value), ['exit']);
   assert.deepEqual((await complete('pl')).map(i => i.value), ['plan ']);
   assert.deepEqual((await complete('motion o')).map(i => i.value), ['motion on', 'motion off']);
