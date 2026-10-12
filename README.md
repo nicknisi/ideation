@@ -197,8 +197,8 @@ and asks whether to bring its changed files into your checkout as uncommitted ch
 or keep them on the run's branch (work that doesn't apply cleanly stays on the
 branch). Ready for review is not accepted: `/ideation accept` records your judgment
 against the current evidence, and never merges, pushes or deploys. `/ideation status`,
-`review` and `motion on|off` round out the subcommands; bare `/ideation` offers
-whatever fits the current state. See [the native workflow guide](docs/native-workflow.md).
+`review` and `motion on|off` round out the subcommands; `/ideation <plan-folder>`
+resumes a plan, and bare `/ideation` offers whatever fits the current state. See [the native workflow guide](docs/native-workflow.md).
 
 ### /ideation:autopilot
 

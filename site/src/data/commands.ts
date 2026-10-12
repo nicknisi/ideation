@@ -63,7 +63,7 @@ export const COMMANDS: CommandDoc[] = [
       { name: 'just do it', when: 'One clear, low-risk change. No page: a compact plan, its checks, one confirmation, then the run.' },
       { name: 'short plan', when: 'Buildable now, with two to five real forks. You answer them on the page, then approve.' },
       { name: 'interview', when: 'The problem, goals or scope are not settled. The evidence-gated interview, the four critics, then the page.' },
-      { name: 'map', when: 'Too big or foggy for one session. Its open questions are the map: research ones resolve in parallel, the rest one per session, until the route is clear; then the interview.' },
+      { name: 'map', when: 'Too big or foggy for one session. Its open questions are the map: research ones resolve in parallel, the rest one per session (more when you ask it to keep going), until the route is clear; then the interview.' },
     ],
   },
   {
