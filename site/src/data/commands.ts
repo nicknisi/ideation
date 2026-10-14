@@ -67,6 +67,16 @@ export const COMMANDS: CommandDoc[] = [
     ],
   },
   {
+    slug: 'brainstorm',
+    stage: 'plan',
+    headline: 'Decide whether to build it, before any planning.',
+    when: 'You are weighing an idea, not committing to it. The same conversation as the "should we?" opening of /ideation, as its own command. In Pi, /skill:brainstorm starts it.',
+    produces:
+      'A short conclusion in chat: the decision, its assumptions, the alternatives rejected, and what is out. If it is "build it", a pointer to the depth to run with /ideation.',
+    caveat:
+      'It never starts planning itself. Its tool list has no way to write, so run /ideation in the same conversation to turn a "build it" into a plan.',
+  },
+  {
     slug: 'autopilot',
     stage: 'execute',
     headline: 'Run every unit of an approved plan on the workflow engine.',

@@ -57,7 +57,9 @@ assumptions, argues for the minimum, and takes one fork at a time. No plan, no d
 scratch file, and `git status` is unchanged when it ends. It ends with a short
 conclusion in chat (the decision, its assumptions, the alternatives rejected, and
 what's explicitly out), then routes: a depth if the answer is "build it", or a plain
-stop if it isn't.
+stop if it isn't. `/ideation:brainstorm` (in Pi, `/skill:brainstorm`) runs the same
+conversation on its own, with a tool list that cannot write; a "build it" ends with a
+pointer to `/ideation`.
 
 Pointing `/ideation` at an existing folder resumes it: open questions go back to the
 interview (or the map), and an unapproved plan with open decisions goes back to its
@@ -362,7 +364,7 @@ repo's `.gitignore` does.
 
 ## From 0.x
 
-1.0 replaces five commands with one, and replaces contracts and up-front specs with
+1.0 folds four commands into `/ideation`, and replaces contracts and up-front specs with
 plan data. **There is no 0.x deprecation release.** The plan for 1.0 had a last 0.x
 minor print a notice on each removed command; that step was skipped because the whole
 change lands as one release, 1.0.0. The removed commands have no shim: each one is
@@ -372,13 +374,13 @@ simply gone, and this table says where its work went.
 
 | 0.x | In 1.0 |
 | --- | --- |
-| `/ideation:brainstorm` | `/ideation`'s `should we?` opening: still a conversation that writes no files, ending in a decision and, if it's "build it", a depth |
 | `/ideation:chart` | `/ideation` at the `map` depth: the map's tickets are `openQuestions` in `plan.json`, still one non-research question per session unless you say to keep going |
 | `/ideation:express` | `/ideation` at `just do it` for one clear change; at any depth, the terminal approval hands the plan straight to the engine |
 | `/ideation:change`, `/skill:ideation-change` | `/ideation` (in Pi, also `/ideation plan`): it picks the depth, a clear change lands on `just do it`, and Pi's approval runs it through the same change workflow |
 
 `/ideation`, `/ideation:autopilot`, `/ideation:execute-spec` and
-`/ideation:get-goal-prompt` keep their names. Planning no longer writes PRDs,
+`/ideation:get-goal-prompt` keep their names, and so does `/ideation:brainstorm`, which
+now runs `/ideation`'s `should we?` opening on its own. Planning no longer writes PRDs,
 up-front specs, `contract.md` or a planning `contract.html`; work packets are derived
 from the plan at approval.
 
