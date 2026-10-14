@@ -128,8 +128,10 @@
   "outOfScope": [
     "Real-time collaboration"
   ],
-  "delegated": [
-    "Where the offline indicator sits"
-  ],
-  "decisions": []
+  "decisions": [
+    {
+      "decision": "How is “the offline indicator feels right” checked? A test for the state, plus your airplane-mode walkthrough",
+      "reason": "A test proves the state; only a person can judge whether it feels right."
+    }
+  ]
 }

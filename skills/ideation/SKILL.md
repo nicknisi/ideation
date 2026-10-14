@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Ideation
 
-One entry point. Read the request and its context, pick a depth, state it with a one-line reason, and work at that depth. Run only when the user invokes `/ideation` (in Pi: `/ideation plan`, bare `/ideation`, or `/skill:ideation`) or explicitly asks for it. Reading this skill is not permission to start it.
+One entry point. Read the request and its context, pick a depth, state it with a one-line reason, and work at that depth. Run only when the user invokes `/ideation` (in Pi: `/ideation plan [idea]`, *Plan a new change* in bare `/ideation`, or `/skill:ideation`) or explicitly asks for it. Reading this skill is not permission to start it.
 
 ## Pick the depth
 
@@ -29,7 +29,7 @@ Depth: short plan. Two real forks (where retries live, what a given-up send says
 Pick the depth from the request, the code, and the risk:
 
 - **Risk outranks size.** A one-line change to auth, billing, a migration or data deletion is at least a `short plan`. A large but mechanical change can be `just do it`.
-- **An existing folder decides it.** When the user points at `docs/ideation/<slug>/`, resume it: open `openQuestions` mean `interview` (or `map`, if the plan came from one), and an unapproved plan with open decisions means its page.
+- **An existing folder decides it.** When the user points at `docs/ideation/<slug>/`, resume it: open `openQuestions` mean `interview` (or `map`, when `stoppedEarly` starts with `map:`), and an unapproved plan with open decisions means its page.
 - **When torn, name the other depth** in the reason line ("short plan, not interview: the problem is settled") so the overrule is one word away.
 - The words line up with Riker's sizing: `just do it` is `just-do-it`, and the planned depths are `plan-first`.
 
@@ -37,7 +37,7 @@ Pick the depth from the request, the code, and the risk:
 
 ## The "should we?" opening writes no files
 
-**Hard rule: the "should we?" opening writes no files.** No plan, no brief, no docs, no scratch file, nothing under `docs/ideation/`. `git status` must be unchanged when it ends. No frontmatter enforces this, because the same skill writes plans at every depth, so you enforce it: no `Write` or `Edit`, and no `Bash` at all (`echo > file` writes too). To look something up, use `Read`/`Glob`/`Grep` or an `Agent` with `subagent_type: "Explore"`, never a general-purpose agent. (In pi, see `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md` § 2: a read-only `dispatch` task, never one with `edit`, `write` or `bash`.)
+**Hard rule: the "should we?" opening writes no files.** No plan, no brief, no docs, no scratch file, nothing under `docs/ideation/`. `git status` must be unchanged when it ends. No frontmatter enforces this, because the same skill writes plans at every depth, so you enforce it: no `Write` or `Edit`, and no `Bash` at all (`echo > file` writes too). To look something up, use `Read`/`Glob`/`Grep` or an `Agent` with `subagent_type: "Explore"`, never a general-purpose agent. (In pi, see `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md` § 2: a read-only `dispatch` task, never one with `edit`, `write` or `bash`; and none of your own `write`, `edit` or `bash`: look things up with `read`/`find`/`grep`.)
 
 It is a thinking partner for deciding **whether**, not how. From `${CLAUDE_PLUGIN_ROOT}/references/interview-engine.md`, use only *Open by surfacing the silent assumptions*, *What to challenge during the interview* and *Banned phrases*. Argue for the minimum, using the plan critic's over-engineering lens (`${CLAUDE_PLUGIN_ROOT}/agents/plan-critic.md`) in dialogue, until the user names the goal that justifies more. Take one fork at a time. No gates, no scoreboard, no intake sweep.
 
@@ -74,11 +74,11 @@ If the answers show that the problem, the goals or the scope aren't settled, swi
 The evidence-gated interview, at full rigor.
 
 1. **Intake and interview.** Read and follow `${CLAUDE_PLUGIN_ROOT}/references/interview-engine.md` through every phase. Judge gates by `${CLAUDE_PLUGIN_ROOT}/references/confidence-rubric.md`. The engine owns the invariants: one question per turn, each with your recommended answer, codebase before questions, the scoreboard after every answer, the prototype spike and the strawman, and no fixed question limit.
-2. **Write the plan** when no gate can move: all five are `ready`, every open one is blocked on a written open question, or the user ended the interview. Name the project yourself in one line (`Calling this "Send retry" → docs/ideation/send-retry/`). Ask only when the dump covers two separable projects. Write `gates` from the tracked state (one sentence of evidence each, citing its artifact), `openQuestions` for every question the engine wrote, the decisions already made, and the decisions still open for the page (`not-opened`, each with a recommended answer). If the user ended early, set `stoppedEarly` to why.
+2. **Write the plan** when no gate can move: all five are `ready`, every open one is blocked on a written open question, or the user ended the interview. Name the project yourself in one line (`Calling this "Send retry" → docs/ideation/send-retry/`). Ask only when the dump covers two separable projects. Write `gates` from the tracked state (one sentence of evidence each, citing its artifact), `openQuestions` for every question the engine wrote, the decisions already made, and the decisions still open for the page (`not-opened`, each with a recommended answer). If the user ended early, set `stoppedEarly` to why; otherwise remove any `stoppedEarly` an earlier depth (a map, a short plan) left, because it would let approval skip the gate check.
 3. Run [the critics](#the-critics) once, before the first page.
 4. [Open the page and take the response](#the-page-and-the-respond-loop) for the remaining decisions, revising version by version. Then ask for [approval](#approval).
 
-**Open gates block approval.** `toRunContract` refuses a plan with a gate that isn't ready unless `stoppedEarly` says why, and the confirmation names every gate that isn't ready. A plan that still has `openQuestions` is a plan to resume, not to run. Say what each question waits on, and how to pick it up: point `/ideation` at `docs/ideation/<slug>/` and the interview resumes on those questions alone (the engine's resume path).
+**Open gates block approval.** `toRunContract` refuses a plan with a gate that isn't ready unless `stoppedEarly` says why. In Claude Code the confirmation names every gate that isn't ready; Pi's confirmation summarizes the run contract, which carries no gates, so in Pi list them (with `stoppedEarly`) in the terminal before sending the user to `/ideation approve`. A plan that still has `openQuestions` is a plan to resume, not to run. Say what each question waits on, and how to pick it up: point `/ideation` at `docs/ideation/<slug>/` and the interview resumes on those questions alone (the engine's resume path).
 
 ## map
 
@@ -100,7 +100,7 @@ unit-<id>.md             # Claude Code hand-off: one work packet per unit
 brief.json, contract.html, receipt.json   # Pi hand-off, written by the change workflow host
 ```
 
-**Versions.** Edit v1 in place until a person has seen it. After that, every change is a new version: copy `plan.json` to `plan.v<n>.json` if that file is missing, then write `plan.json` with `version: n+1` and `supersedes: "plan.v<n>.json"`. `plan-respond apply` does this for you when it applies a response.
+**Versions.** Edit v1 in place until a person has seen it. After that, every change is a new version: copy `plan.json` to `plan.v<n>.json` if that file is missing, then write the new version, `version: n+1` and `supersedes: "plan.v<n>.json"`, to both `plan.v<n+1>.json` and `plan.json`. `plan-respond apply` does this for you when it applies a response.
 
 **Old folders convert on read.** A folder that has `contract-data.json` (0.x) or `brief.json` but no `plan.json` gets one before anything else reads it:
 
@@ -108,7 +108,7 @@ brief.json, contract.html, receipt.json   # Pi hand-off, written by the change w
 node ${CLAUDE_PLUGIN_ROOT}/scripts/plan-migrate.mjs docs/ideation/<slug>
 ```
 
-It writes `plan.json` v1 beside the old files and never changes them. A converted 0.x plan has empty `change`, `mustHold` and `authority`, so it can be read and resumed but must be revised once before it can run. An approved 0.x contract that already has specs still runs as before: `/ideation:autopilot docs/ideation/<slug>/contract.md`.
+It writes `plan.json` v1 beside the old files and never changes them. A converted 0.x plan has empty `change`, `mustHold` and `authority`, so it can be read and resumed but can't pass 1.0 approval until it is revised. An approved 0.x contract that already has specs runs unchanged, from those specs: `/ideation:autopilot docs/ideation/<slug>/`.
 
 ### Writing plan data
 
@@ -117,7 +117,7 @@ The schema is `${CLAUDE_PLUGIN_ROOT}/schemas/plan.ts`; read it when unsure. Rend
 - **`why`** holds the problem in its owner's own words (`from` says who). **`change`** is before → after. **`mustHold`** is what must stay true.
 - **Claims** are short sentences that can be true or false: at most five per level, three levels deep. Level 1 says what someone can now do or see, level 2 how it works, level 3 where in the code. Each claim has one exhibit, with `sketch: true` for anything that doesn't exist yet.
 - **Decisions** sit on the claim they change. Record each one the moment the user turns an alternative down, with `rejected` and the reason. Don't reconstruct them later.
-- **Checks** are `{cmd, expect}` whenever a command can verify the criterion, and `{judgment}` naming who looks at what otherwise. A command must prove success by exiting 0; `expect` explains, it doesn't assert. Never write a check that can't fail, and never count a pending judgment as passed.
+- **Checks** are `{id, criterion, check}`, where `check` is `{cmd, expect?}` whenever a command can verify the criterion, and `{judgment}` naming who looks at what otherwise. A command must prove success by exiting 0; `expect` explains, it doesn't assert. Never write a check that can't fail, and never count a pending judgment as passed.
 - **Units** sit at meaningful, independently testable boundaries, with `needs`, `checkIds` and `claimIds`. Later units carry goals, not file-by-file recipes. Mark risk conservatively. A high-risk unit needs a `design` (interfaces, compatibility, rollback), and high risk never authorizes a destructive migration or a publication by itself.
 - **Authority is the smallest that works:** exact file paths or directory prefixes ending in `/`, the exact commands (every check `cmd` must appear among them), and whether a local commit is allowed. `.` grants ordinary project paths but never protected internals or dependency manifests. **No budgets:** never add time, token or attempt limits. Approved commands run project scripts with the user's own permissions. **This is not an OS sandbox**, and the approval confirmation says so.
 - **Scope** tiers are `mvp`, `full`, `stretch` and `future`, plus `notChanging` and `dropped`. **Gates** use the rubric's five keys.
@@ -140,14 +140,14 @@ Findings cite plan ids (claim, decision, check and unit ids, or `scope.<tier>[i]
 - **`notable`**: fold it in if it's clearly right. Otherwise put it in the digest with a one-line dismissal.
 - **`nit`**: digest only.
 
-Show the digest in the terminal, one line per lens: `found N (B blockers fixed, M notables, dismissed X: reasons)`. A failed or unregistered critic means you warn, proceed without that lens, and note the gap. Critics never block the plan. They run once per plan. Re-run them only when a revision changes the goals or scope fundamentally, never for wording or for answers from the page.
+Show the digest in the terminal, one line per lens: `found N (B blockers fixed, M notables, dismissed X: reasons)`. A failed or unregistered critic means you warn, proceed without that lens, and note the gap. Critics never gate approval: you fix their blockers before the first page. They run once per plan. Re-run them only when a revision changes the goals or scope fundamentally, never for wording or for answers from the page.
 
 ### The page and the respond loop
 
 The page is how a person answers a plan: its decisions, edits to schema exhibits, struck calls and comments. It never approves. How to get a response back is `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md` § 4, which has the details. In short:
 
 - **Pi (preferred):** ask the user to run `/ideation respond docs/ideation/<slug>`. It publishes the page through pi-artifacts, or offers the terminal decision form, or takes a paste. The next version is written only when the user confirms it in the terminal.
-- **Claude Code:** render with `node ${CLAUDE_PLUGIN_ROOT}/scripts/plan-render.ts docs/ideation/<slug>/plan.json` (writes `plan.html`), and `open` it as a separate Bash call (`xdg-open` on Linux). Then run `node ${CLAUDE_PLUGIN_ROOT}/scripts/plan-respond.mjs serve docs/ideation/<slug>` in the background, show the response it prints, and apply it with `plan-respond.mjs apply`.
+- **Claude Code:** render the durable copy with `node ${CLAUDE_PLUGIN_ROOT}/scripts/plan-render.ts docs/ideation/<slug>/plan.json` (writes `plan.html`). Then run `node ${CLAUDE_PLUGIN_ROOT}/scripts/plan-respond.mjs serve docs/ideation/<slug>` in the background and `open` the 127.0.0.1 URL it prints, as a separate Bash call (`xdg-open` on Linux). Only that served page's **Send** reaches `serve`; `plan.html` opened as a file can only copy its response. Show the response `serve` prints, then apply it: `node ${CLAUDE_PLUGIN_ROOT}/scripts/plan-respond.mjs apply docs/ideation/<slug> < docs/ideation/<slug>/response.v<n>.json`.
 - **Paste always works**, in both harnesses: the user presses **Copy response** and pastes it into the session. Save it to a file and run `apply` with that file on stdin. Use paste when Send fails, `serve` times out, or a permission classifier denies the local server.
 - **If a script is denied** by permissions, don't work around it and never hand-write the page. Show the exact command and ask the user to run it with `! node …`.
 
@@ -168,7 +168,7 @@ Ask only once no required decision is open. Pi's confirmation shows its own summ
 **Claude Code** (or Pi without the extension, as in Riker's workers):
 
 1. Run `git status --porcelain`. If the tree is dirty, say so in the question: the run commits only the files each unit names, and the user's changes stay uncommitted in the same tree.
-2. Ask one `AskUserQuestion`: *"Approve plan v{n} and run it?"* with **Approve and run**, **Needs changes** (back to this depth's loop) and **Stop here** (the plan stays on disk for later).
+2. Ask one `AskUserQuestion` (`ask_user_question` in Pi): *"Approve plan v{n} and run it?"* with **Approve and run**, **Needs changes** (back to this depth's loop) and **Stop here** (the plan stays on disk for later).
 3. **Only after "Approve and run"**, freeze it:
 
    ```bash
@@ -178,15 +178,15 @@ Ask only once no required decision is open. Pi's confirmation shows its own summ
    It goes through `toRunContract`, so it refuses an unanswered required decision or a gate that isn't ready without `stoppedEarly`, and names them. If it refuses, go back to the depth. On success it writes `run-contract.json` and one packet per unit (`unit-<id>.md`), and prints their paths.
 4. Hand off to the existing engine.
    - **One unit:** read and follow `${CLAUDE_PLUGIN_ROOT}/skills/execute-spec/SKILL.md` with the packet path, interactively, in the current checkout.
-   - **More than one:** read and follow `${CLAUDE_PLUGIN_ROOT}/skills/autopilot/SKILL.md` from its Step 1 with `docs/ideation/<slug>/run-contract.json`. It runs fail-closed on branch `ideation/<slug>`. Append two lines to its report: `Branch: ideation/<slug>` and `Review: git diff <default-branch>...ideation/<slug>`.
+   - **More than one:** read and follow `${CLAUDE_PLUGIN_ROOT}/skills/autopilot/SKILL.md` from its Step 1 with `docs/ideation/<slug>/run-contract.json`. It runs fail-closed on branch `ideation/<plan id>`. Append two lines to its report: `Branch: ideation/<plan id>` and `Review: git diff <default-branch>...ideation/<plan id>`.
    - **Unattended**, if the user would rather walk away: `/ideation:get-goal-prompt docs/ideation/<slug>` prints a `/goal` (owned by `${CLAUDE_PLUGIN_ROOT}/scripts/plan-goal.mjs`) that drives autopilot on the run contract until `verify.mjs` passes. It needs the `run-contract.json` written in step 3, so offer it only after approval.
-   - Every unit commit ends with the trailer `Ideation-Unit: <slug>/<unit id>`, which autopilot's engine and execute-spec both add, as Pi's change runner does. `verify.mjs` counts it for `commits=`.
+   - Every unit commit ends with the trailer `Ideation-Unit: <plan id>/<unit id>`, which autopilot's engine and execute-spec both add, as Pi's change runner does. `verify.mjs` counts it for `commits=`.
 
 ### Harness differences
 
 Pi's terminal UX is preferred wherever the harnesses differ. Everything else is shared.
 
-- **Questions:** `AskUserQuestion` in Claude Code and `ask_user_question` in pi, one at a time, 2–4 options, the recommended one marked `(Recommended)`. Previews in the question are fine for comparing layouts or code. With no ask tool, ask in plain text with lettered options and your recommendation. Never skip the question.
+- **Questions:** `AskUserQuestion` in Claude Code and `ask_user_question` in pi, one at a time by default (the interview engine batches up to 4 independent ones), 2–4 options, the recommended one marked `(Recommended)`. Previews in the question are fine for comparing layouts or code. With no ask tool, ask in plain text with lettered options and your recommendation. Never skip the question.
 - **Agents:** names and fan-out differ (`${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md` § 2). Critics, scouts and research agents are read-only in both.
 - **The respond loop and approval:** as above. Pi has `/ideation respond` and its own confirmation; Claude Code has `plan-respond serve` and `AskUserQuestion`. Paste works in both.
 - **Paths:** write `${CLAUDE_PLUGIN_ROOT}/…` as given. Without that variable, resolve it two levels up from this skill's directory.

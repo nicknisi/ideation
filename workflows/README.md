@@ -1,8 +1,11 @@
 # Ideation execution engine (`workflows/`)
 
-The deterministic phase-orchestration engine behind `/ideation:autopilot`. It is a
+The deterministic phase-orchestration engine behind `/ideation:autopilot` and Pi's change
+runner. It is a
 [dynamic Workflow](https://claude.com/blog/introducing-dynamic-workflows-in-claude-code)
-script — the `/ideation:autopilot` skill invokes it via the `Workflow` tool.
+script: Claude Code's `/ideation:autopilot` invokes it via the `Workflow` tool, and Pi
+runs the same file through `engine-host.mjs` (the `run_ideation_contract` tool, and the
+change runner).
 
 ## Files
 
@@ -12,6 +15,9 @@ script — the `/ideation:autopilot` skill invokes it via the `Workflow` tool.
 | `wave-planner.mjs`                | Pure planner logic (`detectCycle`, `computeWaves`, `propagateSkips`, `splitWavesByFileOverlap`, and the `planExecutionWaves` composition). Unit-tested source of truth. |
 | `wave-planner.test.mjs`           | `node --test` unit tests for the planner, plus the engine-mirror drift test.                                                |
 | `execute-contract.smoke.test.mjs` | `node --test` smoke test of the script body (stubbed agents).                                                               |
+| `engine-host.mjs`                 | Runs the engine in Pi: stage agents from `agents/*.md`, Pi tool allowlists, and the host hooks the change runner uses.      |
+| `change-*.mjs`                    | Pi's change workflow: brief and packets, the runner, worktrees, artifacts and the widget.                                   |
+| `plan-pi.mjs`                     | Pi's respond loop for plan pages.                                                                                           |
 
 > **Four** planner functions — `detectCycle`, `computeWaves`, `propagateSkips`,
 > `splitWavesByFileOverlap`, but not the `planExecutionWaves` composition, which
@@ -72,9 +78,10 @@ disagree, the tests are right and this table is stale.
 | Review FAIL at cycle 3                 | phase FAIL, nothing committed                                  | same                                    |
 | Empty diff after `git add -N`          | `NO-OP` — review skipped, nothing committed, own bucket        | same                                    |
 
-Two arguments change these rows, each for a stated reason (see the `args` contract):
+Three arguments change these rows, each for a stated reason (see the `args` contract):
 
 - **`packet`**: a scout HOLD builds anyway, strict or not, with the `SCOUT HOLD` warning leading the summary. A person approved the plan, so the scout's doubts are findings for the builder.
+- **`executionMode: "adaptive"`**: a `risk: "low"` phase gets no scout (the builder explores inline), and a missing reviewer fails closed, as under `--strict`.
 - **`hostCommits`**: a NO-OP still goes to review, which must confirm the source already satisfies the unit, and then the host verifies it. A builder's red validation goes back to the fixer, because the host runs the approved checks before review. A missing reviewer fails closed, strict or not.
 
 `reviewStatus` is what lets the skill report the truth instead of a bare PASS: a
@@ -87,8 +94,9 @@ The Workflow sandbox has **no filesystem/git access** and **cannot call
 
 | Concern                                     | Owner                       |
 | ------------------------------------------- | --------------------------- |
-| Read `contract-data.json`, build `args`     | `/ideation:autopilot` skill |
-| `git log` skip pre-pass (`completedPhases`) | `/ideation:autopilot` skill |
+| Build `args`: a 1.0 plan's manifest (`node scripts/plan-data.ts manifest`), or a 0.x contract's from `contract-data.json` | `/ideation:autopilot` skill |
+| `completedPhases`: `Ideation-Unit` trailers (in the manifest), or the 0.x `git log` spec-path pre-pass | `/ideation:autopilot` skill |
+| Pi: packets, checks, staging and commits (`hostCommits`) | `workflows/change-run.mjs` |
 | Plan waves, run the five phase stages, enforce the scout/review gates | this engine |
 | Interactive failure-gating + resume         | `/ideation:autopilot` skill |
 
@@ -111,20 +119,22 @@ stringified one):
       "title": "Phase title (must match prereq references exactly)",
       "specPath": "docs/ideation/<slug>/spec-phase-1.md",
       "prereqs": ["Other phase title", "..."], // titles that must finish first
-      "risk": "low", // optional, display only
+      "risk": "low", // optional; "high" builds and fixes at effort high, "low" skips the scout under adaptive
       "files": ["path/a.ts", "path/b.ts"], // optional; paths this phase touches
       "trailer": "Ideation-Unit: <plan id>/<unit id>", // optional; the commit must carry it
     },
   ],
   "completedPhases": ["Phase title", "..."], // already committed; excluded from dispatch
+  "executionMode": "strict", // optional; "adaptive" skips the scout on risk:"low" phases, and a missing reviewer fails closed
+  "maxReviewCycles": 3, // optional; integer 1-3, default 3
 }
 ```
 
-- **Edges are phase titles**, matching `contract-data.json`'s `execution.phases[].prereqs`.
+- **Edges are phase titles**: a 1.0 manifest names the units each unit `needs`; a 0.x contract passes `contract-data.json`'s `execution.phases[].prereqs`.
 - `completedPhases` seeds the planner's satisfied set so a resumed run only executes what remains.
-- **`strict`** is optional. The `/ideation:autopilot` skill sets it to `true` when
-  `contract-data.json` carries `approvalMode: "express"` (single-confirmation
-  approval — no per-artifact human review). Strict phases fail **closed** where
+- **`strict`** is optional. It is `true` for every 1.0 run-contract manifest, for Pi's
+  change runner, and for a 0.x contract whose `contract-data.json` carries
+  `approvalMode: "express"`: in each, no person reviewed per-phase specs. Strict phases fail **closed** where
   plain headless fails open: a scout HOLD or a crashed/verdict-less reviewer
   stops the phase as FAIL instead of proceeding or committing validation-only.
 - **`packet`** and **`hostCommits`** are optional. They replace the old `native` flag
@@ -148,20 +158,23 @@ stringified one):
   its agent commit stage must write). Pi's change runner
   (`workflows/change-run.mjs`) passes both, and its host writes the same
   trailer. `references/harness-compat.md` § 5 has the rest.
-- **`files`** is optional. The `/ideation:autopilot` skill populates it by parsing
-  each spec's **File Changes** tables. It declares the paths a phase touches so the
+- **`files`** is optional. For a 0.x contract, the `/ideation:autopilot` skill populates
+  it by parsing each spec's **File Changes** tables; a 1.0 manifest gives every phase
+  the plan's `authority.paths`, so a plan's units run one at a time. It declares the paths a phase touches so the
   engine can serialize file-conflicting phases (see below). Omitting it (or `[]`)
   reproduces the pre-`files` behavior exactly.
 - **`agentNames`** is optional and exists for harness portability. The engine
   dispatches its scout/reviewer/builder stages by `agentType`, and those names are
   harness-specific: Claude Code plugin-scopes the two registered agents
   (`ideation:scout`, `ideation:reviewer`) and ships a `general-purpose` builtin,
-  while pi's workflow agent registry rejects colons and uses bare local names. The
-  defaults are the Claude Code strings, so omitting the field reproduces the
-  pre-`agentNames` behavior exactly, and each key overrides on its own. Under pi
-  the skill sends `{ "scout": "scout", "reviewer": "reviewer", "builder": "worker" }`.
-  An unregistered name still dispatches, but with default tools and no role prompt,
-  which is how read-only enforcement on scout and reviewer gets lost. Full harness
+  while Pi has no agent registry on this path: `engine-host.mjs` strips any
+  `ideation:` prefix, maps `general-purpose` and `worker` to the builder, and reads
+  `agents/*.md` itself, so Pi omits the field (`run_ideation_contract` doesn't accept
+  it). The defaults are the Claude Code strings, so omitting the field reproduces the
+  pre-`agentNames` behavior exactly, and each key overrides on its own. In a runtime
+  whose registry uses other names, an unregistered name still dispatches, but with
+  default tools and no role prompt, which is how read-only enforcement on scout and
+  reviewer gets lost. Full harness
   matrix: `references/harness-compat.md` § 2.
 
 ### Wave overlap serialization
@@ -197,10 +210,11 @@ the two composed functions but not the composition itself.
 > concurrent phases with entirely disjoint files still see each other's edits in
 > the diff their reviewers read, and a failing test from phase B still fails phase
 > A's validation run. Real isolation needs one working tree per phase, which the
-> Workflow sandbox cannot provide (see the decision records below). This is latent,
-> not live: every contract executed to date is a linear chain of single-phase
-> waves, so no two phases have ever built concurrently. Fix it before shipping a
-> contract with a genuinely parallel wave.
+> Workflow sandbox cannot provide (see the decision records below). It applies
+> only to 0.x contracts with a genuinely parallel wave, such as the orchestration
+> fixture's P2 + P3. A 1.0 manifest gives every unit the same `files`, so its units
+> serialize, and under `hostCommits` (Pi) every phase runs in its own wave. Fix it
+> before relying on parallel waves.
 
 ### Decision records
 
@@ -221,8 +235,9 @@ the two composed functions but not the composition itself.
   "noops": ["Phase title", "..."], // result === "NO-OP" — empty diff, nothing to commit
   "failed": ["Phase title", "..."], // result === "FAIL" (or null agent result)
   "skipped": ["Phase title", "..."], // blocked by an upstream failure
-  "error": "...", // OPTIONAL — present only when planning itself failed (cycle,
-  // unknown prereq, duplicate title): every bucket is empty and no phase ran.
+  "error": "...", // OPTIONAL — present only when the run was refused before any phase:
+  // a planning failure (cycle, unknown prereq, duplicate title), a legacy `native`
+  // argument, or an invalid `maxReviewCycles`. Every bucket is empty and no phase ran.
   // Consumers must treat this as a run-level failure, never an empty success.
   "results": [
     {
@@ -257,7 +272,8 @@ must count `completed + noops` as the phases that need no further work.
   cap is `min(16, cores-2)`.
 - **Schema-validated results** — no free-text `RESULT:` parsing.
 - **Resume**: within-session via the `Workflow` tool's `resumeFromRunId` (driven by the
-  skill); cross-session via the skill's `git log` pre-pass populating `completedPhases`.
+  skill); cross-session via `completedPhases`, which a 1.0 manifest fills from `Ideation-Unit`
+  trailers and a 0.x contract from the skill's `git log` spec-path pre-pass.
 - **Effort tracks risk.** A phase declaring `risk: "high"` dispatches its build and
   fix stages at `effort: 'high'`; every other risk omits the option and inherits the
   runtime default (never below it — an under-powered build cascades skips into every

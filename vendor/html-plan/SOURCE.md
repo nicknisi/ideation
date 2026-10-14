@@ -58,7 +58,7 @@ With no host, `planHost` returns `null`, so `liveOn` is `false` and `send` is
 ### `htmlplan.js`: comment controls off
 
 A page served by `@nicknisi/pi-artifacts` already carries that package's own
-Review layer, which it injects into every served page and which 1.5.x has no
+Review layer, which it injects into every served page and which neither 1.5.x nor 1.6.0 has a
 per-page way to leave out. So that such a page has one comment surface, a
 page can turn html-plan's comment controls off with
 `<meta name="htmlplan" content="no-comments">` (the same meta name and

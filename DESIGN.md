@@ -34,6 +34,9 @@ Every surface wears this world:
 | Implementation notes | `skills/execute-spec/references/implementation-notes.template.html` | a small subset of the same values, inline |
 | ideation.engineering: the overview, both walkthroughs and the guide | the Astro site in `site/` | `site/src/styles/global.css` |
 
+Pi's in-terminal widget (`workflows/change-tui.mjs`) is drawn in Pi's own theme roles,
+not these tokens: like the graphite deck below, it belongs to another program.
+
 The site used to wear a second, "Industry" world (slate blue, Barlow, square
 corners). It was retired because a visitor met one look on the site and another on
 their first contract, and because the product's own artifacts — the stamped
@@ -59,7 +62,12 @@ Every declaration carries the same values. `global.css` declares them with a
 `light-dark()`; `plan-render.css` writes plain hex in one light and two dark blocks,
 because html-plan renders mocks in a shadow root that resets `color-scheme`, where
 `light-dark()` would always pick the light value. Any form is fine — the values are
-the contract.
+the contract. `global.css` renames a few for Tailwind (`--paper` for `--bg`,
+`--press-line` for the press colour, `--radius-guide` and `--radius-guide-lg`), and
+its dark press line is `--wash` (`#0c0d0f`) where generated pages use `--line`. Only
+`field-guide.css`, `change-render.css` and `plan-render.css` are held to this table by
+`scripts/design-tokens.test.mjs`; `run-report-gen.css` and `global.css` are held to it
+by review.
 
 | role | light | dark |
 |---|---|---|
@@ -103,6 +111,7 @@ section is grammar nobody chose.
 - `--radius: 3px`, `--radius-lg: 4px`. Nothing is pill-shaped.
 - `--press: 3px 3px 0 0 var(--line)` — a hard offset, no blur. This is the
   world's only depth device. Soft ambient shadows belong to a different world.
+  (`field-guide.css` also declares an unused `--press-strong`; don't adopt it.)
 - Structure is carried by 1px rules and shared borders, not by gaps between
   floating cards. Prefer one bordered strip of cells over N separate cards.
 
@@ -142,3 +151,7 @@ reduced-motion path still delivers the *information* the motion carried
    controls hidden, `<details>` expanded, `break-inside: avoid` on panels.
 4. No horizontal page scroll at any width. Wide content (graphs, command
    strings, code) scrolls inside its own container.
+
+Two existing surfaces fall short, and neither may be copied: plan pages follow the
+system theme with no toggle (html-plan has none), and implementation notes have no
+toggle and no print stylesheet.

@@ -14,7 +14,7 @@ Review implementation quality by comparing the git diff against the original spe
 
 You receive:
 
-- **Spec file path** — the implementation spec that was executed
+- **Spec file path** — the implementation spec that was executed, or an **approved packet** (`unit-<id>.md`, labelled `Approved packet`). A packet's File Changes is its authority boundary: flag any change outside it as a `spec-deviation` finding. When the host registered the files (Pi) and the diff is empty, check whether the existing source already satisfies the packet's Testing Requirements and say what shows it, instead of reporting an empty-diff mismatch.
 - **Pattern file paths** — list of "Pattern to follow" file paths extracted from the spec (may be empty)
 - **Cycle number** — 1, 2, or 3. On cycles > 1, you also receive prior findings to track what was fixed.
 - **Prior findings** (cycle > 1 only) — the previous cycle's findings for reference. Some may be tagged `[REFUTED: evidence]`, meaning the builder declined to fix that finding and cited file:line proof it was wrong. Re-examine each refuted finding against its evidence (see "Handle refuted findings" below).
@@ -165,7 +165,7 @@ No findings. Implementation matches spec and follows referenced patterns.
 ## Rules
 
 - **Never edit files.** The reviewer reads and reports — it does not fix. The `tools` frontmatter (`Read`, `Grep`, `Bash`) is enforced mechanically by the platform; you cannot modify files regardless.
-- **Bash is for git only.** Use the Bash tool solely for `git diff HEAD` and `git log` commands. Do not use it to modify files, run builds, execute scripts, or perform any operation with side effects.
+- **Bash is read-only.** Use it for `git diff HEAD` and `git log`, and for `rg`, `git grep` and `ls` when `Grep` is unavailable. Do not use it to modify files, run builds, execute scripts, or perform any operation with side effects.
 - **Never auto-approve.** Even if no findings exist, explicitly state the verdict. "No findings" is a valid PASS, but you must still say PASS.
 - **Every finding needs an action.** The `→ action` suffix is mandatory. Don't just flag problems — tell the builder what to do.
 - **Be specific about location.** `file:line` is required. If you can't identify the exact line, use the function or block name: `file:functionName`.

@@ -1,5 +1,9 @@
 # Native workflow verification
 
+> A historical record of the 0.x native change workflow, as verified before ideation
+> 1.0 added plans, plan pages, the respond loop and `prepare` with `plan:`. Current
+> behavior is [native-workflow.md](native-workflow.md).
+
 Implementation and subsequent dogfood fixes verified locally on 2026-09-23–24.
 
 ## Automated checks
@@ -156,14 +160,14 @@ required"). Nothing let the user out.
   commands can execute repository code with host permissions.
 - There is no auto-restart daemon or automatic merge/push/deployment. Process
   interruption requires explicit reconciliation and resume.
-- The compact-brief vs current-express empirical study proposed in the research
-  artifact has **not** been run. The execution modes are available to evaluate;
-  no productivity or reliability improvement is asserted yet.
+- The compact-brief vs express study proposed in the research artifact was never
+  run, and express was removed in 1.0. No productivity or reliability improvement
+  is asserted.
 
-## Try it locally
+## How it was tried (2026-09)
 
-Both packages are already configured as local path installs in this environment.
-After `/reload` (or a fresh Pi session) in your target repository:
+Both packages were configured as local path installs. After restarting Pi in the
+target repository:
 
 ```text
 /ideation

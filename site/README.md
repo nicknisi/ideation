@@ -7,7 +7,7 @@ The plugin's public site. One design world, one deploy:
 | `/`                                    | `src/pages/index.astro`                       | The overview: two equal tracks (Pi / Claude Code) behind one switch, the launch video, install.       |
 | `/walkthrough/pi/`                     | `src/pages/walkthrough/pi/index.astro`        | One invented change taken from `/ideation` to accept, with the product's real contract and widget.     |
 | `/walkthrough/pi/contract/<state>.html`| `src/pages/walkthrough/pi/contract/[state].html.ts` | The real contract pages the Pi walkthrough frames: proposed, revised, running, ready, accepted. |
-| `/walkthrough/`                        | `src/pages/walkthrough/index.astro`           | One invented feature — the bookmark garden — through all seven stages of the planning path.          |
+| `/walkthrough/`                        | `src/pages/walkthrough/index.astro`           | One invented feature — the bookmark garden — through the planning path at the interview depth, from brain dump to the next run.          |
 | `/guide/`                              | `src/pages/guide.astro`                       | The command reference for both tracks, generated from the plugin's own source.                       |
 | `/404`                                 | `src/pages/404.astro`                         | Not found.                                                                                            |
 

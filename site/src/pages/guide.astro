@@ -38,7 +38,7 @@ const artifacts = [
   },
   {
     path: 'plan.v1.json …',
-    note: 'Every earlier version, kept. Each response you confirm becomes the next version.',
+    note: 'Every earlier version, kept. Each applied response becomes the next version (in Pi, only after you confirm it).',
     kept: true,
   },
   {
@@ -105,6 +105,7 @@ const artifacts = [
 
       <div class="mt-7 grid max-w-[40rem] gap-4">
         <InstallBlock label="pi" lines={install.pi} />
+        <InstallBlock label="pi · planning" lines={install.piPlanning} />
         <InstallBlock label="Claude Code" lines={install.claudeCode} />
       </div>
     </header>
@@ -168,12 +169,12 @@ const artifacts = [
       <ul class="mt-4 grid max-w-[64ch] list-none gap-3 p-0 text-[0.9375rem]">
         <li><strong>Approval is the only permission.</strong> <span class="text-muted">Comments, questions, a selected option, or silence never approve, accept or widen scope. A change of intent, checks or authority needs a new plan version and a new approval.</span></li>
         <li><strong>Exact commands, trusted scripts.</strong> <span class="text-muted">The commands you approve may run project scripts with your permissions. This is a trusted-command policy, not an OS sandbox, so read them before you approve.</span></li>
-        <li><strong>No budgets.</strong> <span class="text-muted">Approval fixes paths and commands, not time or tokens. Failing checks go back to the fixer, and each retry is told what failed. A run stops to ask only when it cannot make progress; <em>Resume</em> always continues. Usage is shown for information only.</span></li>
+        <li><strong>No budgets.</strong> <span class="text-muted">Approval fixes paths and commands, not time or tokens. Failing checks go back to the fixer, and each retry is told what failed. A run stops to ask only when it cannot make progress; <em>Resume</em> continues a paused or blocked run within the same approval, and a stopped one starts fresh with a new approval. Usage is shown for information only.</span></li>
         <li><strong>Never trapped.</strong> <span class="text-muted"><code class="code">/ideation exit</code>, or <em>Leave ideation</em> in the menu, gets you out from any state: the run stops, its work comes into your checkout as uncommitted changes (or stays on its branch), and ideation goes away until you ask for it again. You can also just tell the agent.</span></li>
         <li><strong>Out of reach.</strong> <span class="text-muted">Dependency manifests and protected internals are never in scope, and no install command is silently allowed.</span></li>
         <li><strong>Your uncommitted work is yours.</strong> <span class="text-muted">It never blocks approval. Approval asks whether to start from the last commit or include your changes, and never stashes, commits or edits them.</span></li>
         <li><strong>The page can ask, not approve.</strong> <span class="text-muted"><em>Approve in Pi</em> on a live draft contract page only brings up the terminal confirmation. It shows only while the owning session is listening, and needs pi-artifacts 1.6.0, which is not yet published; on 1.5.x the button stays hidden, and you approve with <code class="code">/ideation approve</code> or the menu. Plan pages never ask for anything.</span></li>
-        <li><strong>Humans only.</strong> <span class="text-muted">A headless or RPC session cannot approve or accept. Human judgments are never marked passed by a check.</span></li>
+        <li><strong>Humans only.</strong> <span class="text-muted">A headless session cannot approve or accept. Human judgments are never marked passed by a check.</span></li>
         <li><strong>Stops at review.</strong> <span class="text-muted">It commits locally on <code class="code">ideation/&lt;run-id&gt;</code> and never pushes, merges or deploys. <code class="code">accept</code> records your decision and nothing more.</span></li>
       </ul>
 
@@ -185,7 +186,7 @@ const artifacts = [
         is saved locally for you to refresh by hand. Each change’s{' '}
         <code class="code">brief.json</code>, <code class="code">contract.html</code> and{' '}
         <code class="code">receipt.json</code> land in{' '}
-        <code class="code">docs/ideation/&lt;change&gt;/</code> for you to commit or not; run state
+        <code class="code">docs/ideation/&lt;slug&gt;/</code>, beside <code class="code">plan.json</code> (or in <code class="code">&lt;slug&gt;-change/</code> when that folder is a 0.x project), for you to commit or not; run state
         stays under <code class="code">.git/ideation/</code>.
       </p>
     </section>
@@ -353,13 +354,15 @@ const artifacts = [
       class="rule-double mt-16 pt-11"
     >
       <h2 id="gates" class="text-[clamp(1.6rem,4vw,2.1rem)]">
-        The five gates it will not skip
+        The five gates the interview will not skip
       </h2>
       <p class="mt-4 max-w-[64ch] text-muted">
-        The interview keeps asking until every one of these reads <code
+        At the interview depth, a gate reads <code
           class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]">ready</code
-        >. That is the whole reason it can refuse to generate a plan: a gate needs a
-        concrete artifact, not your confidence.
+        > only when a concrete artifact backs it, not your confidence. The plan is written when
+        no gate can move: all five ready, the rest blocked on written open questions, or you ended
+        it. Approval then refuses a plan whose gates aren't ready unless it records why it stopped
+        early.
       </p>
 
       <ol class="mt-9 list-none space-y-7 p-0">
@@ -428,8 +431,8 @@ const artifacts = [
         <span class="label-mono mr-2 text-accent">one exception</span>
         <code class="rounded-[2px] bg-wash px-1.5 py-0.5 font-mono text-[0.8125em]"
           >docs/ideation/learnings.md</code
-        > sits above the project folders and is meant to be committed. It is the only part of
-        this the next project reads.
+        > sits above the project folders and is meant to be committed. It is what the next
+        interview applies; intake also offers, once, to mine notes an unattended 0.x run left behind.
       </p>
 
     </section>

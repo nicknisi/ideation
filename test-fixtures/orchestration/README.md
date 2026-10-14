@@ -38,12 +38,13 @@ fixture's contract.
 
 > A zero-cost runtime probe also confirms the engine loads + returns in the real Workflow
 > runtime: invoke the engine with `args: { phases: [] }` — it hits the early-return branch
-> and dispatches no agents. (Confirmed: returns `{completed:[],failed:[],skipped:[],results:[]}`.)
+> and dispatches no agents. (Confirmed: returns `{completed:[],noops:[],failed:[],skipped:[],results:[]}`.)
 
 ## Live end-to-end run (manual, you-triggered)
 
-This exercises the part the deterministic check can't: `agent()` actually dispatching
-`/ideation:execute-spec`, which builds and **commits** a real repo change.
+This exercises the part the deterministic check can't: real scout, build (execute-spec
+`--headless`, stopping after Verify), review and commit stages, which **commit** real repo
+changes.
 
 > **Why real repo files, not `/tmp`:** `execute-spec` commits _repo_ changes. If a phase
 > only wrote to `/tmp`, its `git diff` would be empty and it would never commit — so the
@@ -60,6 +61,8 @@ This exercises the part the deterministic check can't: `agent()` actually dispat
    ```
    /ideation:autopilot test-fixtures/orchestration/contract.md
    ```
+   Autopilot first converts the folder with `plan-migrate` (it writes `plan.json` in the
+   scratch worktree and leaves the 0.x files alone), then runs the 0.x specs.
 3. **Observe** in `/workflows`: Wave 1 = P1; Wave 2 = P2 + P3 **concurrently**; P4 never dispatched.
 4. **Assert** the final summary buckets match the table above, and the failure gate prompts.
 5. **Resume check** — re-run the same command; P1/P2 should be skipped via the git pre-pass

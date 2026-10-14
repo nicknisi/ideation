@@ -53,7 +53,7 @@ const STAGES = [
   },
   {
     title: 'Interview',
-    body: `${gates.length} gates, each backed by an artifact rather than a confident sentence: the problem, the goals, the success criteria, the scope, and consistency with the code you already have.`,
+    body: `${gates.length} gates, each backed by an artifact rather than a confident sentence: the problem, the goals, the success criteria, the scope, and requirements that don't contradict each other.`,
     stops: `a gate cannot be evidenced. It keeps asking; the plan is written at ${gates.length} of ${gates.length}, or says why it stopped early.`,
   },
   {
@@ -78,7 +78,7 @@ const STAGES = [
   },
   {
     title: 'Next run',
-    body: 'The next interview opens by naming the lesson it is applying, as its first question. learnings.md is committed with the repo: the team’s memory, not one machine’s.',
+    body: 'When a recorded lesson applies, the next interview says so in one line, at the question it shapes. learnings.md is committed with the repo: the team’s memory, not one machine’s.',
     stops: 'never. The only stage that cannot stop you — it points back at the interview.',
   },
 ];
@@ -124,7 +124,7 @@ const lede = 'max-w-[62ch] text-[1.0625rem] text-muted';
 
 <Site
   title="ideation — agree on the plan, then walk away"
-  description="ideation turns what you want into a plan you answer and approve before any code is written. Then your coding agent builds it on its own branch, proves it with checks, and stops for your review. In Pi or Claude Code."
+  description="ideation turns what you want into a plan you answer and approve before any code is written. Then your coding agent builds it in reviewed local commits, proves it with checks, and stops for your review. In Pi or Claude Code."
 >
   <main class="mx-auto max-w-[76rem] px-[clamp(1.25rem,4vw,2.5rem)]">
     <!-- ══════════ Hero ══════════ -->
@@ -136,7 +136,7 @@ const lede = 'max-w-[62ch] text-[1.0625rem] text-muted';
         <p class="mt-6 max-w-[56ch] text-[1.1875rem] leading-[1.6] text-muted">
           One <code class="code">/ideation</code> turns what you want into a plan you can read, answer
           and approve before a line of code is written, at the depth the work needs. Then your coding
-          agent builds it on its own branch, proves it with checks, and stops for your review.
+          agent builds it in reviewed local commits, proves it with checks, and stops for your review.
         </p>
         <p class="mt-6 flex flex-wrap gap-x-5 gap-y-2 font-sans text-[0.9375rem]">
           <a class="link" href="#tracks">Choose your agent ↓</a>
@@ -266,9 +266,9 @@ const lede = 'max-w-[62ch] text-[1.0625rem] text-muted';
           <div class="strip-row grid items-center gap-x-8 gap-y-3 min-[900px]:grid-cols-[minmax(0,1fr)_minmax(0,36rem)]">
             <div>
               <h3 class={h3}>Install</h3>
-              <p class="mt-1.5 text-[0.9375rem] text-muted">Pi 0.87.1 or newer. The second line is optional and makes plan and contract pages live. Then run <code class="code">/ideation</code>.</p>
+              <p class="mt-1.5 text-[0.9375rem] text-muted">Pi 0.87.1 or newer. The second line is optional and makes plan and contract pages live; the last two are the tools planning calls (approving and running a plan needs neither). Then run <code class="code">/ideation</code>.</p>
             </div>
-            <InstallBlock label="pi" lines={install.pi} />
+            <InstallBlock label="pi" lines={[...install.pi, ...install.piPlanning]} />
           </div>
         </div>
 
@@ -294,7 +294,8 @@ const lede = 'max-w-[62ch] text-[1.0625rem] text-muted';
               <code class="code">/ideation</code> picks the depth. At the interview depth it keeps going
               until every gate carries evidence, and four adversarial critics read the plan. You answer its
               decisions on a page served from your machine, or paste them back. Approve in the terminal, and
-              autopilot builds it: one reviewed commit per unit, on its own branch.
+              it builds: one unit through execute-spec in your checkout, more through autopilot on its own
+              branch, one reviewed commit per unit.
             </p>
             <dl class="mt-6 grid grid-cols-3 gap-4 border-t border-line pt-5">
               <div><dt class="font-sans text-[0.8125rem] text-muted">evidence gates</dt><dd class="m-0 text-[2rem] leading-none font-bold text-accent">{gates.length}</dd></div>
@@ -375,7 +376,7 @@ const lede = 'max-w-[62ch] text-[1.0625rem] text-muted';
           <div class="strip-row grid items-start gap-x-8 gap-y-3 min-[900px]:grid-cols-[minmax(0,1fr)_minmax(0,36rem)]">
             <div>
               <h3 class={h3}>Install</h3>
-              <p class="mt-1.5 text-[0.9375rem] text-muted">Paste both lines together, then run <code class="code">/ideation</code> and describe the messy version of your idea.</p>
+              <p class="mt-1.5 text-[0.9375rem] text-muted">Run these two lines one after the other, then run <code class="code">/ideation</code> and describe the messy version of your idea.</p>
               <details class="mt-3 font-sans text-[0.875rem]">
                 <summary class="cursor-pointer text-accent">Running it in Pi instead</summary>
                 <p class="mt-2 text-muted">Install the plugin and the two tools planning calls, then run <code class="code">/ideation</code>. The execution commands here also run as <code class="code">/skill:&lt;name&gt;</code>.</p>
@@ -387,7 +388,7 @@ const lede = 'max-w-[62ch] text-[1.0625rem] text-muted';
         </div>
 
         <p class="mt-8 font-sans text-[1rem]">
-          <a class="link" href="/walkthrough/">Follow one idea through all seven stages →</a>
+          <a class="link" href="/walkthrough/">Follow one idea from brain dump to the next run →</a>
         </p>
       </div>
     </section>

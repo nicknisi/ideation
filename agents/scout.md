@@ -16,6 +16,8 @@ You receive:
 - **Project directory** — where ideation artifacts live (e.g., `docs/ideation/{project}/`)
 - **Phase number** — which phase is being executed
 
+**An approved packet** (`unit-<id>.md`, labelled `Approved packet` instead of `Spec file path`, with no project directory) is a unit of an approved 1.0 plan. A person approved it, so assess readiness within the authority it grants and report every gap as a finding, not a reason to stop. Its File Changes lists the paths you may touch, not the files that will change: find those from its Technical Approach and the source, and read its Validation Commands as the test strategy. Return your findings inline: the packet forbids artifacts, so they are never persisted as `context-map.md`, and steps 1 and 6's map-file handling don't apply.
+
 ## Workflow
 
 ### 1. Check for Existing Context Map
@@ -31,11 +33,11 @@ Look for `{project-directory}/context-map.md`.
 Read the spec file. Extract:
 
 - **File Changes** — which files will be created, modified, or deleted
-- **Pattern to follow** references — file paths of existing code to match
+- **Pattern to follow** references (0.x specs) — file paths of existing code to match
 - **Technical Approach** — overall implementation strategy
 - **Decisions Considered and Rejected** — the decision log: alternatives the contract rejected and the stated reasons (if present)
 - **Testing Requirements** — what tests are expected
-- **Feedback Strategy** — what inner-loop tools are expected
+- **Feedback Strategy** (0.x specs) — what inner-loop tools are expected
 
 ### 3. Targeted Exploration
 
@@ -45,7 +47,7 @@ Explore the codebase, focusing on spec-relevant areas. Do not explore broadly.
 
 **Read files to be modified**: Every file listed under "Modified Files." Understand what exists before the builder changes it.
 
-**Read analogous files**: If the spec creates new files alongside existing similar files (e.g., adding `agents/scout.md` when `agents/planner.md` exists), read the analogues.
+**Read analogous files**: If the spec creates new files alongside existing similar files (e.g., adding `agents/scout.md` when `agents/reviewer.md` exists), read the analogues.
 
 **Check dependencies**: For each modified file, use `Grep` to find what imports or references it. These are the blast radius — files that could break if the interface changes.
 

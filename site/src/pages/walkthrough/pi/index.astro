@@ -70,7 +70,7 @@ const PLATE = [
 <span class="quiet">What should change?</span>
 
 <span class="user"><span class="prompt">› </span>Notes vanish when I lose signal on a trail. Save them on the device and sync later.</span>
-<span class="quiet">Depth: short plan. Four units and one fork the code can’t settle; the rest follows it. Say “just do it” or “interview” to change it.</span>
+<span class="quiet">Depth: short plan. Four units, so not “just do it”, and a fork the code can’t settle; the rest follows it. Say “just do it” or “interview” to change it.</span>
 <span class="quiet">Read src/notes/, src/api/client.ts and the sync tests. The fork: should “the offline indicator feels right” be a test, or your call? Recommended: a test for the state, plus one airplane-mode walkthrough by you.</span>
 
 <span class="user"><span class="prompt">› </span>Both.</span>
@@ -80,10 +80,11 @@ const PLATE = [
           </Deck>
           <p class="mt-4 max-w-[64ch] text-[0.9375rem] text-muted">
             The last three blocks are real: the tool call, which prepares the plan folder, its result,
-            and the widget that stays above the editor. Pi also shows: <em>{pi.notices.prepared}</em>
-            Had a decision still been open, <code class="code">/ideation respond</code> would have come
-            first: the plan page (live with pi-artifacts) or a terminal form, and each confirmed answer a
-            new plan version.
+            and the widget that stays above the editor. Condensed here: at short plan the four critics
+            read <code class="code">plan.json</code> once, and <code class="code">/ideation respond</code>
+            opens the plan page (live with pi-artifacts) or a terminal form for its decisions, each
+            answer you confirm a new plan version. Only then does the agent prepare it. Later,{' '}
+            <code class="code">/ideation status</code> says: <em>{pi.notices.prepared}</em>
           </p>
         </section>
 
@@ -91,8 +92,9 @@ const PLATE = [
         <section data-step class="min-w-0">
           <h2 class={stepTitle}><span class={stepNum}>02</span>Read the contract</h2>
           <p class={stepIntro}>
-            Preparing the plan freezes its run contract, and its page opens in your browser by itself:
-            before and after, what must hold, how the work connects, and a verification plan that claims
+            Preparing derives the run contract from <code class="code">plan.json</code>, a draft nothing
+            has frozen yet, and its page opens in your browser by itself. This is the contract, not the
+            plan page; it shows what approval would bind: before and after, what must hold, how the work connects, and a verification plan that claims
             no results yet. The exact paths and commands wait in the boundaries at the bottom. It is
             stamped <em>Draft</em>, because nothing is approved.
           </p>
@@ -164,8 +166,8 @@ const PLATE = [
             Need to step in? <code class="code">/ideation pause</code> stops at a safe boundary and{' '}
             <code class="code">resume</code> continues within the same approval. If a check fails, its
             output goes to the fixer; if the run cannot make progress it stops and says why. And you
-            are never stuck: <code class="code">/ideation exit</code> stops the run, brings its work into
-            your checkout and puts ideation away.
+            are never stuck: <code class="code">/ideation exit</code> stops the run, offers to bring its
+            work into your checkout (or keep it on its branch) and puts ideation away.
           </p>
         </section>
 
@@ -191,7 +193,8 @@ const PLATE = [
           <p class={stepIntro}>
             You read the evidence, and you do the part only a person can:{' '}
             <em>{judgment?.check.judgment}</em> Then <code class="code">/ideation accept</code> records
-            your decision against this exact candidate. It changes nothing in your repository.
+            your decision against this exact candidate. It changes none of your code: it records the
+            decision and refreshes the receipt and contract in <code class="code">docs/ideation/</code>.
           </p>
           <Deck>
             <pre><span class="user"><span class="prompt">› </span>/ideation accept</span>
@@ -219,6 +222,7 @@ const PLATE = [
             brain dump instead.
           </p>
           <InstallBlock label="pi" lines={install.pi} class="max-w-[620px]" />
+          <InstallBlock label="pi · planning" lines={install.piPlanning} class="mt-3 max-w-[620px]" />
         </section>
       </main>
 

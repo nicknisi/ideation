@@ -1,10 +1,10 @@
 # Evidence Gate Rubric
 
-Use this rubric to judge brain dump readiness before generating a contract. Readiness is not a number — each dimension is a **gate** that is either `ready` or `not-ready`. A gate is ready when a concrete artifact exists (a goal written as a pass/fail statement, an explicit scope boundary), not when a score is asserted.
+Use this rubric to judge brain dump readiness before writing the plan. Readiness is not a number — each dimension is a **gate** that is either `ready` or `not-ready`. A gate is ready when a concrete artifact exists (a goal written as a pass/fail statement, an explicit scope boundary), not when a score is asserted.
 
-**Proceed-to-contract rule**: All 5 gates `ready`, OR the user explicitly ends the interview ("stop" / "wrap up" / "that's enough") — in which case any `not-ready` gates are recorded as such in the contract.
+**Write-the-plan rule**: stop interviewing when no gate can move: every gate is `ready` or blocked on a written open question (`openQuestions`), or the user ends the interview ("stop" / "wrap up" / "that's enough"). Gates still `not-ready` go into `plan.json` as `ready: false` with their evidence sentence, and if the user ended it, `stoppedEarly` says why.
 
-**When unsure whether the evidence is sufficient, the gate is `not-ready`.** One extra question costs seconds; a bad contract costs hours. Do not mark a gate ready to move faster.
+**When unsure whether the evidence is sufficient, the gate is `not-ready`.** One extra question costs seconds; a bad plan costs hours. Do not mark a gate ready to move faster.
 
 Question cadence is owned by `interview-engine.md` core rule 1.
 
@@ -119,9 +119,11 @@ Question cadence is owned by `interview-engine.md` core rule 1.
 
 ## Gate states
 
-Each gate is `ready` or `not-ready`, and each carries a **one-sentence evidence citation** — the concrete artifact that makes it ready, or the gap that keeps it not-ready. No numbers anywhere. The evidence sentence is mandatory and is rendered in the contract for the human to judge — a gate marked `ready` without real evidence is checkbox theater.
+Each gate is `ready` or `not-ready`, and each carries a **one-sentence evidence citation** — the concrete artifact that makes it ready, or the gap that keeps it not-ready. No numbers anywhere. The evidence sentence is mandatory and is shown on the plan page for the human to judge — a gate marked `ready` without real evidence is checkbox theater.
 
-After each round of questions, re-read the brain dump plus new answers and re-evaluate every gate. Keep asking until all gates are ready (or the user ends the interview).
+After each round of questions, re-read the brain dump plus new answers and re-evaluate every gate. Keep asking until every gate is ready or blocked on a written open question, or the user ends the interview.
+
+In `plan.json`, `gates` uses these keys: Problem Clarity → `problem`, Goal Definition → `goals`, Success Criteria → `criteria`, Scope Boundaries → `scope`, Consistency → `consistency`. Each is `{ "ready": boolean, "evidence": "<one sentence>" }`.
 
 ---
 
@@ -144,34 +146,3 @@ When asking clarifying questions:
 - Ask leading questions: "You don't want offline mode, right?" biases the answer.
 - Ask compound questions: "What's the scope and timeline and who's the user?" is three questions.
 - Skip context: Don't ask about something without referencing what they said.
-
----
-
-## Spec Feedback Quality
-
-**Purpose**: Evaluate generated specs for feedback loop quality before presenting to user. This is separate from brain-dump gate readiness above — it's applied during spec review (Phase 4.5), not during contract formation.
-
-### Quality Levels
-
-| Level        | Criteria                                                                                                                                                                                                                        | Action                                                             |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| **Strong**   | Feedback Strategy section present with inner-loop command. All iterative components have feedback loops (playground + experiment + check command). Trivial components correctly omit loops. Inner-loop command runs in seconds. | Present spec as-is                                                 |
-| **Adequate** | Feedback Strategy present but some iterative components lack loops, or experiments are vague ("test it works" instead of parameterized checks).                                                                                 | Present spec with a note about gaps                                |
-| **Weak**     | No Feedback Strategy section, or complex/iterative components missing feedback loops entirely.                                                                                                                                  | Revise spec before presenting — add loops for iterative components |
-
-### Quality Checklist
-
-Run through this checklist for each generated spec:
-
-- [ ] **Feedback Strategy section exists** — inner-loop command and playground type defined
-- [ ] **Inner-loop command is fast** — runs in seconds, not minutes; scoped, not global
-- [ ] **Iterative components have feedback loops** — components where the agent will make multiple passes have playground, experiment, and check command
-- [ ] **Experiments are parameterized** — specific inputs and edge cases, not "verify it works"
-- [ ] **Trivial components correctly skip loops** — config, types, constants, re-exports don't have unnecessary feedback loops
-- [ ] **Playground matches component type** — data layers use tests, UI uses dev server/storybook, APIs use curl/scripts
-
-### Actions
-
-- **Strong** → Present spec to user for approval
-- **Adequate** → Present spec with a note: "Feedback loops could be stronger for {component} — consider adding {specific suggestion}"
-- **Weak** → Do not present. Revise the spec to add feedback loops for iterative components, then re-evaluate

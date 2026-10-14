@@ -30,7 +30,7 @@ const SUBCOMMANDS: Record<string, string> = {
   status: 'Show where every change stands, and refresh the widget and contract link.',
   review: 'Open the contract for a run (or the prepared draft) in your browser.',
   pause: 'Stop at the next safe boundary, with nothing lost.',
-  resume: 'Continue a paused, interrupted or stopped run within its original approval. It always can, and it is told what failed last time.',
+  resume: 'Continue a paused, interrupted or blocked run within its original approval, in the same worktree, told what failed last time. A stopped run doesn’t resume: Start fresh in the /ideation menu re-approves it in a new worktree.',
   stop: 'Set a run aside. It waits for owned processes to settle; the worktree and its commits stay.',
   accept:
     'Record your acceptance of a ready-for-review run after reading its evidence and judgments. It never merges, pushes or deploys.',

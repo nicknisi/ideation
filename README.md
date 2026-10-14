@@ -13,8 +13,8 @@ for an effort too foggy for one session), and opens with a "should we?" conversa
 which writes no files, when the real question is whether to build at all.
 
 Every depth writes the same plan data, `docs/ideation/<slug>/plan.json`. You answer its
-decisions on a rendered page or in the terminal, and each answer becomes the next plan
-version. A page never approves: **approval is always a terminal confirmation**, and it
+decisions on a rendered page or in the terminal, and each response you send becomes the
+next plan version. A page never approves: **approval is always a terminal confirmation**, and it
 freezes the plan into a run contract that a deterministic workflow engine builds unit
 by unit, with independent review and a local commit per unit. Nothing is pushed,
 merged or deployed. Watched runs feed a learning loop that the next interview applies.
@@ -29,8 +29,9 @@ It runs in **Pi** and in **Claude Code**. Coming from 0.x? See [From 0.x](#from-
 
 ## /ideation: one entry point, four depths
 
-`/ideation` (in Pi: bare `/ideation`, `/ideation plan [idea]`, or `/skill:ideation`) is
-the only planning command. It reads the request, the code and the risk, picks a depth,
+`/ideation` (in Pi: `/ideation plan [idea]`, `/skill:ideation`, or bare `/ideation`,
+which starts planning when nothing is in flight and otherwise opens a menu) is the only
+planning command. It reads the request, the code and the risk, picks a depth,
 and says so in one line with its reason and the way out:
 
 ```text
@@ -39,7 +40,7 @@ Depth: short plan. Two real forks (where retries live, what a given-up send says
 
 | Depth | Pick it when | What you get |
 | --- | --- | --- |
-| `just do it` | One clear change: before → after and its checks can be stated now, and nothing about it is risky | A one-unit plan with no page, shown in the terminal, then the confirmation and the run |
+| `just do it` | One clear change: before → after and its checks can be stated now, and nothing about it is risky | A one-unit plan with no plan page, shown in the terminal, then the confirmation and the run |
 | `short plan` | Buildable now, with 2–5 real forks a person should decide | A plan with those decisions (each with a recommended answer), a plan page, then approval |
 | `interview` | The problem, goals, success criteria or scope aren't settled | The evidence-gated interview, the four plan critics, a plan page, then approval |
 | `map` | Too big or foggy for one session: the route to a plan is itself unknown | A plan whose `openQuestions` are the map, read on a plan page and worked one non-research question per session (more when you say to keep going), then the interview |
@@ -114,9 +115,10 @@ terminal confirmation writes the next version.
   answer first, and writes a local, copy-only `plan.html` beside the plan.
 - **Paste:** press **Copy response** on any plan page and paste it into Pi.
 
-**Claude Code: `plan-respond serve`.** The skill renders `plan.html`, opens it, and runs
-`node scripts/plan-respond.mjs serve <folder>` in the background. It serves the page on
-`127.0.0.1` at a random port, behind a one-time token. Press **Send** and `serve`
+**Claude Code: `plan-respond serve`.** The skill renders `plan.html`, runs
+`node scripts/plan-respond.mjs serve <folder>` in the background, and opens the URL it
+prints: the page on `127.0.0.1` at a random port, behind a one-time token. Only that
+served page can Send; `plan.html` opened as a file can only copy. Press **Send** and `serve`
 writes `response.v<n>.json`, prints it, and exits; the session shows it to you and runs
 `plan-respond.mjs apply`. `serve` waits 30 minutes for one response, then exits.
 
@@ -151,7 +153,9 @@ version and a new approval.
   also shows an **Approve in Pi** button, which only brings up that same terminal
   confirmation. On **1.5.x** the button stays hidden, because 1.5.x ignores the page
   request ideation registers, so you approve with `/ideation approve` or the menu. Plan
-  pages never ask for page requests on any version.
+  pages never ask for page requests on any version. Approval needs an interactive
+  session with a model selected; that model is recorded with the approval and runs the
+  whole change, resumes included.
 - **Claude Code** (and Pi without the extension). One `AskUserQuestion`:
   *Approve plan v{n} and run it?* Only after **Approve and run** does the skill run
   `node scripts/plan-data.ts run-contract <folder>`, which writes `run-contract.json`
@@ -165,13 +169,13 @@ each unit names. Neither stashes, commits or edits your files.
 
 Approval hands the same run contract to the same engine
 ([`workflows/execute-contract.mjs`](workflows/README.md)) in both harnesses, and every
-unit is built from the same work packet with the same prompts. What differs is who
-commits ([`references/harness-compat.md` § 5](references/harness-compat.md#5-running-an-approved-plan)):
+unit's packet comes from the same template and runs through the same prompts. What
+differs is who commits ([`references/harness-compat.md` § 5](references/harness-compat.md#5-running-an-approved-plan)):
 
 | | Pi | Claude Code |
 |---|---|---|
 | Runs it | the change runner, in an isolated worktree on `ideation/<run-id>` | `/ideation:autopilot` on branch `ideation/<plan id>`; a one-unit plan runs through `/ideation:execute-spec` in your checkout |
-| Engine args | `packet: true, hostCommits: true` | `packet: true, hostCommits: false, strict: true` |
+| Engine args | `packet: true, hostCommits: true, strict: true` | `packet: true, hostCommits: false, strict: true` |
 | Commits | the host, after independent review and the checks | the engine's commit stage, or execute-spec's Commit step |
 | Unattended | the change runner already is | a `/goal` from `/ideation:get-goal-prompt` |
 
@@ -186,11 +190,15 @@ commit body.
 The approved run works in an isolated Git worktree, using the engine and independent
 review. A compact, theme-aware Pi widget shows the current stage, real progress and a
 persistent link to the contract page, which becomes the run's live page and then its
-record. Pause, resume and stop act at safe boundaries, and `/ideation exit` (or *Leave
-ideation*) gets you out from any state: it stops the run, brings its work into your
-checkout as uncommitted changes, and puts ideation away. Ready for review is not
-accepted: `/ideation accept` records your judgment against the current evidence, and
-never merges, pushes or deploys. See [the native workflow guide](docs/native-workflow.md).
+record. `/ideation pause`, `resume` and `stop` act at safe boundaries; a stopped run
+doesn't resume, but *Start fresh* in the menu re-approves it in a new worktree.
+`/ideation exit` (or *Leave ideation*) gets you out from any state: it stops the run
+and asks whether to bring its changed files into your checkout as uncommitted changes
+or keep them on the run's branch (work that doesn't apply cleanly stays on the
+branch). Ready for review is not accepted: `/ideation accept` records your judgment
+against the current evidence, and never merges, pushes or deploys. `/ideation status`,
+`review` and `motion on|off` round out the subcommands; `/ideation <plan-folder>`
+resumes a plan, and bare `/ideation` offers whatever fits the current state. See [the native workflow guide](docs/native-workflow.md).
 
 ### /ideation:autopilot
 
@@ -351,21 +359,24 @@ terminal. A failed critic logs a warning and the plan proceeds without that lens
 
 ## Learning loop
 
-Unchanged in 1.0. The loop is push-based: when a watched run completes, its
-implementation notes and noted gap decisions pass through the filter in
-[`references/learning-filter.md`](references/learning-filter.md); up to 3 candidates
-survive, and one accept/edit/dismiss question decides what lands in
-`docs/ideation/learnings.md`. Zero candidates means no prompt. Unattended runs never
-write learnings; the next interactive intake notices their unmined notes and offers
-once to mine them. When a learning shapes an interview question, the interview says
-so: `Applying learning from {project} ({date}): {why}`. The file is meant to be
-committed: if your repo ignores `docs/ideation/`, un-ignore that one file, as this
-repo's `.gitignore` does.
+The loop is push-based: when a watched run completes, its noted gap decisions pass
+through the filter in [`references/learning-filter.md`](references/learning-filter.md);
+up to 3 candidates survive, and one accept/edit/dismiss question decides what lands in
+`docs/ideation/learnings.md`. Zero candidates means no prompt. A 1.0 unit's packet
+forbids notes files, so its gap decisions arrive in the run's results; a 0.x spec run
+also writes `implementation-notes-phase-*.html`. Unattended runs never write
+learnings. A 0.x run's notes files wait for the next interactive intake, which offers
+once to mine them; an unattended 1.0 run leaves no notes behind to mine. When a
+learning shapes an interview question, the interview says so:
+`Applying learning from {project} ({date}): {why}`. The file is meant to be committed:
+if your repo ignores ideation's working files, ignore `docs/ideation/*` (not
+`docs/ideation/`, since git can't re-include a file under an ignored directory) and add
+`!docs/ideation/learnings.md`, as this repo's `.gitignore` does.
 
 ## From 0.x
 
-1.0 folds four commands into `/ideation`, and replaces contracts and up-front specs with
-plan data. **There is no 0.x deprecation release.** The plan for 1.0 had a last 0.x
+1.0 folds three commands (chart, express and change) into `/ideation`, and replaces
+contracts and up-front specs with plan data. **There is no 0.x deprecation release.** The plan for 1.0 had a last 0.x
 minor print a notice on each removed command; that step was skipped because the whole
 change lands as one release, 1.0.0. The removed commands have no shim: each one is
 simply gone, and this table says where its work went.
@@ -406,7 +417,10 @@ can't be converted.
   their spec paths, `verify.mjs` counts them as before, and
   `/ideation:get-goal-prompt` prints the goal the contract always had. Once you revise
   the converted plan, its `supersedes` names `plan.v1.json` and it runs as a 1.0 plan,
-  from its run contract rather than the specs.
+  from its run contract rather than the specs. Phases already committed under 0.x
+  carry spec paths, not `Ideation-Unit` trailers, so after the revision they no longer
+  count as done (a unit the code already satisfies finishes as a NO-OP). Finish a
+  half-run 0.x contract before you revise it.
 
 ### Updating
 
@@ -420,7 +434,9 @@ can't be converted.
   Without it, plans are answered in the terminal form or by paste, and contract pages
   are local files you refresh by hand.
 
-`docs/ideation/learnings.md` and the learning loop are unchanged.
+`docs/ideation/learnings.md` keeps its format. A 1.0 run's gap decisions reach the
+learning loop through the run's results rather than notes files; see
+[Learning loop](#learning-loop).
 
 ## Example
 
@@ -448,14 +464,14 @@ search too...
    that becomes `plan.v2.json`.
 5. You approve plan v2 in the terminal. In Claude Code that writes `run-contract.json`
    and one `unit-<id>.md` per unit, and autopilot builds them in waves on
-   `ideation/<slug>`, each unit reviewed and committed with its `Ideation-Unit`
+   `ideation/<plan id>`, each unit reviewed and committed with its `Ideation-Unit`
    trailer.
 6. `verify.mjs` prints the `VERIFY` line, and the run report links back to the plan.
 
 **Prefer to watch it happen?** The [ideation site](https://ideation.engineering/) walks
 one fictional feature, a bookmark garden, through the planning path, and one change
-through Pi from `/ideation` to accept. After cloning, `cd site && pnpm dev` serves it
-at `localhost:4321`.
+through Pi from `/ideation` to accept. After cloning, `pnpm site:install && pnpm dev`
+serves it at `localhost:4321`.
 
 **Prefer to read the artifacts?** [`test-fixtures/plan/plan.json`](test-fixtures/plan/plan.json)
 is a small 1.0 plan, and [`test-fixtures/run-contract/`](test-fixtures/run-contract/)
@@ -483,7 +499,8 @@ pi install npm:@nicknisi/pi-artifacts  # optional: live plan and contract pages
 That is all approving and running a plan in Pi needs (Pi 0.87.1 or newer). Without
 [`@nicknisi/pi-artifacts`](https://www.npmjs.com/package/@nicknisi/pi-artifacts) 1.5.2+,
 plans are answered in the terminal or by paste, and contract pages are saved as local
-HTML you refresh by hand.
+HTML you refresh by hand. Until the two planning tools below are installed, Pi shows a
+startup notice naming what's missing; `/ideation-doctor` checks again at any time.
 
 Planning (the interview, the critics, research questions) also calls two tools:
 
@@ -505,7 +522,10 @@ needs no external tool: the plugin bundles `extensions/engine.ts`. Details in
 
 Both runtimes are full citizens: **Claude Code** (the tools are built in) and **pi**
 (running a plan needs only the plugin; planning uses the two user-level tools above).
-Two caveats for a fresh setup:
+Three caveats for a fresh setup:
+
+- **Node 22.18 or newer.** The plan scripts (`scripts/plan-data.ts`, `plan-render.ts`,
+  `run-report-gen.ts`) are TypeScript run through Node's built-in type stripping.
 
 - **`${CLAUDE_PLUGIN_ROOT}` resolution.** Skill bodies reference it; in pi it resolves
   through a user-level `claude-plugin-root` extension that isn't bundled. The fallback
@@ -548,6 +568,8 @@ gets the same treatment as code.
 | Gate behavior | `workflows/README.md` | `workflows/execute-contract.smoke.test.mjs` covers the engine row by row |
 | Harness translation | `references/harness-compat.md` | `workflows/harness-parity.test.mjs`; the guide renders its tables |
 | Field-guide tokens | `DESIGN.md` | `scripts/design-tokens.test.mjs` |
+| Install commands | this README's [Installation](#installation) | `site/src/lib/install.ts` (build throws if the blocks change shape) |
+| Pi subcommands and tool actions | `extensions/change.ts` | `site/src/lib/pi.ts` (build throws if the site's text disagrees) |
 | Where 0.x commands went | this README's [Removed commands](#removed-commands) | `site/src/lib/migration.ts` (build throws if a row names a shipped skill or no depth) |
 | Question cadence | `references/interview-engine.md` | — (prose owner; core rule 1) |
 | Learning capture | `references/learning-filter.md` | — (prose owner; both skills point here) |
@@ -561,10 +583,10 @@ Everything runs from the top level:
 
 ```bash
 pnpm test           # the whole suite — also exactly what CI runs
+pnpm site:install   # once, before dev or build: the site's dependencies
 pnpm dev            # the site at localhost:4321
 pnpm build          # → site/dist
 pnpm deploy:check   # validate wrangler.jsonc, no credentials needed
-pnpm site:install   # install the site's dependencies
 ```
 
 **The plugin's tests need no install.** The pi tools the skills call are user-level
@@ -573,9 +595,9 @@ exercised only through a test double, so nothing needs installing before `pnpm t
 or `node --run test` works. CI runs the latter, Node's own script runner, without a
 package manager. Only `site/` has build-time dependencies.
 
-If you would rather not use pnpm, `node --run test` and
+If you would rather not use pnpm, `node --run test` runs the whole suite;
 `node --test 'workflows/*.test.mjs' 'scripts/*.test.mjs' 'test-fixtures/**/*.test.mjs'`
-both work directly. To regenerate the committed lockfile after changing a dependency
+runs the tests without the prompt lint (`node scripts/lint-prompts.mjs`). To regenerate the committed lockfile after changing a dependency
 range: `npm i --package-lock-only`.
 
 ### Releasing
@@ -594,8 +616,8 @@ in the file until it was curated by hand.)
 
 The version that matters lives in **`.claude-plugin/plugin.json`** — Claude Code
 resolves a plugin's version from that file first, and it is what decides whether
-an installed copy sees an update. release-please bumps it as part of the release
-PR, so it is never edited by hand. `marketplace.json` deliberately carries **no**
+an installed copy sees an update. release-please bumps it, and `package.json`'s
+`version`, as part of the release PR, so neither is edited by hand. `marketplace.json` deliberately carries **no**
 `version`: when both are set, `plugin.json` silently wins, and a stale
 marketplace entry would be invisible drift.
 
@@ -626,12 +648,13 @@ Which commit types produce which bump, and which appear in the changelog:
 | `perf:` | patch | Performance |
 | `refactor:` | patch | Refactors |
 | `docs:` | patch | Documentation |
-| `chore:` `test:` `ci:` `build:` `style:` | patch | not shown |
+| `chore:` `test:` `ci:` `build:` `style:` | none on their own | not shown |
 
-Note the last row: marking a type `hidden` in `release-please-config.json` keeps
-it out of the changelog but does **not** stop it counting toward the version, so
-a run of nothing but `chore:` commits still proposes a patch release. That is
-release-please's behaviour, not a setting we chose.
+Note the last row: a type marked `hidden` in `release-please-config.json` stays out
+of the changelog, and a run of nothing but hidden-type commits proposes **no**
+release, because release-please skips a release whose changelog entry would be empty
+("No user facing commits found"). Mixed with visible commits, they change nothing:
+the visible ones decide the bump.
 
 **One PR becomes one changelog entry.** The changelog is built from the commits
 that land on `main`, and release-please does not recover the individual commits

@@ -129,11 +129,11 @@
     "Real-time collaboration",
     "Syncing attachments"
   ],
-  "delegated": [
-    "Where the offline indicator sits",
-    "Banner wording"
-  ],
   "decisions": [
+    {
+      "decision": "How is “the offline indicator feels right” checked? A test for the state, plus your airplane-mode walkthrough",
+      "reason": "A test proves the state; only a person can judge whether it feels right."
+    },
     {
       "decision": "Keep both versions when edits conflict",
       "reason": "Silently picking a winner is the failure this change exists to fix.",

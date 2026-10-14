@@ -13,8 +13,8 @@ An open question is, by definition, the reason a gate did **not** close
 (`../../references/interview-engine.md`, "When a gate is blocked on work outside
 the interview"), so those two states cannot coexist. Putting open questions there
 would make the repo's only example of the shape teach the one combination the
-design forbids, and `graph.test.mjs` plus `wave-planner.test.mjs` both assert on
-that file, so relaxing its gates to make the shape legal is not available either.
+design forbids, and `graph.test.mjs`, `scripts/plan-migrate.test.mjs` and
+`scripts/verify-plan.test.mjs` all assert on that file, so relaxing its gates to make the shape legal is not available either.
 
 So this fixture is `Draft`, with four gates `not-ready`, each naming the question
 that blocks it.

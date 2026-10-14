@@ -307,6 +307,7 @@ async function build(): Promise<Walkthrough> {
         ...ui.approvalText(brief).split('\n').flatMap((line: string, i: number, all: string[]) =>
           i === all.length - 1 ? [`Starting point: ${base.baseRevision.slice(0, 12)}.`, line] : [line]),
         `Brief: v${brief.revision} / ${briefHash.slice(0, 12)}`,
+        'Model: anthropic/claude-sonnet-4-5',
         'Contract: open full agreement',
       ],
     },

@@ -1,6 +1,6 @@
 # Feedback Loop Design Guide
 
-Use this guide when generating feedback loops for implementation specs. Each iterative component should define a playground, experiment, and check command so the executing agent can validate its work _during_ implementation.
+Use this guide when turning discovered feedback infrastructure into a plan's `checks` and each unit's inner loop (the executor reads them as the packet's Validation Commands). Each iterative component should define a playground, experiment, and check command so the executing agent can validate its work _during_ implementation.
 
 ## Component-Type Mapping
 
@@ -43,6 +43,8 @@ A single command that runs in seconds and produces text output. The agent will r
 
 - `pnpm test -- --filter {module}` over `pnpm test` (scoped, fast)
 - `curl -s ... | jq .` over "open browser and check" (text, automatable)
+
+An inner-loop command may just print output; an acceptance check in `checks` must fail on failure (e.g. `curl -sf ... | jq -e '.items | length > 0'`, not `curl -s ... | jq .`, which exits 0 on an HTTP 500).
 - `pnpm typecheck` over `pnpm build` (faster, sufficient for type-only changes)
 
 The inner-loop command should **run in seconds, not minutes**. If the check takes longer than 10 seconds, scope it tighter.
