@@ -11,6 +11,11 @@ const clone = value => structuredClone(value);
 const json = async path => JSON.parse(await readFile(path, 'utf8'));
 const alive = pid => { if (!Number.isInteger(pid) || pid <= 0) return false; try { process.kill(pid, 0); return true; } catch (e) { return e.code !== 'ESRCH'; } };
 const transient = message => /\b(429|5\d\d)\b/.test(message);
+/** What two failed attempts are compared by. The engine quotes the fixer's own summary when it gives up
+ * (execute-contract.mjs), and that prose differs every attempt, so it's left out: otherwise attempts that
+ * end the same way never count as the same and the unit retries forever. */
+export const failureSignature = message =>
+  String(message).replace(/(the fixer reported it could not fix the findings:)[\s\S]*?(\. Nothing committed)/, '$1 …$2');
 
 const STALE_PI = 'Pi is running an out-of-date copy of ideation. Quit Pi completely and start it again (/reload is not enough), then choose Resume. Nothing was lost.';
 const tail = (text, lines = 25) => String(text ?? '').trim().split('\n').slice(-lines).join('\n');
@@ -348,7 +353,7 @@ export function createChangeRunner({ repoRoot, pluginRoot, spawn, ownerId = rand
             receipt.sourceRevision = r.sourceRevision; done = true; await save(r);
           } catch (e) {
             if (ctx.pause || ctx.abort.signal.aborted) throw e;
-            const signature = String(e.message);
+            const signature = failureSignature(e.message);
             if (/Engine host correctness hooks required/.test(signature)) throw e;
             const checksNow = failedChecks().map(x => x.criterionId).sort().join(',');
             const revision = await w.sourceRevision(r.workspace).catch(() => null);

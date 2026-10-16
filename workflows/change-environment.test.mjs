@@ -57,3 +57,18 @@ test('dependency snapshots refuse changed manifests/locks rather than silently u
   await assert.rejects(workspace.prepareDependencies(f.root, f.workspace), /dependencies|lock/i);
   await assert.rejects(access(join(f.workspace, 'node_modules')));
 });
+
+test('a pnpm tree installed from an older lockfile is refused, not copied into the run', async t => {
+  const f = await fixture(t);
+  const git = (...args) => exec('git', ['-C', f.root, ...args]);
+  await writeFile(join(f.root, 'pnpm-lock.yaml'), 'lockfileVersion: 9\npackages: { fixture-dep@1.0.0: {}, new-dep@2.0.0: {} }\n');
+  await git('add', 'pnpm-lock.yaml'); await git('commit', '-m', 'lock gains new-dep');
+  await mkdir(join(f.root, 'node_modules/.pnpm'), { recursive: true });
+  await writeFile(join(f.root, 'node_modules/.pnpm/lock.yaml'), 'lockfileVersion: 9\npackages: { fixture-dep@1.0.0: {} }\n');
+  const w = await workspace.createWorkspace(f.root, 'stale-install');
+  await assert.rejects(workspace.prepareDependencies(f.root, w.workspace), /installed from a different pnpm-lock\.yaml.*pnpm install/);
+  await assert.rejects(access(join(w.workspace, 'node_modules')));
+  await writeFile(join(f.root, 'node_modules/.pnpm/lock.yaml'), await readFile(join(f.root, 'pnpm-lock.yaml')));
+  await workspace.prepareDependencies(f.root, w.workspace);
+  await access(join(w.workspace, 'node_modules/fixture-dep/index.js'));
+});
