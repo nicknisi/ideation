@@ -175,6 +175,11 @@ async function preparePackageDependencies(repoRoot, workspace, signal) {
     const [original, approved] = await Promise.all([bytes(join(repoRoot, file)), bytes(join(workspace, file))]);
     if ((original === null) !== (approved === null) || (original && !original.equals(approved))) throw new Error(`Cannot prepare dependencies: ${file} differs from the approved source. Restore the matching installed environment before resuming.`);
   }
+  // Matching manifests don't prove the installed tree is current: a checkout installed before
+  // its lockfile changed would hand the run stale packages. pnpm records the lockfile it installed from.
+  // shortcut: npm, yarn and bun trees aren't checked (no reliable record); add one if a run hits a stale tree.
+  const [lock, installed] = await Promise.all([bytes(join(repoRoot, 'pnpm-lock.yaml')), bytes(join(source, '.pnpm', 'lock.yaml'))]);
+  if (lock && installed && !lock.equals(installed)) throw new Error(`Cannot prepare dependencies: ${source} was installed from a different pnpm-lock.yaml. Run \`pnpm install\` in ${repoRoot}, then resume.`);
   // Require an existing ignore rule; do not edit the repository's ignore policy.
   // check-ignore rejects --literal-pathspecs; this path is a fixed host constant.
   try { await gitText(workspace, ['check-ignore', '--quiet', 'node_modules/'], { literal: false }); }

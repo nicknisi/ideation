@@ -228,6 +228,26 @@ test('unhooked legacy host cannot spawn children through the native controller',
   assert.equal(f.calls.filter(c => c === 'plan').length, 1);
 });
 
+test('attempts that end the same way stop to ask, however the fixer words its summary each time', async t => {
+  let attempt = 0, f;
+  f = await fixture(t, {
+    workspace: { runChecks: async (_path, criteria) => criteria.map(c => ({ criterionId: c.id, status: c.check.cmd ? 'failed' : 'pending', sourceRevision: `source-${attempt}`, command: c.check.cmd, output: "error TS2307: Cannot find module '@scope/dep'" })) },
+    engine: async (_args, options) => {
+      attempt++; f.revision(`source-${attempt}`);
+      // Guard so the old behavior ends instead of looping forever.
+      if (attempt > 6) return { results: [{ result: 'FAIL', reviewStatus: 'failed', summary: 'guard' }] };
+      await options.beforeStage({ stage: 'build' });
+      await options.beforeStage({ stage: 'review' });
+      return { results: [{ result: 'FAIL', reviewStatus: 'failed', summary: `Review cycle 1 FAILED and the fixer reported it could not fix the findings: attempt ${attempt} says, in new words, that the environment lacks a package. Nothing committed; changes left unstaged.` }] };
+    },
+  });
+  const r = await f.runner.approve('brief.json');
+  const stopped = await f.runner.start(r.id);
+  assert.equal(stopped.state, 'needs-decision');
+  assert.equal(stopped.units[0].attempts, 3, 'three attempts ending the same way, not one per reworded summary');
+  assert.match(stopped.attention.message, /kept failing the same way/);
+});
+
 test('transient planning failures retry within the persisted attempt budget', async t => {
   let calls = 0;
   const f = await fixture(t, { spawn: async () => ++calls === 1
