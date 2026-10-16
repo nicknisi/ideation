@@ -33,7 +33,7 @@ const SUBCOMMANDS: Record<string, string> = {
   resume: 'Continue a paused, interrupted or blocked run within its original approval, in the same worktree, told what failed last time. A stopped run doesn’t resume: Start fresh in the /ideation menu re-approves it in a new worktree.',
   stop: 'Set a run aside. It waits for owned processes to settle; the worktree and its commits stay.',
   accept:
-    'Record your acceptance of a ready-for-review run after reading its evidence and judgments. It never merges, pushes or deploys.',
+    'Record your acceptance of a ready-for-review run after reading its evidence and judgments, then leave ideation: it asks whether to bring the work into your checkout or keep it on its branch. It never merges, pushes or deploys.',
   exit: 'Leave ideation from any state. Stops a working run, brings its work into your checkout as uncommitted changes (or keeps it on its branch), and clears the widget. Nothing comes back on its own.',
   motion: 'Turn the widget animation on or off (saved). PI_REDUCED_MOTION=1 or IDEATION_MOTION=off also switch it off.',
   respond:

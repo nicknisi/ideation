@@ -41,8 +41,9 @@ Pi application is current.
    The contract page uses the same "ink & press" vocabulary: a state stamp,
    inked arrows and checks, and a token on the edges into the running step.
 5. At completion, review the contract's evidence. `/ideation accept` uses a short
-   confirmation; human judgments are never automatically accepted. No merge, push,
-   deployment or external publication happens automatically.
+   confirmation; human judgments are never automatically accepted. Accepting then
+   leaves ideation, as `/ideation exit` does. No merge, push, deployment or external
+   publication happens automatically.
 
 The explicit `plan`, `approve`, `status`, `review`, `pause`, `resume`, `stop`,
 `accept`, `exit`, `motion` and `respond` subcommands remain available; run controls take an

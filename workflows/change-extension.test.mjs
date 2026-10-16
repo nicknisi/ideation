@@ -440,6 +440,7 @@ test('the widget mounts once, animates only while work is live, and motion can b
   let root, state = 'running';
   const runner = { status: async id => { const r = makeRun(state, { repoRoot: root, startedAt: Date.now() - 5000 }); return id ? r : [r]; }, dispose: async () => {} };
   const h = await harness(t, { runner }); root = h.root;
+  h.entries.push(['ideation:handoff', { runId: 'r', repoRoot: root }]);
   h.ctx.mode = 'tui';
   let factories = 0, renders = 0;
   const mounted = [];
@@ -629,6 +630,40 @@ test('there is always a way out: /ideation exit stops, brings the work over, and
   widgets.length = 0;
   await h.handlers.session_start({}, h.ctx);
   assert.equal(widgets.filter(Boolean).length, 0);
+});
+
+test('a session start shows only runs this session approved, never another session\'s run', async t => {
+  let root;
+  const runner = { status: async id => { const r = makeRun('ready-for-review', { repoRoot: root, ownerId: null }); return id ? r : [r]; }, dispose: async () => {} };
+  const h = await harness(t, { runner }); root = h.root;
+  const widgets = [];
+  h.ctx.ui.setWidget = (_k, v) => widgets.push(v);
+  await h.handlers.session_start({}, h.ctx);
+  assert.equal(widgets.filter(Boolean).length, 0, 'another session\'s finished run stays out of the way');
+  h.entries.push(['ideation:handoff', { runId: 'r', repoRoot: root }]);
+  await h.handlers.session_start({}, h.ctx);
+  assert.ok(widgets.filter(Boolean).length > 0, 'the approving session gets its run back');
+});
+
+test('accepting a change leaves ideation: the work comes over and the widget goes away', async t => {
+  let run = makeRun('ready-for-review', { branch: 'ideation/r', sourceRevision: 'abc', evidence: [{ criterionId: 'a', status: 'passed', sourceRevision: 'abc' }] });
+  const calls = [];
+  const runner = {
+    status: async id => id ? run : [run],
+    accept: async id => { calls.push(['accept', id]); run = { ...run, state: 'accepted', sequence: 2 }; return run; },
+    work: async () => ({ files: ['src/a.ts'], branch: 'ideation/r' }),
+    leave: async (id, options) => { calls.push(['leave', id, options]); run = { ...run, exit: { applied: true } }; return { run, files: ['src/a.ts'], applied: true, branch: 'ideation/r' }; },
+    dispose: async () => {},
+  };
+  const h = await harness(t, { runner });
+  run = { ...run, repoRoot: h.root };
+  const widgets = [];
+  h.ctx.ui.setWidget = (_k, v) => widgets.push(v);
+  h.ctx.ui.select = async (title, options) => { assert.match(title, /Leave ideation/); return options[0]; };
+  await h.commands.ideation.handler('accept', h.ctx);
+  assert.deepEqual(calls, [['accept', 'r'], ['leave', 'r', { apply: true }]]);
+  assert.equal(widgets.at(-1), undefined, 'the widget is cleared');
+  assert.ok(h.entries.some(([type, data]) => type === 'ideation:exit' && data.runId === 'r'));
 });
 
 test('choosing to stay makes no change; a draft can be left without approving anything', async t => {

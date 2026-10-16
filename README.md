@@ -196,7 +196,9 @@ doesn't resume, but *Start fresh* in the menu re-approves it in a new worktree.
 and asks whether to bring its changed files into your checkout as uncommitted changes
 or keep them on the run's branch (work that doesn't apply cleanly stays on the
 branch). Ready for review is not accepted: `/ideation accept` records your judgment
-against the current evidence, and never merges, pushes or deploys. `/ideation status`,
+against the current evidence, then leaves ideation the same way `exit` does, and never
+merges, pushes or deploys. Only the session that approved a run shows it on its own;
+other Pi sessions in the repo stay quiet until you run `/ideation` there. `/ideation status`,
 `review` and `motion on|off` round out the subcommands; `/ideation <plan-folder>`
 resumes a plan, and bare `/ideation` offers whatever fits the current state. See [the native workflow guide](docs/native-workflow.md).
 
