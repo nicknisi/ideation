@@ -1,6 +1,6 @@
 {
   "name": "ideation",
-  "version": "0.26.1",
+  "version": "1.0.0",
   "homepage": "https://ideation.engineering/",
   "description": "One /ideation entry point, at the right depth: just do it, a short plan, an evidence-gated interview stress-tested by four adversarial plan critics, or a map for foggy multi-session work, opening with a no-files 'should we?' conversation when the question is whether to build at all. Every depth writes a living, versioned plan (plan.json) you answer on a page or in the terminal. Approval is always a terminal confirmation, and it hands the run contract to a deterministic workflow engine that builds, reviews and commits each unit. Watched runs teach the next interview.",
   "author": {

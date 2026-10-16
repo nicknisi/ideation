@@ -1,6 +1,6 @@
 {
   "name": "ideation",
-  "version": "0.26.1",
+  "version": "1.0.0",
   "private": true,
   "description": "One /ideation entry point at the right depth (just do it, a short plan, an evidence-gated interview, or a multi-session map), opening with a no-files 'should we?' conversation. It writes a versioned plan you answer on a page or in the terminal, and a deterministic workflow engine runs what you approve in a terminal confirmation.",
   "repository": "github:nicknisi/ideation",
