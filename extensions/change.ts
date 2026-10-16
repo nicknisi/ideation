@@ -284,9 +284,11 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
     const prepared = preparedFor(s, ctx);
     if (prepared && !runs.some((r: any) => r.briefHash === prepared.briefHash)) await showPrepared(s, prepared, false);
     else {
-      // Only in-flight work comes back on its own; finished, set-aside and left
-      // runs stay out of the way until /ideation is asked for.
-      const r = chooseRun(runs, s.repoRoot, s.ownerId);
+      // Only in-flight work this session approved comes back on its own. Other
+      // sessions in the repo, and finished, set-aside or left runs, stay out of
+      // the way until /ideation is asked for.
+      const mine = new Set((ctx.sessionManager.getBranch?.() ?? []).filter((e: any) => e.type === 'custom' && e.customType === 'ideation:handoff').map((e: any) => e.data?.runId));
+      const r = chooseRun(runs.filter((r: any) => mine.has(r.id)), s.repoRoot, s.ownerId);
       if (r && !['accepted', 'cancelled', 'cancelling'].includes(r.state)) await s.show(r);
     }
   } catch { /* Git is optional until invoked. */ } });
@@ -571,6 +573,10 @@ export function registerChange(pi: ExtensionAPI, deps: any = {}) {
           const fresh = await s.runner.status(run.id);
           if (!s.live || fresh.sequence !== run.sequence || fresh.briefHash !== run.briefHash || fresh.state !== run.state) throw new Error('Run changed during confirmation');
           run = await s.runner.accept(run.id, { expectedState: run.state, expectedBriefHash: run.briefHash, expectedSequence: run.sequence });
+          // Accepting is the end of the change: record it, then leave ideation.
+          await s.show(run);
+          await leaveIdeation(s, ctx, run.id);
+          return;
         } else if (action === 'resume') {
           if (s.busy && s.activeRunId !== run.id) throw new Error('Another owned run is already active');
           const meta = JSON.parse(await readFile(join(s.stateDir, 'runs', run.id, 'frontdoor.json'), 'utf8'));
